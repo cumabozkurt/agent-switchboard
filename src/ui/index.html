@@ -53,6 +53,7 @@
 <header>
   <h1>Agent Switchboard</h1><span class="ver" id="ver"></span>
   <span class="spacer"></span>
+ <a id="updBanner" class="badge ok hidden" target="_blank" rel="noopener noreferrer" href="https://github.com/cumabozkurt/agent-switchboard/releases/latest"></a>
   <span id="routerBadge" class="badge muted" role="status" aria-live="polite"></span>
   <label for="langQuick" class="sr-only" data-i18n="ui.language"></label>
   <select id="langQuick" style="width:auto"></select>
@@ -63,7 +64,10 @@
     <button role="tab" id="tab-switch" aria-controls="p-switch" data-i18n="ui.tab.switch"></button>
     <button role="tab" id="tab-keys" aria-controls="p-keys" data-i18n="ui.tab.keys"></button>
     <button role="tab" id="tab-models" aria-controls="p-models" data-i18n="ui.tab.models"></button>
+    <button role="tab" id="tab-profiles" aria-controls="p-profiles" data-i18n="ui.tab.profiles"></button>
     <button role="tab" id="tab-router" aria-controls="p-router" data-i18n="ui.tab.router"></button>
+    <button role="tab" id="tab-usage" aria-controls="p-usage" data-i18n="ui.tab.usage"></button>
+    <button role="tab" id="tab-mcp" aria-controls="p-mcp" data-i18n="ui.tab.mcp"></button>
     <button role="tab" id="tab-providers" aria-controls="p-providers" data-i18n="ui.tab.providers"></button>
     <button role="tab" id="tab-restore" aria-controls="p-restore" data-i18n="ui.tab.restore"></button>
     <button role="tab" id="tab-env" aria-controls="p-env" data-i18n="ui.tab.env"></button>
@@ -80,6 +84,7 @@
           <li><span data-i18n="ui.welcome.step3"></span></li>
         </ol>
       </div>
+      <div class="card warn hidden" id="envConflicts"><p id="envConflictsText"></p></div>
       <div class="grid" id="toolCards"></div>
     </section>
 
@@ -100,6 +105,7 @@
           <label><input type="checkbox" name="swTool" value="claude" checked> Claude Code</label>
           <label><input type="checkbox" name="swTool" value="codex" checked> Codex</label>
           <label><input type="checkbox" name="swTool" value="opencode"> OpenCode</label>
+          <label><input type="checkbox" name="swTool" value="gemini"> Gemini CLI</label>
         </fieldset>
         <div id="codexKeyWrap"><label for="codexKey" data-i18n="ui.switch.codexKey"></label>
           <select id="codexKey"><option value="env" data-i18n="ui.switch.codexKeyEnv"></option><option value="command" data-i18n="ui.switch.codexKeyCmd"></option></select></div>
@@ -115,8 +121,9 @@
         <p class="muted" data-i18n="ui.keys.oauthText"></p>
         <button id="orLogin" class="primary" data-i18n="ui.keys.oauthBtn"></button>
       </div>
-      <div class="card"><table><caption class="sr-only" data-i18n="ui.keys.title"></caption>
-        <thead><tr><th data-i18n="ui.col.provider"></th><th data-i18n="ui.col.key"></th><th data-i18n="ui.col.newKey"></th><th data-i18n="ui.col.actions"></th></tr></thead>
+      <div class="card"><button id="pingAll" data-i18n="ui.ping.btn"></button> <span id="pingState" class="muted" role="status" aria-live="polite"></span>
+        <table><caption class="sr-only" data-i18n="ui.keys.title"></caption>
+        <thead><tr><th data-i18n="ui.col.provider"></th><th data-i18n="ui.col.key"></th><th data-i18n="ui.col.latency"></th><th data-i18n="ui.col.newKey"></th><th data-i18n="ui.col.actions"></th></tr></thead>
         <tbody id="keyRows"></tbody></table></div>
     </section>
 
@@ -144,6 +151,62 @@
         <p class="muted" data-i18n="ui.router.note"></p>
       </div>
       <div class="card"><h3 data-i18n="ui.router.targets"></h3><dl class="kv" id="routerTargets"></dl></div>
+      <div class="card"><h3 data-i18n="ui.fallback.title"></h3><p class="muted" data-i18n="ui.fallback.lead"></p>
+        <div class="row">
+          <div style="flex:0 0 180px"><label for="fbTool" data-i18n="ui.fallback.tool"></label><select id="fbTool"><option value="claude">Claude Code</option><option value="codex">Codex</option><option value="gemini">Gemini CLI</option></select></div>
+          <div><label for="fbSpecs" data-i18n="ui.fallback.specs"></label><input id="fbSpecs" autocomplete="off" data-i18n-placeholder="ui.fallback.specsPh"></div>
+          <button id="fbSave" class="primary" data-i18n="ui.fallback.save"></button>
+        </div>
+        <dl class="kv" id="fbList" style="margin-top:10px"></dl>
+      </div>
+    </section>
+
+    <section role="tabpanel" id="p-profiles" aria-labelledby="tab-profiles" hidden>
+      <h2 data-i18n="ui.profiles.title"></h2><p class="lead" data-i18n="ui.profiles.lead"></p>
+      <div class="card">
+        <div class="row">
+          <div><label for="pfName" data-i18n="ui.profiles.name"></label><input id="pfName" autocomplete="off" data-i18n-placeholder="ui.profiles.namePh"></div>
+          <button id="pfSave" class="primary" data-i18n="ui.profiles.save"></button>
+        </div>
+        <p class="muted" data-i18n="ui.profiles.projectHint"></p>
+        <p id="pfProject" class="ok" role="status"></p>
+      </div>
+      <div class="card"><table><thead><tr><th data-i18n="ui.col.name"></th><th data-i18n="ui.switch.tools"></th><th data-i18n="ui.col.actions"></th></tr></thead><tbody id="pfRows"></tbody></table></div>
+    </section>
+
+    <section role="tabpanel" id="p-usage" aria-labelledby="tab-usage" hidden>
+      <h2 data-i18n="ui.usage.title"></h2><p class="lead" data-i18n="ui.usage.lead"></p>
+      <div class="card">
+        <div class="row">
+          <div style="flex:0 0 200px"><label for="usDays" data-i18n="ui.usage.days"></label><select id="usDays"><option value="1">1</option><option value="7" selected>7</option><option value="30">30</option><option value="0">∞</option></select></div>
+          <button id="usRefresh" data-i18n="ui.usage.refresh"></button>
+          <button id="usClear" class="danger" data-i18n="ui.usage.clear"></button>
+        </div>
+        <div class="checks" style="margin-top:10px"><label><input type="checkbox" id="usLog"> <span data-i18n="ui.usage.logOn"></span></label></div>
+        <p id="usTotal" role="status" aria-live="polite"></p>
+        <table><thead><tr><th data-i18n="ui.col.provider"></th><th data-i18n="ui.col.requests"></th><th data-i18n="ui.col.tokens"></th><th data-i18n="ui.col.latency"></th><th data-i18n="ui.col.cost"></th></tr></thead><tbody id="usRows"></tbody></table>
+        <p class="muted" data-i18n="ui.usage.costNote"></p>
+      </div>
+      <div class="card"><h3 data-i18n="ui.usage.recent"></h3>
+        <table><thead><tr><th data-i18n="ui.col.time"></th><th data-i18n="ui.col.tool"></th><th data-i18n="ui.col.model"></th><th data-i18n="ui.col.status"></th><th data-i18n="ui.col.latency"></th><th data-i18n="ui.col.tokens"></th></tr></thead><tbody id="usRecent"></tbody></table></div>
+    </section>
+
+    <section role="tabpanel" id="p-mcp" aria-labelledby="tab-mcp" hidden>
+      <h2 data-i18n="ui.mcp.title"></h2><p class="lead" data-i18n="ui.mcp.lead"></p>
+      <div class="card">
+        <div class="row">
+          <div style="flex:0 0 200px"><label for="mcpFrom" data-i18n="ui.mcp.from"></label><select id="mcpFrom"><option value="claude">Claude Code</option><option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="gemini">Gemini CLI</option></select></div>
+          <fieldset class="checks" style="border:0;padding:0;margin:0"><legend class="muted" style="font-size:13px" data-i18n="ui.mcp.to"></legend>
+            <label><input type="checkbox" name="mcpTo" value="codex" checked> Codex</label>
+            <label><input type="checkbox" name="mcpTo" value="opencode" checked> OpenCode</label>
+            <label><input type="checkbox" name="mcpTo" value="gemini" checked> Gemini CLI</label>
+          </fieldset>
+        </div>
+        <div class="checks" style="margin-top:10px"><label><input type="checkbox" id="mcpOverwrite"> <span data-i18n="ui.mcp.overwrite"></span></label></div>
+        <button id="mcpSync" class="primary" data-i18n="ui.mcp.sync"></button>
+        <p class="muted" data-i18n="ui.mcp.claudeReadOnly"></p>
+      </div>
+      <div class="card"><table><thead><tr><th data-i18n="ui.col.tool"></th><th data-i18n="ui.col.name"></th><th data-i18n="ui.col.type"></th><th data-i18n="ui.col.command"></th></tr></thead><tbody id="mcpRows"></tbody></table></div>
     </section>
 
     <section role="tabpanel" id="p-providers" aria-labelledby="tab-providers" hidden>
@@ -174,6 +237,7 @@
           <label><input type="checkbox" name="rsTool" value="claude" checked> Claude Code</label>
           <label><input type="checkbox" name="rsTool" value="codex" checked> Codex</label>
           <label><input type="checkbox" name="rsTool" value="opencode"> OpenCode</label>
+          <label><input type="checkbox" name="rsTool" value="gemini"> Gemini CLI</label>
         </fieldset>
         <h3 style="margin-top:14px" data-i18n="ui.restore.officialTitle"></h3>
         <p class="muted" data-i18n="ui.restore.officialText"></p>
@@ -210,6 +274,14 @@
         <select id="lang"></select>
         <div class="checks" style="margin-top:12px"><label><input type="checkbox" id="sAuto"> <span data-i18n="ui.router.auto"></span></label></div>
       </div>
+      <div class="card"><h3 data-i18n="ui.io.title"></h3><p class="muted" data-i18n="ui.io.lead"></p>
+        <div class="checks"><label><input type="checkbox" id="ioKeys"> <span data-i18n="ui.io.withKeys"></span></label></div>
+        <button id="ioExport" data-i18n="ui.io.export"></button>
+        <label for="ioFile" data-i18n="ui.io.import"></label><input id="ioFile" type="file" accept="application/json,.json">
+        <div class="checks"><label><input type="checkbox" id="ioOverwrite"> <span data-i18n="ui.io.overwrite"></span></label></div>
+      </div>
+      <div class="card"><h3 data-i18n="ui.update.title"></h3><p class="muted" data-i18n="ui.update.lead"></p>
+        <button id="updCheck" data-i18n="ui.update.check"></button> <span id="updState" role="status" aria-live="polite"></span></div>
       <div class="card"><h3 data-i18n="ui.settings.files"></h3><dl class="kv" id="pathsInfo"></dl></div>
       <div class="card"><h3 data-i18n="ui.settings.about"></h3><p id="about" class="muted"></p>
         <p><a href="https://github.com/cumabozkurt/agent-switchboard" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://github.com/cumabozkurt/agent-switchboard/issues" target="_blank" rel="noopener noreferrer" data-i18n="ui.settings.issues"></a></p></div>
@@ -240,7 +312,7 @@ function h(tag, attrs, ...kids) {
   for (const c of kids.flat()) if (c != null && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
   return el;
 }
-const state = { info: null, providers: [], status: null, models: {}, lastApply: null };
+const state = { info: null, providers: [], status: null, models: {}, lastApply: null, ping: {} };
 // replaceChildren() would print "null" for skipped optional parts; drop them first.
 const fill = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
 const log = (m, cls) => { const line = h('div', { class: cls || '' }, new Date().toLocaleTimeString(LANG) + '  ' + m); $('log').prepend(line); };
@@ -258,7 +330,9 @@ const act = (btn, fn) => async (ev) => {
   finally { if (btn) { busy.delete(btn); btn.disabled = false; btn.removeAttribute('aria-busy'); } }
 };
 const checked = name => [...document.querySelectorAll(`input[name=${name}]:checked`)].map(i => i.value);
-const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' }[id] || id);
+const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', gemini: 'Gemini CLI' }[id] || id);
+const num = n => Number(n || 0).toLocaleString(LANG);
+const money = c => c == null ? '—' : '$' + Number(c).toFixed(4);
 
 // ---------------------------------------------------------------- i18n
 function applyI18n() {
@@ -295,6 +369,8 @@ function selectTab(name, focus) {
   if (name === 'restore') loadBackups().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
   if (name === 'env') loadEnv().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
   if (name === 'models' && !$('mRows').children.length && $('mProv').value) loadModelTable(false);
+  const loaders = { profiles: loadProfiles, usage: loadUsage, mcp: loadMcp, router: loadFallback };
+  if (loaders[name]) loaders[name]().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
 }
 for (const tab of tabs) {
   tab.addEventListener('click', () => selectTab(tab.id.slice(4)));
@@ -324,7 +400,10 @@ function renderOverview() {
   const noKeys = !state.providers.some(p => p.hasKey && !p.noKey);
   const noActive = !Object.values(s.active || {}).some(a => a && a.provider && a.provider !== 'official');
   $('welcome').classList.toggle('hidden', !(noKeys && noActive));
-  const cards = ['claude', 'codex', 'opencode'].map(tool => {
+  const ec = s.envConflicts || [];
+  $('envConflicts').classList.toggle('hidden', !ec.length);
+  $('envConflictsText').textContent = ec.length ? '⚠ ' + t('status.envConflicts', { list: ec.map(c => `${c.name} (${toolName(c.tool)})`).join(', ') }) : '';
+  const cards = ['claude', 'codex', 'opencode', 'gemini'].map(tool => {
     const st = s[tool]; const a = (s.active || {})[tool];
     const dl = h('dl', { class: 'kv' },
       h('dt', {}, t('ui.col.provider')), h('dd', {}, a ? (a.provider === 'official' ? t('ui.mode.official') : a.provider === 'backup' ? t('ui.fromBackup') : a.provider) : t('ui.none')),
@@ -354,6 +433,7 @@ function renderRouter() {
   const rows = [];
   if (rc.claude) rows.push(h('dt', {}, 'Claude Code'), h('dd', { class: 'mono' }, `${rc.claude.provider} · ${rc.claude.model}${rc.claude.fastModel ? ' / ' + rc.claude.fastModel : ''}`));
   if (rc.codex) rows.push(h('dt', {}, 'Codex'), h('dd', { class: 'mono' }, `${rc.codex.provider} · ${rc.codex.model}`));
+  if (rc.gemini) rows.push(h('dt', {}, 'Gemini CLI'), h('dd', { class: 'mono' }, `${rc.gemini.provider} · ${rc.gemini.model}${rc.gemini.fastModel ? ' / ' + rc.gemini.fastModel : ''}`));
   if (!rows.length) rows.push(h('dt', {}, '—'), h('dd', { class: 'muted' }, t('ui.router.notNeeded')));
   fill($('routerTargets'), ...rows);
   renderRouterBadge(r);
@@ -381,7 +461,9 @@ function renderProviders() {
     const rm = p.keySource === 'saved' ? h('button', { class: 'danger' }, t('ui.remove')) : null;
     if (rm) rm.onclick = act(rm, async () => { if (!confirm(t('ui.keys.confirmRemove', { name: p.label }))) return; await api('key/remove', { provider: p.id }); log(t('ui.keys.removed', { name: p.label })); await refresh(); });
     const link = p.keyUrl ? h('a', { href: p.keyUrl, target: '_blank', rel: 'noopener noreferrer' }, t('ui.keys.getKey')) : null;
-    return h('tr', {}, h('td', {}, h('b', {}, p.label), p.custom ? ' ★' : '', h('div', { class: 'muted' }, p.desc || '')), h('td', {}, status), h('td', {}, input), h('td', {}, save, rm, link));
+    const pg = state.ping[p.id];
+    const lat = !pg ? h('span', { class: 'muted' }, '—') : pg.ok ? h('span', { class: 'ok' }, pg.ms + ' ms') : h('span', { class: pg.auth === 'rejected' ? 'warn' : 'err', title: pg.url }, pg.auth === 'rejected' ? t('ui.ping.auth') : pg.error ? t('ui.ping.fail', { reason: pg.error }) : 'HTTP ' + pg.status);
+    return h('tr', {}, h('td', {}, h('b', {}, p.label), p.custom ? ' ★' : '', h('div', { class: 'muted' }, p.desc || '')), h('td', {}, status), h('td', { 'data-ping': p.id }, lat), h('td', {}, input), h('td', {}, save, rm, link));
   }));
   const customs = state.providers.filter(p => p.custom);
   fill($('cpRows'), ...(customs.length ? customs.map(p => {
@@ -400,7 +482,7 @@ function renderProvHint() {
 }
 function renderPaths() {
   const pth = state.info.paths;
-  fill($('pathsInfo'), ...[['ui.settings.config', pth.config], ['Claude Code', pth.claude], ['Codex', pth.codex], ['OpenCode', pth.opencode], ['ui.settings.backups', pth.appDir]]
+  fill($('pathsInfo'), ...[['ui.settings.config', pth.config], ['Claude Code', pth.claude], ['Codex', pth.codex], ['OpenCode', pth.opencode], ['Gemini CLI', pth.gemini], ['Gemini CLI .env', pth.geminiEnv], ['ui.settings.backups', pth.appDir]]
     .flatMap(([k, v]) => [h('dt', {}, k.startsWith('ui.') ? t(k) : k), h('dd', { class: 'mono' }, v)]));
   $('about').textContent = t('ui.settings.aboutText', { version: state.info.version, platform: state.info.platform });
   $('envWhere').textContent = t('ui.env.where.' + ($('envShell').value || 'sh'));
@@ -526,6 +608,89 @@ $('envCopy').onclick = act($('envCopy'), async () => {
 $('lang').addEventListener('change', act(null, () => setLang($('lang').value)));
 $('langQuick').addEventListener('change', act(null, () => setLang($('langQuick').value)));
 
+// ---------------------------------------------------------------- v0.3.0: ping, profiles, fallback, usage, MCP, import/export, updates
+$('pingAll').onclick = act($('pingAll'), async () => {
+  $('pingState').textContent = t('ui.ping.running');
+  const withKey = state.providers.filter(p => p.hasKey || p.noKey).map(p => p.id);
+  const list = await api('ping', { ids: withKey });
+  for (const r of list) state.ping[r.id] = r;
+  $('pingState').textContent = t('ui.ping.done', { n: list.length });
+  renderProviders();
+});
+async function loadProfiles() {
+  const r = await api('profiles');
+  $('pfProject').textContent = r.project ? t('ui.profiles.projectActive', { profile: r.project.profile, file: r.project.file }) : '';
+  fill($('pfRows'), ...(r.profiles.length ? r.profiles.map(p => {
+    const use = h('button', { class: 'primary' }, t('ui.profiles.use'));
+    use.onclick = act(use, async () => { const x = await api('profile/use', { name: p.name }); log(t('ui.profiles.applied', { name: x.name }), 'ok'); await refresh(); await loadProfiles(); });
+    const rm = h('button', { class: 'danger' }, t('ui.remove'));
+    rm.onclick = act(rm, async () => { if (!confirm(t('ui.profiles.confirmRemove', { name: p.name }))) return; await api('profile/remove', { name: p.name }); log(t('ui.profiles.removed', { name: p.name })); await loadProfiles(); });
+    const active = state.status?.activeProfile === p.name;
+    return h('tr', {}, h('td', {}, h('b', {}, p.name), active ? h('span', { class: 'badge ok', style: 'margin-left:6px' }, t('ui.profiles.active')) : null),
+      h('td', { class: 'mono' }, Object.entries(p.tools).map(([k, v]) => h('div', {}, `${toolName(k)}: ${v.provider === 'official' ? t('ui.mode.official') : v.provider + (v.model ? ' · ' + v.model : '')}`))), h('td', {}, use, rm));
+  }) : [h('tr', {}, h('td', { colspan: 3, class: 'muted' }, t('ui.profiles.none')))]));
+}
+$('pfSave').onclick = act($('pfSave'), async () => { const name = $('pfName').value.trim(); await api('profile/save', { name }); $('pfName').value = ''; log(t('ui.profiles.saved', { name }), 'ok'); await loadProfiles(); });
+async function loadFallback() {
+  const fb = await api('fallback');
+  fill($('fbList'), ...Object.entries(fb).flatMap(([k, list]) => [h('dt', {}, toolName(k)), h('dd', { class: 'mono' }, list.length ? list.map(f => f.provider + ':' + f.model).join(' → ') : '—')]));
+  const cur = fb[$('fbTool').value] || [];
+  if (document.activeElement !== $('fbSpecs')) $('fbSpecs').value = cur.map(f => f.provider + ':' + f.model).join(', ');
+}
+$('fbTool').addEventListener('change', () => { $('fbSpecs').value = ''; loadFallback().catch(e => log(t('ui.error', { msg: e.message }), 'err')); });
+$('fbSave').onclick = act($('fbSave'), async () => {
+  const specs = $('fbSpecs').value.split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
+  await api('fallback/set', { tool: $('fbTool').value, specs }); log(t('ui.fallback.saved', { tool: toolName($('fbTool').value) }), 'ok'); await loadFallback(); await refresh();
+});
+async function loadUsage() {
+  const r = await api('usage', { days: Number($('usDays').value) });
+  $('usLog').checked = !!r.log;
+  $('usTotal').textContent = t('ui.usage.total', { requests: num(r.total.requests), errors: num(r.total.errors), input: num(r.total.input), output: num(r.total.output), cost: money(r.total.cost) });
+  fill($('usRows'), ...(r.rows.length ? r.rows.map(x => h('tr', {}, h('td', { class: 'mono' }, x.provider + ' · ' + x.model), h('td', {}, num(x.requests) + (x.errors ? ' (' + num(x.errors) + ' ✕)' : '')), h('td', {}, num(x.input) + ' → ' + num(x.output)), h('td', {}, x.avgMs + ' ms' + (x.avgTtft != null ? ' · TTFT ' + x.avgTtft + ' ms' : '')), h('td', {}, money(x.cost))))
+    : [h('tr', {}, h('td', { colspan: 5, class: 'muted' }, t('ui.usage.none')))]));
+  fill($('usRecent'), ...r.recent.slice(0, 50).map(e => h('tr', {}, h('td', {}, new Date(e.ts).toLocaleString(LANG)), h('td', {}, toolName(e.tool)), h('td', { class: 'mono' }, e.provider + ' · ' + (e.model || '—') + (e.fallback ? ' ↪' : '')), h('td', { class: e.status >= 400 || e.error ? 'err' : 'ok', title: e.error || '' }, String(e.status)), h('td', {}, e.ms + ' ms'), h('td', {}, num(e.in) + ' → ' + num(e.out)))));
+}
+$('usRefresh').onclick = act($('usRefresh'), loadUsage);
+$('usDays').addEventListener('change', act(null, loadUsage));
+$('usClear').onclick = act($('usClear'), async () => { if (!confirm(t('ui.usage.confirmClear'))) return; await api('usage/clear'); log(t('ui.usage.cleared')); await loadUsage(); });
+$('usLog').addEventListener('change', act(null, async () => { await api('usage/log', { on: $('usLog').checked }); log($('usLog').checked ? t('cli.logOn') : t('cli.logOff')); }));
+async function loadMcp() {
+  const all = await api('mcp');
+  const rows = [];
+  for (const [tool, v] of Object.entries(all)) {
+    if (v.error) rows.push(h('tr', {}, h('td', {}, toolName(tool)), h('td', { colspan: 3, class: 'err' }, v.error)));
+    for (const sv of v.servers) rows.push(h('tr', {}, h('td', {}, toolName(tool)), h('td', { class: 'mono' }, sv.name), h('td', {}, sv.type), h('td', { class: 'mono' }, sv.type === 'stdio' ? [sv.command, ...sv.args].join(' ') : sv.url)));
+  }
+  fill($('mcpRows'), ...(rows.length ? rows : [h('tr', {}, h('td', { colspan: 4, class: 'muted' }, t('ui.mcp.none')))]));
+}
+$('mcpSync').onclick = act($('mcpSync'), async () => {
+  const to = checked('mcpTo').filter(x => x !== $('mcpFrom').value); if (!to.length) throw new Error(t('err.noTools'));
+  const r = await api('mcp/sync', { from: $('mcpFrom').value, to, overwrite: $('mcpOverwrite').checked });
+  for (const x of r) log(toolName(x.tool) + ': ' + t('ui.mcp.syncResult', { added: x.added.length, skipped: x.skipped.length }), 'ok');
+  await loadMcp();
+});
+$('ioExport').onclick = act($('ioExport'), async () => {
+  const withKeys = $('ioKeys').checked;
+  if (withKeys && !confirm(t('cli.exportKeysWarn'))) return;
+  const data = await api('export', { withKeys });
+  const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })), download: 'agent-switchboard-export.json' });
+  document.body.append(a); a.click(); a.remove();
+  log(t('ui.io.exported'), 'ok');
+});
+$('ioFile').addEventListener('change', act(null, async () => {
+  const f = $('ioFile').files[0]; if (!f) return;
+  let data; try { data = JSON.parse(await f.text()); } catch { throw new Error(t('err.badImport')); }
+  const c = await api('import', { data, overwrite: $('ioOverwrite').checked });
+  $('ioFile').value = '';
+  log(t('ui.import.done', c), 'ok'); await refresh();
+}));
+function showUpdate(u, manual) {
+  const b = $('updBanner');
+  if (u.update) { b.textContent = t('ui.update.available', { latest: u.latest }); b.href = u.url || b.href; b.classList.remove('hidden'); }
+  if (manual) $('updState').textContent = u.update ? t('cli.updateAvailable', { latest: u.latest, current: u.current }) : t('cli.upToDate', { current: u.current });
+}
+$('updCheck').onclick = act($('updCheck'), async () => showUpdate(await api('update', { force: true }), true));
+
 // ---------------------------------------------------------------- boot
 (async () => {
   $('ver').textContent = 'v' + BOOT.version;
@@ -535,9 +700,11 @@ $('langQuick').addEventListener('change', act(null, () => setLang($('langQuick')
     state.info = await api('info');
     $('lang').value = state.info.settings.langSaved || 'auto';
     $('codexKeyWrap').classList.toggle('hidden', state.info.codexKeyModes.length < 2);
+    if (state.info.geminiInstalled) document.querySelector('input[name=swTool][value=gemini]').checked = true;
     $('envShell').value = state.info.defaultShell === 'powershell' ? 'powershell' : state.info.defaultShell;
     await refresh();
   } catch (e) { log(t('ui.error', { msg: e.message }), 'err'); }
+  api('update').then(u => showUpdate(u, false)).catch(() => {}); // silent: offline is fine
   // Poll so the router state stays accurate (e.g. an external `aswitch router` was started); re-render only on change.
   setInterval(() => { if (!document.hidden) api('status').then(s => { const sig = JSON.stringify(s); if (sig === state.sig) return; state.sig = sig; state.status = s; renderRouter(); renderOverview(); renderApply(); }).catch(() => {}); }, 5000);
 })();

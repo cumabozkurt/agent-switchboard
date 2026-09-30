@@ -1,6 +1,6 @@
 {
   "name": "agent-switchboard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "API/model switcher for Claude Code, Codex and OpenCode: switch providers, fetch live model lists, translate protocols with a local router, restore originals. CLI + desktop app, English and Turkish. macOS, Windows, Linux.",
   "license": "MIT",
   "type": "module",
@@ -17,6 +17,7 @@
   "files": [
     "bin",
     "src",
+    "models",
     "README.md",
     "README.tr.md",
     "CHANGELOG.md",

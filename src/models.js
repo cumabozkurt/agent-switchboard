@@ -1,4 +1,6 @@
 import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { appDir } from './paths.js';
 import { readJson, writeJson } from './fsutil.js';
 import { t } from './i18n/index.js';
@@ -23,6 +25,9 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
   try {
     res = await fetchImpl(url, { headers, signal: AbortSignal.timeout(20000) });
   } catch (e) {
+    // Offline: fall back to the last cached list, then to the daily snapshot bundled with aswitch.
+    const offline = hit?.models || bundledModels(provider.id);
+    if (offline?.length) return Object.assign([...offline], { offline: true });
     throw new Error(t('err.modelsUnreachable', { id: provider.id, url, reason: e.cause?.code || e.cause?.errors?.[0]?.code || e.cause?.message || e.message }));
   }
   if (!res.ok) {
@@ -42,7 +47,8 @@ export function normalizeModels(body) {
     id: m.id || m.name,
     name: m.display_name || m.name || m.id,
     created: toEpoch(m.created ?? m.created_at),
-    context: m.context_length || m.context_window || null
+    context: m.context_length || m.context_window || null,
+    ...(m.pricing && typeof m.pricing === 'object' ? { pricing: { prompt: Number(m.pricing.prompt) || 0, completion: Number(m.pricing.completion) || 0 } } : {})
   })).filter(m => typeof m.id === 'string' && m.id);
   // Bazı uç noktalar (ör. OpenCode Zen/Go) her modelin "created" alanına isteğin anını yazar;
   // bu durumda tarih bilgi taşımaz ve sıralama/"latest" sürüm numarasına göre yapılır.
@@ -73,4 +79,10 @@ export function resolveModelAlias(spec, models) {
   // filtre açıkça istediğinde seçilir; aksi hâlde asıl model tercih edilir.
   const plain = filter.includes(':') || filter.startsWith('~') ? pool : pool.filter(m => !m.id.includes(':') && !m.id.startsWith('~'));
   return [...(plain.length ? plain : pool)].sort(newestFirst)[0].id;
+}
+
+// Daily snapshots (models/<id>.json) refreshed by the models-snapshot workflow and shipped in the package.
+export function bundledModels(id) {
+  if (!/^[a-z0-9._-]+$/.test(id)) return null;
+  try { return JSON.parse(fs.readFileSync(fileURLToPath(new URL(`../models/${id}.json`, import.meta.url)), 'utf8')); } catch { return null; }
 }

@@ -1,6 +1,7 @@
-// End-to-end check of the real Electron app (not run in CI). Drives the UI with Playwright, verifies the
+// End-to-end check of the real Electron app (runs in CI under xvfb: .github/workflows/ci.yml → e2e). Drives the UI with Playwright, verifies the
 // launch → keys → models → apply → router start/stop/restart → language switch → quit → relaunch flows,
-// and saves screenshots to docs/images/. Uses a throw-away HOME so real ~/.claude and ~/.codex are never touched.
+// plus the v0.3.0 features (Gemini CLI, endpoint test, profiles, fallback, usage log, MCP sync, tray), and saves
+// screenshots to docs/images/ (or $SHOTS_DIR). Uses a throw-away HOME so real ~/.claude and ~/.codex are never touched.
 //
 //   cd desktop && npm install && npm run sync && xvfb-run -a node test/e2e.mjs
 import fs from 'node:fs';
@@ -13,12 +14,16 @@ import { _electron } from 'playwright-core';
 
 const require = createRequire(import.meta.url);
 const desktop = fileURLToPath(new URL('..', import.meta.url));
-const shots = path.join(desktop, '..', 'docs', 'images');
+const shots = process.env.SHOTS_DIR ? path.resolve(process.env.SHOTS_DIR) : path.join(desktop, '..', 'docs', 'images');
 fs.mkdirSync(shots, { recursive: true });
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'aswitch-e2e-'));
 const routerPort = await new Promise(r => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
 const env = { ...process.env, ASWITCH_HOME_OVERRIDE: home, ASWITCH_DIR: path.join(home, '.agent-switchboard'), XDG_CONFIG_HOME: path.join(home, '.config'), LANG: 'en_US.UTF-8', LANGUAGE: 'en_US' };
-for (const k of ['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'ASWITCH_LANG', 'LC_ALL', 'LC_MESSAGES']) delete env[k];
+for (const k of ['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'GEMINI_CLI_HOME', 'ASWITCH_LANG', 'LC_ALL', 'LC_MESSAGES']) delete env[k];
+env.ASWITCH_NO_UPDATE_CHECK = '1'; // no GitHub API calls from CI
+// Gemini CLI "installed" (config dir exists) and one MCP server configured in Claude Code.
+fs.mkdirSync(path.join(home, '.gemini'), { recursive: true });
+fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ mcpServers: { filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', home] }, docs: { type: 'http', url: 'https://mcp.example.com/mcp' } } }));
 // Pre-set the router port so the test never collides with a real router on 3456.
 fs.mkdirSync(env.ASWITCH_DIR, { recursive: true });
 fs.writeFileSync(path.join(env.ASWITCH_DIR, 'config.json'), JSON.stringify({ version: 1, keys: {}, providers: {}, active: {}, router: { port: routerPort } }));
@@ -139,6 +144,78 @@ await page.waitForFunction(() => document.querySelector('#cpRows').textContent.i
 check('custom provider added from the UI', true);
 await shot(page, 'providers-en.png');
 
+// ---------------------------------------------------------------- v0.3.0
+// Gemini CLI → OpenRouter through the router
+await tab(page, 'switch');
+check('Gemini CLI is offered and pre-checked when installed', await page.isChecked('input[name=swTool][value=gemini]'));
+await page.selectOption('#prov', 'openrouter');
+await page.fill('#model', codexModel); await page.fill('#fast', '');
+for (const v of ['claude', 'codex', 'opencode']) await page.uncheck(`input[name=swTool][value=${v}]`);
+await page.check('input[name=swTool][value=gemini]');
+await page.click('#apply');
+await page.waitForFunction(() => document.querySelector('#applyResult').textContent.includes('Gemini CLI'));
+const genv = fs.readFileSync(path.join(home, '.gemini', '.env'), 'utf8');
+check('apply Gemini CLI → OpenRouter via router (.env written)', genv.includes(`GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:${routerPort}`) && genv.includes('GEMINI_MODEL='), genv.replace(/\n/g, ' | '));
+const gset = JSON.parse(fs.readFileSync(path.join(home, '.gemini', 'settings.json'), 'utf8'));
+check('Gemini CLI settings.json uses API-key auth', gset.security?.auth?.selectedType === 'gemini-api-key');
+// Gemini request through the running router reaches OpenRouter (fake key → 401 in Gemini format) and is logged
+const gres = await fetch(`http://127.0.0.1:${routerPort}/v1beta/models/gemini-3-pro:generateContent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'hi' }] }] }) });
+const gj = await gres.json().catch(() => ({}));
+check('router answers Gemini API requests in Gemini format', gres.status === 401 && gj.error?.status === 'UNAUTHENTICATED', `${gres.status} ${JSON.stringify(gj).slice(0, 120)}`);
+await tab(page, 'overview');
+await page.waitForFunction(() => document.querySelector('#toolCards').textContent.includes('Gemini CLI'));
+check('overview shows a Gemini CLI card', true);
+await shot(page, 'overview-en.png');
+
+// endpoint test
+await tab(page, 'keys');
+await page.click('#pingAll');
+await page.waitForFunction(() => /tested/.test(document.querySelector('#pingState').textContent), null, { timeout: 30000 }).catch(() => {});
+const pingText = await page.locator('#keyRows tr', { hasText: 'OpenRouter' }).first().locator('td[data-ping]').textContent();
+check('endpoint test shows latency / key status', /ms|rejected|unreachable|HTTP/.test(pingText), pingText);
+await shot(page, 'keys-en.png');
+
+// profiles
+await tab(page, 'profiles');
+await page.fill('#pfName', 'work');
+await page.click('#pfSave');
+await page.waitForFunction(() => document.querySelector('#pfRows').textContent.includes('work'));
+await page.locator('#pfRows tr', { hasText: 'work' }).getByRole('button', { name: 'Apply' }).click();
+await page.waitForFunction(() => document.querySelector('#pfRows').textContent.includes('active'));
+check('profile saved and applied from the UI', true);
+await shot(page, 'profiles-en.png');
+
+// fallback chain
+await tab(page, 'router');
+await page.selectOption('#fbTool', 'gemini');
+await page.fill('#fbSpecs', 'opencode-go:glm-5.1, ollama:qwen3');
+await page.click('#fbSave');
+await page.waitForFunction(() => document.querySelector('#fbList').textContent.includes('opencode-go:glm-5.1 → ollama:qwen3'));
+const health = await (await fetch(`http://127.0.0.1:${routerPort}/health`)).json();
+check('fallback chain saved and live in the router', health.gemini?.fallbacks?.join(',') === 'opencode-go:glm-5.1,ollama:qwen3', JSON.stringify(health.gemini?.fallbacks));
+await shot(page, 'router-en.png');
+
+// usage log
+await tab(page, 'usage');
+await page.waitForFunction(() => document.querySelectorAll('#usRecent tr').length > 0, null, { timeout: 10000 }).catch(() => {});
+check('usage tab lists the routed request', (await page.textContent('#usRecent')).includes('openrouter'), (await page.textContent('#usTotal')));
+await shot(page, 'usage-en.png');
+
+// MCP
+await tab(page, 'mcp');
+await page.waitForFunction(() => document.querySelector('#mcpRows').textContent.includes('filesystem'));
+await page.click('#mcpSync');
+await page.waitForFunction(() => (document.querySelector('#mcpRows').textContent.match(/filesystem/g) || []).length >= 4);
+const toml = fs.readFileSync(path.join(home, '.codex', 'config.toml'), 'utf8');
+check('MCP servers synced from Claude Code to Codex/OpenCode/Gemini', toml.includes('[mcp_servers.filesystem]') && JSON.parse(fs.readFileSync(path.join(home, '.gemini', 'settings.json'), 'utf8')).mcpServers?.docs?.httpUrl === 'https://mcp.example.com/mcp');
+await shot(page, 'mcp-en.png');
+
+// tray
+const trayOk = await app.evaluate(() => !!globalThis.aswitchTray);
+check('tray / menu bar icon created', trayOk);
+await tab(page, 'settings');
+await shot(page, 'settings-en.png');
+
 // language switch → Turkish (UI + menu + title), persisted
 await page.selectOption('#langQuick', 'tr');
 await page.waitForFunction(() => document.documentElement.lang === 'tr');
@@ -157,6 +234,9 @@ await page.selectOption('#mProv', 'opencode-zen'); await page.click('#mRefresh')
 await page.waitForFunction(() => document.querySelectorAll('#mRows tr').length > 5, null, { timeout: 30000 }).catch(() => {});
 check('live model list loads (OpenCode Zen)', (await page.locator('#mRows tr').count()) > 5);
 await shot(page, 'models-tr.png');
+await tab(page, 'profiles'); await page.waitForFunction(() => document.querySelector('#pfRows').textContent.includes('work')); await shot(page, 'profiles-tr.png');
+await tab(page, 'usage'); await sleep(300); await shot(page, 'usage-tr.png');
+await tab(page, 'mcp'); await sleep(300); await shot(page, 'mcp-tr.png');
 // server-side errors follow the language
 await tab(page, 'switch');
 await page.selectOption('#prov', 'opencode-zen');

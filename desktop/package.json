@@ -1,6 +1,6 @@
 {
   "name": "agent-switchboard-desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Agent Switchboard desktop app (Electron)",
   "license": "MIT",
   "type": "module",
@@ -19,9 +19,12 @@
   "build": {
     "appId": "io.github.cumabozkurt.agentswitchboard",
     "productName": "Agent Switchboard",
+    "icon": "assets/icon.png",
     "files": [
       "main.js",
       "app-src/**",
+      "assets/**",
+      "models/**",
       "package.json"
     ],
     "mac": {

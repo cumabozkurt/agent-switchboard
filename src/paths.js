@@ -24,3 +24,11 @@ export function opencodeConfigPath() {
   const base = process.env.XDG_CONFIG_HOME || path.join(home(), '.config');
   return path.join(base, 'opencode', 'opencode.json');
 }
+
+// Gemini CLI: GEMINI_CLI_HOME replaces the home directory (config lives in $GEMINI_CLI_HOME/.gemini).
+// https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/configuration.md
+export function geminiDir() {
+  return path.join(process.env.GEMINI_CLI_HOME || home(), '.gemini');
+}
+export function geminiSettingsPath() { return path.join(geminiDir(), 'settings.json'); }
+export function geminiEnvPath() { return path.join(geminiDir(), '.env'); }

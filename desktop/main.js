@@ -1,4 +1,6 @@
-import { app, BrowserWindow, Menu, shell, dialog } from 'electron';
+import { app, BrowserWindow, Menu, Tray, nativeImage, shell, dialog } from 'electron';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startUi } from './app-src/ui/server.js';
 import { t, getLang } from './app-src/i18n/index.js';
 
@@ -6,6 +8,8 @@ const REPO = 'https://github.com/cumabozkurt/agent-switchboard';
 let ui = null;
 let win = null;
 let quitting = false;
+let tray = null;
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 // One instance only: a second launch focuses the existing window (two apps would fight over the router port).
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -35,15 +39,60 @@ function buildMenu() {
   if (win) win.setTitle(`Agent Switchboard — ${t('ui.tagline')}`);
 }
 
+// Calls the panel's own local API (same token as the window), so tray actions go through the same code path.
+async function panel(p, body) {
+  const base = ui.url.split('#')[0];
+  const token = ui.url.split('#')[1];
+  const r = await fetch(base + 'api/' + p, { method: 'POST', headers: { 'content-type': 'application/json', 'x-aswitch-token': token }, body: JSON.stringify(body || {}) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+  return j;
+}
+
+function showWindow() { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } }
+
+// Tray / menu bar quick switch: apply a saved profile, go back to official logins, start/stop the router.
+async function buildTray() {
+  if (!tray) {
+    try {
+      const icon = nativeImage.createFromPath(path.join(here, 'assets', 'tray.png'));
+      tray = new Tray(icon);
+      tray.setToolTip('Agent Switchboard');
+      tray.on('click', showWindow);
+      globalThis.aswitchTray = tray; // lets the e2e test see the tray
+    } catch { tray = null; return; } // no system tray (e.g. some Linux desktops)
+  }
+  let profiles = [], status = null;
+  try { profiles = (await panel('profiles')).profiles; status = await panel('status'); } catch { /* panel not ready */ }
+  const act = fn => () => fn().then(() => { buildTray(); if (win) win.webContents.executeJavaScript('typeof refresh === "function" && refresh()').catch(() => {}); })
+    .catch(e => dialog.showErrorBox('Agent Switchboard', e.message));
+  const running = status?.router?.state === 'running';
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: t('menu.tray.open'), click: showWindow },
+    { type: 'separator' },
+    { label: t('menu.tray.profiles'), submenu: profiles.length
+      ? profiles.map(p => ({ label: p.name, type: 'radio', checked: status?.activeProfile === p.name, click: act(() => panel('profile/use', { name: p.name })) }))
+      : [{ label: t('ui.profiles.none'), enabled: false }] },
+    { label: t('menu.tray.official'), click: act(() => panel('official', { tools: ['claude', 'codex', 'gemini'] })) },
+    { type: 'separator' },
+    running ? { label: t('menu.tray.routerStop'), click: act(() => panel('router/stop')) }
+      : { label: t('menu.tray.routerStart'), enabled: !!status?.router?.needed, click: act(() => panel('router/start')) },
+    { type: 'separator' },
+    { label: t('menu.quit'), click: () => app.quit() }
+  ]));
+}
+
 async function create() {
   try {
-    ui = await startUi({ port: 0, open: false, locale: app.getLocale(), onLangChange: () => buildMenu() });
+    ui = await startUi({ port: 0, open: false, locale: app.getLocale(), onLangChange: () => { buildMenu(); buildTray(); } });
   } catch (e) {
     dialog.showErrorBox('Agent Switchboard', e.message);
     app.quit();
     return;
   }
   buildMenu();
+  buildTray();
+  setInterval(() => { if (tray) buildTray(); }, 15000);
   win = new BrowserWindow({
     width: 1180, height: 820, minWidth: 720, minHeight: 520, show: false,
     title: `Agent Switchboard — ${t('ui.tagline')}`,

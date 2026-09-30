@@ -1,6 +1,7 @@
 name: ci
 on: [push, pull_request]
 permissions: { contents: read }
+concurrency: { group: 'ci-${{ github.ref }}', cancel-in-progress: true }
 jobs:
   test:
     strategy:
@@ -16,3 +17,32 @@ jobs:
       - run: npm test
       - run: node bin/aswitch.js --version
       - run: node bin/aswitch.js providers
+  package:
+    # The npm tarball must contain the CLI, the UI and the bundled model snapshots; release notes must build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      - name: npm pack contents
+        run: |
+          npm pack --dry-run --json > pack.json
+          node -e "const f=require('./pack.json')[0].files.map(x=>x.path);for(const n of ['bin/aswitch.js','src/core.js','src/ui/index.html','models/openrouter.json','src/i18n/tr.js']){if(!f.includes(n)){console.error('missing from package: '+n);process.exit(1)}}console.log(f.length+' files OK')"
+      - name: versions agree
+        run: node -e "const a=require('./package.json').version,b=require('./desktop/package.json').version;if(a!==b){console.error(a+' != '+b);process.exit(1)}console.log('version '+a)"
+      - run: node scripts/release-notes.js > /dev/null
+  e2e:
+    # Real Electron app driven by Playwright under a virtual X server, with a throwaway HOME.
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: desktop } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - run: npm install --no-audit --no-fund
+      - run: xvfb-run -a -s "-screen 0 1400x1000x24" npm run e2e
+        env: { SHOTS_DIR: '${{ github.workspace }}/e2e-shots' }
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: e2e-screenshots, path: e2e-shots, if-no-files-found: ignore }

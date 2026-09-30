@@ -1,3 +1,41 @@
+# Audit report — v0.3.0
+
+Date: 2026-10-01 (Europe/Istanbul). Scope: everything new in 0.3.0 (Gemini CLI target and Gemini-API router, profiles, fallback chain, usage log, MCP sync, import/export, endpoint test, update check, tray, env-conflict warning) plus the release/CI pipeline. The v0.2.0 report below still applies to the unchanged parts.
+
+Method:
+- `npm test`: 140 tests on Linux, and on macOS/Windows/Linux × Node 18/20/22 in CI.
+- CLI runs of every new command in a **sandboxed home** (`ASWITCH_HOME_OVERRIDE`, `ASWITCH_DIR`, `XDG_CONFIG_HOME`; `CODEX_HOME`, `CLAUDE_CONFIG_DIR` and `GEMINI_CLI_HOME` unset), in both languages.
+- The real Electron app under Xvfb driven by Playwright (`desktop/test/e2e.mjs`, now 40+ checks). This includes:
+  - a Gemini API request through the router, answered in Gemini's error format;
+  - an MCP sync from a fake `~/.claude.json`;
+  - the tray icon.
+  The same test now runs in CI on every push.
+- A review of 33 similar projects (`docs/COMPETITIVE-ANALYSIS.md`) to pick features and to compare behaviour.
+
+| Area | Finding | Status |
+|---|---|---|
+| Gemini CLI | `~/.gemini/.env` is shadowed by a project `.env`, and shell variables win over both | **Known**, documented; `aswitch run gemini` injects the variables directly; `status` warns about shell variables |
+| Gemini CLI | `official` must not leave `selectedType = gemini-api-key` behind | **Fixed** (the previous value is saved in state and put back); test |
+| Gemini CLI | Checkbox in the Switch tab was unticked even when Gemini CLI is installed | **Fixed**: it is pre-ticked when `~/.gemini` exists (e2e check) |
+| Router | Thinking blocks produced locally must not be sent back to a real Anthropic endpoint (invalid signature) | **Fixed**: `stripLocalThinking` on the passthrough path; test |
+| Router | A provider that rejects `reasoning` would break every request with thinking on | **Fixed**: one retry without it on HTTP 400; test |
+| Router | Fallback after bytes were streamed would duplicate output | **By design**: fallback only before the first byte; documented |
+| MCP sync | Codex TOML header regex missed `[mcp_servers.x.env]` subtables | **Fixed**; test |
+| MCP sync | `~/.claude.json` is rewritten by a running Claude Code | **By design**: Claude Code is a source only |
+| Import | An imported file with `--overwrite` could point an existing custom provider (and its saved key) at another server | **Fixed**: the saved key is dropped when the base URL changes; profile entries are sanitised; test |
+| Usage log | Must never contain prompts or keys | **OK**: metadata only, `0600`, capped at 5000 lines; test |
+| Update check | Anonymous GitHub API returns 403 on shared/CI IPs (seen on the build box) | **Fixed**: falls back to the `releases/latest` redirect on github.com; 12 h cache; `ASWITCH_NO_UPDATE_CHECK=1`; test |
+| Env conflicts | `ANTHROPIC_*`, `OPENAI_BASE_URL`, `GEMINI_*` in the shell override aswitch silently | **Fixed**: warning in `status` and Overview (names only) |
+| i18n | New strings | **OK**: EN/TR catalogs identical (≈415 keys), enforced by test |
+| CI | Electron e2e ran only on the maintainer's machine | **Fixed**: `e2e` job under Xvfb, screenshots uploaded as an artifact |
+| Release | Release notes were edited by hand; no checksums; tag/version mismatch not caught | **Fixed**: notes from CHANGELOG (EN + TR); version check; verify job with 8-file check and `SHA256SUMS.txt` |
+| Supply chain | No dependency or code scanning | **Fixed**: Dependabot (npm ×2, Actions) and CodeQL |
+| npm | The unscoped name `agent-switchboard` belongs to someone else on npm | **Known**: install from GitHub (`npm i -g github:cumabozkurt/agent-switchboard#v0.3.0`); see AUTOMATION.md |
+
+Not verified: the real Gemini CLI binary against the router (only the protocol, with a fake upstream and the Gemini request shapes from its docs); the tray on macOS/Windows (built by CI, not UI-tested).
+
+---
+
 # Audit report — v0.2.0
 
 Date: 2026-09-30 / 2026-10-01 (Europe/Istanbul). Scope: the whole repository (CLI, core, targets, router, OAuth, UI server, UI page, Electron shell, packaging, CI, docs).

@@ -1,7 +1,7 @@
 // English message catalog. Keys must match tr.js exactly (enforced by test/i18n.test.js).
 export default {
   // ---- CLI
-  'cli.help': `agent-switchboard (aswitch) {version} — API provider & model switcher for Claude Code, Codex and OpenCode
+  'cli.help': `agent-switchboard (aswitch) {version} — API provider & model switcher for Claude Code, Codex, OpenCode and Gemini CLI
 
 Usage:
   aswitch status [--json]                       Show what each tool currently uses
@@ -11,20 +11,36 @@ Usage:
   aswitch key get <provider>                    Print a key in plain text (used by --codex-key command)
   aswitch login openrouter [--port 3000]        Get an OpenRouter key via OAuth (PKCE)
   aswitch models <provider> [--refresh] [--filter x] [--limit 50] [--json]
-                                                Fetch the live model list (newest first)
-  aswitch use <provider> [--model m] [--fast m] [--tools claude,codex,opencode] [--codex-key env|command] [--port 3456]
-                                                Apply a provider to the tools (default: all three). The model may be
+                                                Fetch the live model list (newest first; offline: bundled snapshot)
+  aswitch use <provider> [--model m] [--fast m] [--tools claude,codex,opencode,gemini] [--codex-key env|command] [--port 3456]
+                                                Apply a provider to the tools (default: all installed). The model may be
                                                 "latest" or "latest:opus": the newest match is picked at apply time
-  aswitch official [--tools claude,codex]       Go back to the tool's own login (Claude Pro/Max, ChatGPT)
+  aswitch official [--tools claude,codex,gemini]
+                                                Go back to the tool's own login (Claude Pro/Max, ChatGPT, Google)
   aswitch restore [--tools ...]                 Put the files back exactly as they were before aswitch
   aswitch backups                               List timestamped backups
   aswitch backups restore <id> <file>           Restore one backup file (the current file is backed up first)
   aswitch provider add <id> --openai-base URL [--anthropic-base URL] [--models-url URL]
                            [--wire responses|chat] [--key-env NAME] [--label name]
   aswitch provider rm <id>
-  aswitch router [--port 3456]                  Local translator: Chat/Responses providers for Claude Code,
-                                                Chat providers for Codex
-  aswitch run <claude|codex|opencode> [args]    Start the tool with the saved key (args are passed through)
+  aswitch profile save|use|rm <name>            Save what the tools use now as a profile / apply / delete it
+  aswitch profile list                          List profiles
+  aswitch profile project <name>                Bind this folder to a profile (.aswitch.json; used by "aswitch run")
+  aswitch ping [provider ...] [--json]          Measure endpoint latency and check keys
+  aswitch fallback [set <tool> p:model ... | clear <tool>]
+                                                Router fallback chain on 429/5xx/network errors (claude|codex|gemini)
+  aswitch usage [--days 7] [--recent] [--json] [--clear] [--log on|off]
+                                                Router request log: tokens, latency, estimated cost
+  aswitch mcp [list] [--json]                   Show MCP servers of every tool
+  aswitch mcp sync [--from claude] [--to codex,opencode,gemini] [--only a,b] [--overwrite]
+                                                Copy MCP servers from one tool to the others
+  aswitch export [file] [--with-keys]           Export custom providers, profiles, fallbacks, settings
+  aswitch import <file> [--overwrite]           Import such a file
+  aswitch update                                Check GitHub for a newer release
+  aswitch router [--port 3456]                  Local translator: Chat/Responses providers for Claude Code and
+                                                Gemini CLI, Chat providers for Codex
+  aswitch run <claude|codex|opencode|gemini> [args]
+                                                Start the tool with the saved key (args are passed through)
   aswitch env [--shell sh|fish|powershell|cmd] [--all]
                                                 Print active Codex/OpenCode keys as environment variables
   aswitch ui [--port 4567] [--no-open]          Open the control panel in your browser
@@ -63,8 +79,8 @@ Global options:
   'cli.error': 'Error: {msg}',
 
   // ---- errors
-  'err.noTools': 'Select at least one tool (claude | codex | opencode).',
-  'err.unknownTool': 'Unknown tool: {tool} (claude | codex | opencode)',
+  'err.noTools': 'Select at least one tool (claude | codex | opencode | gemini).',
+  'err.unknownTool': 'Unknown tool: {tool} (claude | codex | opencode | gemini)',
   'err.noProvider': 'Specify a provider. See the list with "aswitch providers".',
   'err.unknownProvider': 'Unknown provider: {id}. See the list with "aswitch providers".',
   'err.noKey': 'No key for {id}. Save one with "aswitch key set {id}" (or in the Keys tab), or set {env}.',
@@ -219,13 +235,13 @@ Global options:
   'ui.mode.default': 'Default',
   'ui.mode.error': 'Unreadable file',
   'ui.overview.title': 'Overview',
-  'ui.overview.lead': 'What Claude Code, Codex and OpenCode use right now. Restart a tool (or open a new session) after switching.',
+  'ui.overview.lead': 'What Claude Code, Codex, OpenCode and Gemini CLI use right now. Restart a tool (or open a new session) after switching.',
   'ui.welcome.title': 'Welcome! Three steps to get started',
   'ui.welcome.step1': 'Add an API key for a provider (or sign in with OpenRouter).',
   'ui.welcome.step1btn': 'Open API keys',
   'ui.welcome.step2': 'Pick the provider, a model and the tools to switch.',
   'ui.welcome.step2btn': 'Switch provider',
-  'ui.welcome.step3': 'Restart Claude Code / Codex / OpenCode. You can always go back from "Restore & backups".',
+  'ui.welcome.step3': 'Restart Claude Code / Codex / OpenCode / Gemini CLI. You can always go back from "Restore & backups".',
   'ui.switch.title': 'Switch provider',
   'ui.switch.lead': 'Choose a provider and model, then apply it to the selected tools. Only the settings aswitch manages are changed.',
   'ui.switch.provider': 'Provider',
@@ -322,7 +338,7 @@ Global options:
   'ui.restore.title': 'Restore & backups',
   'ui.restore.lead': 'Undo changes at any time. aswitch saved each file before its first change and takes a backup before every change.',
   'ui.restore.officialTitle': 'Back to the official login',
-  'ui.restore.officialText': 'Removes aswitch settings so Claude Code uses your Claude Pro/Max login and Codex your ChatGPT login again. Your other settings and your previous model choice are kept. For OpenCode this restores its original file.',
+  'ui.restore.officialText': 'Removes aswitch settings so Claude Code uses your Claude Pro/Max login Codex your ChatGPT login and Gemini CLI your Google login again. Your other settings and your previous model choice are kept. For OpenCode this restores its original file.',
   'ui.restore.officialBtn': 'Use official login',
   'ui.restore.officialDone': 'back to the official login',
   'ui.restore.originalTitle': 'Restore original files',
@@ -355,5 +371,113 @@ Global options:
   'ui.settings.backups': 'Backups and originals',
   'ui.settings.about': 'About',
   'ui.settings.aboutText': 'Agent Switchboard {version} ({platform}). Open source, MIT license.',
-  'ui.settings.issues': 'Report an issue'
+  'ui.settings.issues': 'Report an issue',
+  // ---- v0.3.0
+  'cli.logOff': 'Router request logging is off (turn on: aswitch usage --log on).',
+  'cli.logOn': 'Router request logging is on (metadata only: no prompts, answers or keys).',
+  'cli.pingNone': 'No provider with a key yet. Name providers explicitly: aswitch ping openrouter ollama',
+  'cli.usageTotal': 'Last {days} day(s): {requests} requests, {errors} errors, {input} input → {output} output tokens, estimated cost {cost}',
+  'cli.projectSet': 'Project profile written to {file}. "aswitch run" in this folder applies it first.',
+  'cli.projectProfile': 'Project profile "{profile}" applied ({file}).',
+  'cli.projectProfileFound': 'This folder uses profile "{profile}" ({file}).',
+  'cli.exported': 'Exported to {file}.',
+  'cli.exportKeysWarn': 'Warning: the export contains your API keys in plain text. Keep the file private.',
+  'cli.importNeedFile': 'Specify a file: aswitch import <file>',
+  'cli.updateAvailable': 'A new version is available: {latest} (you have {current}).',
+  'cli.upToDate': 'You are up to date ({current}).',
+  'err.fallbackTool': 'Fallback chains exist for {tools}, not for {tool}.',
+  'err.fallbackSpec': 'Write each fallback as provider:model (got "{spec}").',
+  'err.badProfileName': 'A profile name may contain letters, digits, ".", "_" or "-" (max 40).',
+  'err.profileEmpty': 'Nothing to save yet: apply a provider to at least one tool first.',
+  'err.profileNotFound': 'No profile named "{name}". See "aswitch profile list".',
+  'err.badImport': 'This is not an agent-switchboard export file (format version 1).',
+  'err.mcpTarget': 'MCP servers can be written to {targets}, not to {tool}.',
+  'router.upstreamUnreachable': 'The provider could not be reached: {reason}',
+  'router.fallback': 'Falling back from {from} to {to} ({reason}).',
+  'provider.minimax': 'MiniMax models (Anthropic- and OpenAI-compatible)',
+  'provider.xai': 'xAI Grok models (Responses API)',
+  'provider.groq': 'Very fast open models on Groq LPUs',
+  'provider.mistral': 'Mistral and Codestral models',
+  'provider.cerebras': 'Very fast open models on Cerebras',
+  'provider.nvidia': 'Open models hosted by NVIDIA (build.nvidia.com)',
+  'provider.siliconflow': 'Open models on SiliconFlow (Anthropic- and OpenAI-compatible)',
+  'provider.lmstudio': 'Local models in LM Studio (no key)',
+  'ui.tab.profiles': 'Profiles',
+  'ui.tab.usage': 'Usage & logs',
+  'ui.tab.mcp': 'MCP servers',
+  'ui.profiles.title': 'Profiles',
+  'ui.profiles.lead': 'Save what every tool uses right now under a name and switch back with one click. A folder can be bound to a profile with "aswitch profile project <name>".',
+  'ui.profiles.name': 'Profile name',
+  'ui.profiles.namePh': 'e.g. work, cheap, local',
+  'ui.profiles.save': 'Save current setup',
+  'ui.profiles.saved': 'Profile "{name}" saved.',
+  'ui.profiles.applied': 'Profile "{name}" applied.',
+  'ui.profiles.none': 'No profiles yet.',
+  'ui.profiles.use': 'Apply',
+  'ui.profiles.confirmRemove': 'Delete profile "{name}"?',
+  'ui.profiles.removed': 'Profile "{name}" deleted.',
+  'ui.profiles.projectHint': 'Per-project: a .aswitch.json file with {"profile": "name"} makes "aswitch run <tool>" in that folder apply the profile first.',
+  'ui.profiles.projectActive': 'The panel’s working folder uses profile "{profile}" ({file}).',
+  'ui.profiles.active': 'active',
+  'ui.usage.title': 'Usage & request log',
+  'ui.usage.lead': 'Requests that went through the local router: tokens, latency, time to first token and estimated cost. Only metadata is stored — never prompts, answers or keys.',
+  'ui.usage.days': 'Period (days)',
+  'ui.usage.refresh': 'Refresh',
+  'ui.usage.clear': 'Clear log',
+  'ui.usage.confirmClear': 'Delete the whole request log?',
+  'ui.usage.cleared': 'Request log cleared.',
+  'ui.usage.logOn': 'Record router requests',
+  'ui.usage.total': '{requests} requests · {errors} errors · {input} → {output} tokens · estimated {cost}',
+  'ui.usage.recent': 'Recent requests',
+  'ui.usage.none': 'No requests recorded yet. Requests are recorded while the router is running.',
+  'ui.usage.costNote': 'Cost is estimated from the provider’s published prices (OpenRouter) in the cached model list; "—" means unknown. Direct connections (not through the router) are not recorded.',
+  'ui.col.requests': 'Requests',
+  'ui.col.tokens': 'Tokens (in → out)',
+  'ui.col.latency': 'Latency',
+  'ui.col.cost': 'Cost',
+  'ui.col.status': 'Status',
+  'ui.col.tool': 'Tool',
+  'ui.col.name': 'Name',
+  'ui.col.type': 'Type',
+  'ui.col.command': 'Command / URL',
+  'ui.mcp.title': 'MCP servers',
+  'ui.mcp.lead': 'See the MCP servers every tool has and copy them from one tool to the others. Existing servers with the same name are kept unless you choose to overwrite.',
+  'ui.mcp.from': 'Copy from',
+  'ui.mcp.to': 'Copy to',
+  'ui.mcp.sync': 'Sync MCP servers',
+  'ui.mcp.overwrite': 'Overwrite servers with the same name',
+  'ui.mcp.syncResult': '{added} added, {skipped} kept',
+  'ui.mcp.none': 'No MCP servers found.',
+  'ui.mcp.claudeReadOnly': 'Claude Code is read as a source only (~/.claude.json is rewritten by Claude Code while it runs). Every write is backed up first.',
+  'ui.fallback.title': 'Fallback chain',
+  'ui.fallback.lead': 'When the provider answers 429 / 5xx or cannot be reached, the router retries the same request with the next provider:model before anything reaches the tool.',
+  'ui.fallback.tool': 'Tool',
+  'ui.fallback.specs': 'Fallbacks (provider:model, in order)',
+  'ui.fallback.specsPh': 'e.g. openrouter:deepseek/deepseek-chat, ollama:qwen3',
+  'ui.fallback.save': 'Save chain',
+  'ui.fallback.saved': 'Fallback chain for {tool} saved.',
+  'ui.ping.btn': 'Test endpoints',
+  'ui.ping.ok': 'reachable, key accepted',
+  'ui.ping.auth': 'key rejected',
+  'ui.ping.fail': 'unreachable ({reason})',
+  'ui.ping.running': 'Testing…',
+  'ui.ping.done': '{n} endpoint(s) tested.',
+  'ui.update.title': 'Updates',
+  'ui.update.lead': 'Checks GitHub Releases for a newer version (at most every 12 hours, no data sent). Updating stays in your hands: download the new installer or run the npm command.',
+  'ui.update.check': 'Check for updates',
+  'ui.update.available': 'Update available: v{latest}',
+  'ui.io.title': 'Import / export',
+  'ui.io.lead': 'Move custom providers, profiles, fallback chains and settings to another computer. Keys are included only if you tick the box.',
+  'ui.io.withKeys': 'Include API keys (plain text)',
+  'ui.io.export': 'Export to file',
+  'ui.io.import': 'Import a file',
+  'ui.io.overwrite': 'Overwrite existing entries with the same name',
+  'ui.io.exported': 'Export downloaded.',
+  'ui.import.done': 'Imported: {providers} providers, {profiles} profiles, {keys} keys, {fallback} fallback chains.',
+  'menu.tray.open': 'Open Agent Switchboard',
+  'menu.tray.profiles': 'Apply profile',
+  'menu.tray.official': 'All tools: official login',
+  'menu.tray.routerStart': 'Start router',
+  'menu.tray.routerStop': 'Stop router',
+  'status.envConflicts': 'These environment variables are set and take priority over the files aswitch writes: {list}. Remove them (for example from your shell profile) or the switch may not take effect.'
 };

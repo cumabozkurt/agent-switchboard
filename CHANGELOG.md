@@ -1,6 +1,37 @@
 # Changelog
 
-All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
+All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). Turkish: [CHANGELOG.tr.md](CHANGELOG.tr.md).
+
+## [0.3.0] - 2026-10-01
+
+Based on a review of 33 similar open-source projects (see `docs/COMPETITIVE-ANALYSIS.md`).
+
+### Added
+- **Gemini CLI support**: fourth target tool. aswitch writes a marked block in `~/.gemini/.env` (`GOOGLE_GEMINI_BASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, mode 0600) and sets API-key auth and the model in `~/.gemini/settings.json`. Previous values are saved and put back by `aswitch official --tools gemini` and `aswitch restore`. Google AI Studio keys connect directly; every other provider goes through the router, which now speaks the Gemini API (`generateContent`, `streamGenerateContent` with SSE, `countTokens`) and translates to Anthropic Messages, Chat Completions or Responses. `aswitch run gemini` is supported.
+- **8 new provider presets** (18 in total): MiniMax, xAI (Grok), Groq, Mistral, Cerebras, NVIDIA NIM, SiliconFlow, LM Studio (local, no key). The Gemini preset now also serves Gemini CLI directly.
+- **Profiles**: `aswitch profile save|use|rm|list` stores what every tool uses (provider, model, fast model) and applies it in one step. **Per-project profiles**: `aswitch profile project <name>` writes `.aswitch.json`; `aswitch run` applies the folder's profile before starting the tool.
+- **Endpoint test**: `aswitch ping [provider ...]` measures latency and tells whether the key is accepted, rejected or missing. Desktop: "Test endpoints" button with a latency column in the Keys tab.
+- **Model fallback chain** in the router: `aswitch fallback set claude opencode-go:glm-5.1 ollama:qwen3`. On 429, 408, 5xx or a network error (before any byte was sent to the tool) the next provider/model is tried. Shown in `/health`, `aswitch status` and the Router tab.
+- **Usage and request log**: the router records per-request metadata (time, tool, provider, model, status, latency, time to first token, input/output/cached tokens) in `~/.agent-switchboard/usage.jsonl` (0600, capped at 5000 lines; never prompts, answers or keys). Estimated cost from the provider's published prices in the cached model list. `aswitch usage [--days N] [--recent] [--json] [--clear] [--log on|off]`, and a "Usage & logs" tab.
+- **MCP server sync**: `aswitch mcp` lists the MCP servers of Claude Code, Codex, OpenCode and Gemini CLI; `aswitch mcp sync --from claude --to codex,opencode,gemini [--only a,b] [--overwrite]` copies them (stdio and http/sse, with env and headers), converting between each tool's format. Existing servers with the same name are kept unless `--overwrite`. Every write is backed up. Claude Code is a source only (it rewrites `~/.claude.json` while running). Desktop: "MCP servers" tab.
+- **Import / export**: `aswitch export [file] [--with-keys]` and `aswitch import <file> [--overwrite]` move custom providers, profiles, fallbacks and settings between machines (keys only when asked). Desktop: Settings → Import / export.
+- **Thinking / reasoning translation** in the router: `reasoning_content` / `reasoning` from Chat providers (DeepSeek, Kimi, GLM, OpenRouter …) and Responses reasoning summaries are streamed to Claude Code as thinking blocks; Claude's `thinking` request is forwarded as OpenRouter `reasoning` or Responses `reasoning.effort` (retried once without it if the provider rejects it). Locally generated thinking blocks are stripped before a request goes back to a real Anthropic endpoint.
+- **Environment conflict warning**: `aswitch status` and the Overview tab warn when variables such as `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL` or `GEMINI_API_KEY` are set, because they take priority over the files aswitch writes (names only, values are never shown).
+- `stop_sequences` are forwarded to Chat Completions providers (max 4, the OpenAI limit; the Responses API has no equivalent).
+- **Tray / menu bar icon** in the desktop app: apply a profile, go back to all official logins, start/stop the router, open the window, quit.
+- **Update notice**: the CLI (`aswitch update`) and the desktop app (banner) check GitHub Releases at most every 12 hours; notify-only, no download. `ASWITCH_NO_UPDATE_CHECK=1` turns it off. Falls back to the github.com redirect when the API is rate-limited.
+- **Offline model lists**: the daily model snapshots now ship inside the npm package and the desktop app and are used when the provider cannot be reached and there is no local cache.
+
+### Automation
+- CI runs the real Electron end-to-end test (Playwright, 40+ checks) under xvfb on every push and uploads the screenshots; a packaging job checks the npm tarball contents and that CLI and desktop versions agree.
+- Release notes are generated from `CHANGELOG.md` + `CHANGELOG.tr.md`; the release job refuses a tag that does not match both `package.json` versions; a verify job checks that all 8 installers are attached and publishes `SHA256SUMS.txt`.
+- `scripts/release.js <version>`: one-command release (checks, bump, tests, commit, tag, push).
+- Dependabot (npm root + desktop, GitHub Actions) and CodeQL code scanning.
+- `docs/AUTOMATION.md` lists every automated process with evidence, and what still needs a human.
+
+### Changed
+- `aswitch use` without `--tools` also targets Gemini CLI when `~/.gemini` exists.
+- The desktop app has an icon; the window and tray share the panel's API token.
 
 ## [0.2.0] - 2026-10-01
 

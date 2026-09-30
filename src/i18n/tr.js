@@ -1,7 +1,7 @@
 // Türkçe mesaj kataloğu. Anahtarlar en.js ile birebir aynı olmalıdır (test/i18n.test.js denetler).
 export default {
   // ---- CLI
-  'cli.help': `agent-switchboard (aswitch) {version} — Claude Code, Codex ve OpenCode için API sağlayıcı ve model değiştirici
+  'cli.help': `agent-switchboard (aswitch) {version} — Claude Code, Codex, OpenCode ve Gemini CLI için API sağlayıcı ve model değiştirici
 
 Kullanım:
   aswitch status [--json]                       Her aracın şu an ne kullandığını göster
@@ -11,20 +11,35 @@ Kullanım:
   aswitch key get <sağlayıcı>                   Anahtarı düz metin yazdır (--codex-key command bunu kullanır)
   aswitch login openrouter [--port 3000]        OpenRouter anahtarını OAuth (PKCE) ile al
   aswitch models <sağlayıcı> [--refresh] [--filter x] [--limit 50] [--json]
-                                                Canlı model listesini çek (en yeni en üstte)
-  aswitch use <sağlayıcı> [--model m] [--fast m] [--tools claude,codex,opencode] [--codex-key env|command] [--port 3456]
-                                                Sağlayıcıyı araçlara uygula (varsayılan: üçü de). Model "latest"
-                                                veya "latest:opus" olabilir: uygulama anında en yeni eşleşme seçilir
-  aswitch official [--tools claude,codex]       Aracın kendi girişine dön (Claude Pro/Max, ChatGPT)
+                                                Canlı model listesini çek (en yeni en üstte; çevrimdışı: paketteki liste)
+  aswitch use <sağlayıcı> [--model m] [--fast m] [--tools claude,codex,opencode,gemini] [--codex-key env|command] [--port 3456]
+                                                Sağlayıcıyı araçlara uygula (varsayılan: kurulu olanların hepsi). Model
+                                                "latest" veya "latest:opus" olabilir: uygulama anında en yeni eşleşme seçilir
+  aswitch official [--tools claude,codex,gemini]
+                                                Aracın kendi girişine dön (Claude Pro/Max, ChatGPT, Google)
   aswitch restore [--tools ...]                 Dosyaları aswitch'ten önceki hâline birebir geri getir
   aswitch backups                               Zaman damgalı yedekleri listele
   aswitch backups restore <kimlik> <dosya>      Tek bir yedeği geri yükle (önce mevcut dosya yedeklenir)
   aswitch provider add <kimlik> --openai-base URL [--anthropic-base URL] [--models-url URL]
                            [--wire responses|chat] [--key-env AD] [--label ad]
   aswitch provider rm <kimlik>
-  aswitch router [--port 3456]                  Yerel çevirici: Chat/Responses sağlayıcılarını Claude Code'a,
-                                                Chat sağlayıcılarını Codex'e bağlar
-  aswitch run <claude|codex|opencode> [argümanlar]
+  aswitch profile save|use|rm <ad>              Araçların şu anki ayarını profil olarak kaydet / uygula / sil
+  aswitch profile list                          Profilleri listele
+  aswitch profile project <ad>                  Bu klasörü bir profile bağla (.aswitch.json; "aswitch run" kullanır)
+  aswitch ping [sağlayıcı ...] [--json]         Uç nokta gecikmesini ölç, anahtarları denetle
+  aswitch fallback [set <araç> s:model ... | clear <araç>]
+                                                429/5xx/ağ hatasında yönlendiricinin yedek zinciri (claude|codex|gemini)
+  aswitch usage [--days 7] [--recent] [--json] [--clear] [--log on|off]
+                                                Yönlendirici istek kaydı: token, gecikme, tahmini maliyet
+  aswitch mcp [list] [--json]                   Her aracın MCP sunucularını göster
+  aswitch mcp sync [--from claude] [--to codex,opencode,gemini] [--only a,b] [--overwrite]
+                                                MCP sunucularını bir araçtan diğerlerine kopyala
+  aswitch export [dosya] [--with-keys]          Özel sağlayıcıları, profilleri, yedek zincirlerini, ayarları dışa aktar
+  aswitch import <dosya> [--overwrite]          Böyle bir dosyayı içe aktar
+  aswitch update                                GitHub'da daha yeni sürüm var mı bak
+  aswitch router [--port 3456]                  Yerel çevirici: Chat/Responses sağlayıcılarını Claude Code'a ve
+                                                Gemini CLI'a, Chat sağlayıcılarını Codex'e bağlar
+  aswitch run <claude|codex|opencode|gemini> [argümanlar]
                                                 Aracı kayıtlı anahtarla başlat (argümanlar araca aynen geçer)
   aswitch env [--shell sh|fish|powershell|cmd] [--all]
                                                 Aktif Codex/OpenCode anahtarlarını ortam değişkeni olarak yazdır
@@ -64,8 +79,8 @@ Genel seçenekler:
   'cli.error': 'Hata: {msg}',
 
   // ---- hatalar
-  'err.noTools': 'En az bir araç seçin (claude | codex | opencode).',
-  'err.unknownTool': 'Bilinmeyen araç: {tool} (claude | codex | opencode)',
+  'err.noTools': 'En az bir araç seçin (claude | codex | opencode | gemini).',
+  'err.unknownTool': 'Bilinmeyen araç: {tool} (claude | codex | opencode | gemini)',
   'err.noProvider': 'Sağlayıcı belirtin. Listeyi "aswitch providers" ile görebilirsiniz.',
   'err.unknownProvider': 'Bilinmeyen sağlayıcı: {id}. Listeyi "aswitch providers" ile görebilirsiniz.',
   'err.noKey': '{id} için anahtar yok. "aswitch key set {id}" ile (ya da API anahtarları sekmesinden) kaydedin veya {env} değişkenini tanımlayın.',
@@ -220,13 +235,13 @@ Genel seçenekler:
   'ui.mode.default': 'Varsayılan',
   'ui.mode.error': 'Okunamayan dosya',
   'ui.overview.title': 'Genel bakış',
-  'ui.overview.lead': 'Claude Code, Codex ve OpenCode\'un şu an kullandıkları. Değişiklikten sonra aracı yeniden başlatın (ya da yeni bir oturum açın).',
+  'ui.overview.lead': 'Claude Code, Codex, OpenCode ve Gemini CLI\'ın şu an kullandıkları. Değişiklikten sonra aracı yeniden başlatın (ya da yeni bir oturum açın).',
   'ui.welcome.title': 'Hoş geldiniz! Başlamak için üç adım',
   'ui.welcome.step1': 'Bir sağlayıcı için API anahtarı ekleyin (ya da OpenRouter ile giriş yapın).',
   'ui.welcome.step1btn': 'API anahtarlarını aç',
   'ui.welcome.step2': 'Sağlayıcıyı, modeli ve değiştirilecek araçları seçin.',
   'ui.welcome.step2btn': 'Sağlayıcı değiştir',
-  'ui.welcome.step3': 'Claude Code / Codex / OpenCode\'u yeniden başlatın. "Geri yükleme ve yedekler" bölümünden her zaman geri dönebilirsiniz.',
+  'ui.welcome.step3': 'Claude Code / Codex / OpenCode / Gemini CLI\'ı yeniden başlatın. "Geri yükleme ve yedekler" bölümünden her zaman geri dönebilirsiniz.',
   'ui.switch.title': 'Sağlayıcı değiştir',
   'ui.switch.lead': 'Bir sağlayıcı ve model seçip seçili araçlara uygulayın. Yalnızca aswitch\'in yönettiği ayarlar değişir.',
   'ui.switch.provider': 'Sağlayıcı',
@@ -323,7 +338,7 @@ Genel seçenekler:
   'ui.restore.title': 'Geri yükleme ve yedekler',
   'ui.restore.lead': 'Değişiklikleri istediğiniz an geri alın. aswitch her dosyayı ilk değişiklikten önce saklar ve her değişiklikten önce yedek alır.',
   'ui.restore.officialTitle': 'Resmî girişe dön',
-  'ui.restore.officialText': 'aswitch ayarlarını kaldırır; Claude Code yeniden Claude Pro/Max girişinizi, Codex ChatGPT girişinizi kullanır. Diğer ayarlarınız ve önceki model tercihiniz korunur. OpenCode için orijinal dosyası geri yüklenir.',
+  'ui.restore.officialText': 'aswitch ayarlarını kaldırır; Claude Code yeniden Claude Pro/Max girişinizi, Codex ChatGPT girişinizi, Gemini CLI Google girişinizi kullanır. Diğer ayarlarınız ve önceki model tercihiniz korunur. OpenCode için orijinal dosyası geri yüklenir.',
   'ui.restore.officialBtn': 'Resmî girişi kullan',
   'ui.restore.officialDone': 'resmî girişe dönüldü',
   'ui.restore.originalTitle': 'Orijinal dosyaları geri yükle',
@@ -356,5 +371,113 @@ Genel seçenekler:
   'ui.settings.backups': 'Yedekler ve orijinaller',
   'ui.settings.about': 'Hakkında',
   'ui.settings.aboutText': 'Agent Switchboard {version} ({platform}). Açık kaynak, MIT lisansı.',
-  'ui.settings.issues': 'Sorun bildir'
+  'ui.settings.issues': 'Sorun bildir',
+  // ---- v0.3.0
+  'cli.logOff': 'Yönlendirici istek kaydı kapalı (açmak için: aswitch usage --log on).',
+  'cli.logOn': 'Yönlendirici istek kaydı açık (yalnızca üst bilgi: istem, yanıt veya anahtar yok).',
+  'cli.pingNone': 'Henüz anahtarı olan sağlayıcı yok. Sağlayıcıları açıkça yazın: aswitch ping openrouter ollama',
+  'cli.usageTotal': 'Son {days} gün: {requests} istek, {errors} hata, {input} girdi → {output} çıktı token, tahmini maliyet {cost}',
+  'cli.projectSet': 'Proje profili {file} dosyasına yazıldı. Bu klasörde "aswitch run" önce onu uygular.',
+  'cli.projectProfile': '"{profile}" proje profili uygulandı ({file}).',
+  'cli.projectProfileFound': 'Bu klasör "{profile}" profilini kullanıyor ({file}).',
+  'cli.exported': '{file} dosyasına aktarıldı.',
+  'cli.exportKeysWarn': 'Uyarı: dışa aktarılan dosya API anahtarlarınızı düz metin olarak içeriyor. Dosyayı kimseyle paylaşmayın.',
+  'cli.importNeedFile': 'Bir dosya belirtin: aswitch import <dosya>',
+  'cli.updateAvailable': 'Yeni sürüm var: {latest} (sizdeki {current}).',
+  'cli.upToDate': 'Güncelsiniz ({current}).',
+  'err.fallbackTool': 'Yedek zinciri yalnızca {tools} için var; {tool} için yok.',
+  'err.fallbackSpec': 'Her yedeği sağlayıcı:model biçiminde yazın ("{spec}" verildi).',
+  'err.badProfileName': 'Profil adı harf, rakam, ".", "_" veya "-" içerebilir (en fazla 40).',
+  'err.profileEmpty': 'Kaydedilecek bir şey yok: önce en az bir araca sağlayıcı uygulayın.',
+  'err.profileNotFound': '"{name}" adlı profil yok. "aswitch profile list" ile bakın.',
+  'err.badImport': 'Bu bir agent-switchboard dışa aktarma dosyası değil (biçim sürümü 1).',
+  'err.mcpTarget': 'MCP sunucuları yalnızca {targets} araçlarına yazılabilir; {tool} olmaz.',
+  'router.upstreamUnreachable': 'Sağlayıcıya ulaşılamadı: {reason}',
+  'router.fallback': '{from} yerine {to} deneniyor ({reason}).',
+  'provider.minimax': 'MiniMax modelleri (Anthropic ve OpenAI uyumlu)',
+  'provider.xai': 'xAI Grok modelleri (Responses API)',
+  'provider.groq': 'Groq LPU üzerinde çok hızlı açık modeller',
+  'provider.mistral': 'Mistral ve Codestral modelleri',
+  'provider.cerebras': 'Cerebras üzerinde çok hızlı açık modeller',
+  'provider.nvidia': 'NVIDIA’nın barındırdığı açık modeller (build.nvidia.com)',
+  'provider.siliconflow': 'SiliconFlow üzerindeki açık modeller (Anthropic ve OpenAI uyumlu)',
+  'provider.lmstudio': 'LM Studio’daki yerel modeller (anahtar gerekmez)',
+  'ui.tab.profiles': 'Profiller',
+  'ui.tab.usage': 'Kullanım ve kayıtlar',
+  'ui.tab.mcp': 'MCP sunucuları',
+  'ui.profiles.title': 'Profiller',
+  'ui.profiles.lead': 'Her aracın şu anki ayarını bir adla kaydedin, tek tıkla geri dönün. Bir klasör "aswitch profile project <ad>" ile bir profile bağlanabilir.',
+  'ui.profiles.name': 'Profil adı',
+  'ui.profiles.namePh': 'ör. is, ucuz, yerel',
+  'ui.profiles.save': 'Şu anki ayarı kaydet',
+  'ui.profiles.saved': '"{name}" profili kaydedildi.',
+  'ui.profiles.applied': '"{name}" profili uygulandı.',
+  'ui.profiles.none': 'Henüz profil yok.',
+  'ui.profiles.use': 'Uygula',
+  'ui.profiles.confirmRemove': '"{name}" profili silinsin mi?',
+  'ui.profiles.removed': '"{name}" profili silindi.',
+  'ui.profiles.projectHint': 'Projeye özel: {"profile": "ad"} içeren bir .aswitch.json dosyası, o klasörde "aswitch run <araç>" çalışınca önce profili uygular.',
+  'ui.profiles.projectActive': 'Panelin çalışma klasörü "{profile}" profilini kullanıyor ({file}).',
+  'ui.profiles.active': 'etkin',
+  'ui.usage.title': 'Kullanım ve istek kaydı',
+  'ui.usage.lead': 'Yerel yönlendiriciden geçen istekler: token, gecikme, ilk token süresi ve tahmini maliyet. Yalnızca üst bilgi saklanır; istem, yanıt veya anahtar asla.',
+  'ui.usage.days': 'Dönem (gün)',
+  'ui.usage.refresh': 'Yenile',
+  'ui.usage.clear': 'Kaydı temizle',
+  'ui.usage.confirmClear': 'Tüm istek kaydı silinsin mi?',
+  'ui.usage.cleared': 'İstek kaydı temizlendi.',
+  'ui.usage.logOn': 'Yönlendirici isteklerini kaydet',
+  'ui.usage.total': '{requests} istek · {errors} hata · {input} → {output} token · tahmini {cost}',
+  'ui.usage.recent': 'Son istekler',
+  'ui.usage.none': 'Henüz kayıtlı istek yok. İstekler yönlendirici çalışırken kaydedilir.',
+  'ui.usage.costNote': 'Maliyet, önbellekteki model listesinde sağlayıcının yayımladığı fiyatlardan (OpenRouter) tahmin edilir; "—" bilinmiyor demektir. Yönlendiriciden geçmeyen doğrudan bağlantılar kaydedilmez.',
+  'ui.col.requests': 'İstek',
+  'ui.col.tokens': 'Token (girdi → çıktı)',
+  'ui.col.latency': 'Gecikme',
+  'ui.col.cost': 'Maliyet',
+  'ui.col.status': 'Durum',
+  'ui.col.tool': 'Araç',
+  'ui.col.name': 'Ad',
+  'ui.col.type': 'Tür',
+  'ui.col.command': 'Komut / URL',
+  'ui.mcp.title': 'MCP sunucuları',
+  'ui.mcp.lead': 'Her aracın MCP sunucularını görün ve bir araçtan diğerlerine kopyalayın. Aynı adlı mevcut sunucular, üzerine yazmayı seçmedikçe korunur.',
+  'ui.mcp.from': 'Kaynak',
+  'ui.mcp.to': 'Hedefler',
+  'ui.mcp.sync': 'MCP sunucularını eşitle',
+  'ui.mcp.overwrite': 'Aynı adlı sunucuların üzerine yaz',
+  'ui.mcp.syncResult': '{added} eklendi, {skipped} korundu',
+  'ui.mcp.none': 'MCP sunucusu bulunamadı.',
+  'ui.mcp.claudeReadOnly': 'Claude Code yalnızca kaynak olarak okunur (~/.claude.json, Claude Code çalışırken kendisi tarafından yeniden yazılır). Her yazmadan önce yedek alınır.',
+  'ui.fallback.title': 'Yedek zinciri',
+  'ui.fallback.lead': 'Sağlayıcı 429 / 5xx döndürdüğünde ya da ulaşılamadığında yönlendirici, araca bir şey gönderilmeden önce aynı isteği sıradaki sağlayıcı:model ile yeniden dener.',
+  'ui.fallback.tool': 'Araç',
+  'ui.fallback.specs': 'Yedekler (sağlayıcı:model, sırayla)',
+  'ui.fallback.specsPh': 'ör. openrouter:deepseek/deepseek-chat, ollama:qwen3',
+  'ui.fallback.save': 'Zinciri kaydet',
+  'ui.fallback.saved': '{tool} için yedek zinciri kaydedildi.',
+  'ui.ping.btn': 'Uç noktaları test et',
+  'ui.ping.ok': 'erişilebilir, anahtar kabul edildi',
+  'ui.ping.auth': 'anahtar reddedildi',
+  'ui.ping.fail': 'ulaşılamıyor ({reason})',
+  'ui.ping.running': 'Test ediliyor…',
+  'ui.ping.done': '{n} uç nokta test edildi.',
+  'ui.update.title': 'Güncellemeler',
+  'ui.update.lead': 'GitHub Releases’ta daha yeni sürüm olup olmadığına bakar (en fazla 12 saatte bir, veri gönderilmez). Güncelleme sizin elinizde kalır: yeni kurulum dosyasını indirin ya da npm komutunu çalıştırın.',
+  'ui.update.check': 'Güncellemeleri denetle',
+  'ui.update.available': 'Güncelleme var: v{latest}',
+  'ui.io.title': 'İçe / dışa aktar',
+  'ui.io.lead': 'Özel sağlayıcıları, profilleri, yedek zincirlerini ve ayarları başka bir bilgisayara taşıyın. Anahtarlar yalnızca kutuyu işaretlerseniz eklenir.',
+  'ui.io.withKeys': 'API anahtarlarını da ekle (düz metin)',
+  'ui.io.export': 'Dosyaya aktar',
+  'ui.io.import': 'Dosya içe aktar',
+  'ui.io.overwrite': 'Aynı adlı mevcut kayıtların üzerine yaz',
+  'ui.io.exported': 'Dışa aktarılan dosya indirildi.',
+  'ui.import.done': 'İçe aktarıldı: {providers} sağlayıcı, {profiles} profil, {keys} anahtar, {fallback} yedek zinciri.',
+  'menu.tray.open': 'Agent Switchboard\'u aç',
+  'menu.tray.profiles': 'Profil uygula',
+  'menu.tray.official': 'Tüm araçlar: resmî giriş',
+  'menu.tray.routerStart': 'Yönlendiriciyi başlat',
+  'menu.tray.routerStop': 'Yönlendiriciyi durdur',
+  'status.envConflicts': "Şu ortam değişkenleri tanımlı ve aswitch'in yazdığı dosyaların önüne geçiyor: {list}. Kaldırın (örneğin kabuk profilinizden), yoksa geçiş etkili olmayabilir."
 };

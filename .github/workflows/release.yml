@@ -1,17 +1,36 @@
 name: release-desktop
+# Push a tag vX.Y.Z (scripts/release.js does it) → the release is created with notes taken from
+# CHANGELOG.md + CHANGELOG.tr.md, installers for macOS/Windows/Linux are built and attached,
+# and the verify job checks all 8 files and publishes SHA256SUMS.txt.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
 permissions: { contents: write }
 jobs:
-  # Sürümü önce tek bir işte oluştur; üç derleme işi aynı anda sürüm oluşturmaya çalışıp yarışmasın.
+  # Create the release once, before the three build jobs, so they don't race to create it.
   release:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - env: { GH_TOKEN: '${{ github.token }}', TAG: '${{ github.ref_name }}', REPO: '${{ github.repository }}' }
-        run: gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 || gh release create "$TAG" -R "$REPO" --title "$TAG" --generate-notes --verify-tag
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      - name: Tag matches package versions
+        env: { TAG: '${{ github.ref_name }}' }
+        run: |
+          node -e "const t=process.env.TAG.replace(/^v/,''),a=require('./package.json').version,b=require('./desktop/package.json').version;if(a!==t||b!==t){console.error('tag '+t+' vs package.json '+a+' / desktop '+b);process.exit(1)}"
+      - name: Release notes from CHANGELOG
+        env: { TAG: '${{ github.ref_name }}' }
+        run: node scripts/release-notes.js "$TAG" > notes.md && cat notes.md
+      - name: Create or update the release
+        env: { GH_TOKEN: '${{ github.token }}', TAG: '${{ github.ref_name }}', REPO: '${{ github.repository }}' }
+        run: |
+          if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
+            gh release edit "$TAG" -R "$REPO" --notes-file notes.md
+          else
+            gh release create "$TAG" -R "$REPO" --title "$TAG" --notes-file notes.md --verify-tag
+          fi
   build:
     needs: release
     if: ${{ !cancelled() && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
@@ -47,3 +66,25 @@ jobs:
             desktop/dist/*.exe
             desktop/dist/*.AppImage
             desktop/dist/*.deb
+  verify:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: All 8 installers attached, SHA256SUMS published
+        env: { GH_TOKEN: '${{ github.token }}', TAG: '${{ github.ref_name }}', REPO: '${{ github.repository }}' }
+        run: |
+          V="${TAG#v}"
+          mkdir assets && cd assets
+          gh release download "$TAG" -R "$REPO" --pattern '*.dmg' --pattern '*.zip' --pattern '*.exe' --pattern '*.AppImage' --pattern '*.deb'
+          ls -la
+          missing=0
+          for f in "Agent.Switchboard-$V-linux-amd64.deb" "Agent.Switchboard-$V-linux-x86_64.AppImage" \
+                   "Agent.Switchboard-$V-mac-arm64.dmg" "Agent.Switchboard-$V-mac-arm64.zip" \
+                   "Agent.Switchboard-$V-mac-x64.dmg" "Agent.Switchboard-$V-mac-x64.zip" \
+                   "Agent.Switchboard-Portable-$V-win-x64.exe" "Agent.Switchboard-Setup-$V-win-x64.exe"; do
+            if [ -s "$f" ]; then echo "ok  $f"; else echo "MISSING $f"; missing=1; fi
+          done
+          [ "$missing" = 0 ] || exit 1
+          sha256sum * > ../SHA256SUMS.txt && cat ../SHA256SUMS.txt
+          gh release upload "$TAG" ../SHA256SUMS.txt -R "$REPO" --clobber

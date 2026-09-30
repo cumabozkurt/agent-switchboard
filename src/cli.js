@@ -1,7 +1,7 @@
 // CLI helpers (kept outside bin/ so they can be unit tested).
 
 // Değer almayan bayraklar: ardından gelen sözcüğü değer olarak yutmazlar.
-const BOOLEAN = new Set(['refresh', 'no-open', 'all', 'help', 'version', 'json']);
+const BOOLEAN = new Set(['refresh', 'no-open', 'all', 'help', 'version', 'json', 'with-keys', 'overwrite', 'clear', 'recent']);
 
 export function flags(argv) {
   const out = { _: [] };

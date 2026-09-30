@@ -1,7 +1,9 @@
 name: models-snapshot
-# Her gün OpenRouter, OpenCode Zen ve OpenCode Go'nun herkese açık model listelerini çekip depoya kaydeder.
-# Uygulama çalışırken yine canlı listeyi kullanır; bu anlık görüntüler yalnızca başvuru içindir.
-# Liste değişmediyse commit atılmaz.
+# Every day: fetch the public model lists of OpenRouter, OpenCode Zen and OpenCode Go and commit them to models/.
+# The app always prefers the live list; these snapshots ship inside the npm package and the desktop app and are
+# used as an offline fallback (after the local cache). No commit when nothing changed.
+# Note: commits made with GITHUB_TOKEN do not trigger other workflows, and GitHub disables scheduled
+# workflows after 60 days without repository activity (re-enable in the Actions tab).
 on:
   schedule: [{ cron: '17 3 * * *' }]
   workflow_dispatch:
@@ -15,12 +17,12 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 22 }
       - run: node scripts/snapshot-models.js
-      - name: Değiştiyse commit et
+      - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add models/
-          if git diff --cached --quiet; then echo "Model listeleri değişmedi."; exit 0; fi
-          git commit -m "chore: güncel model listesi"
+          if git diff --cached --quiet; then echo "Model lists unchanged."; exit 0; fi
+          git commit -m "chore: refresh model snapshots"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

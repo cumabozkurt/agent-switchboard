@@ -121,7 +121,7 @@ test('arayüz: yönlendirici başlat → yeniden başlat → durdur; port çakı
     assert.equal(r.routerAutoStarted, false);
     assert.equal((await ui.call('router/start')).router.state, 'running');
     assert.equal(await probeRouter(port), true);
-    assert.deepEqual((await (await fetch(`http://127.0.0.1:${port}/health`)).json()).claude, { target: 'https://opencode.ai/zen/go/v1', model: 'gpt-6-luna', api: 'responses' });
+    assert.deepEqual((await (await fetch(`http://127.0.0.1:${port}/health`)).json()).claude, { target: 'https://opencode.ai/zen/go/v1', provider: 'opencode-go', model: 'gpt-6-luna', api: 'responses', fallbacks: [] });
     assert.equal((await ui.call('router/start')).already, true);
     assert.equal((await ui.call('router/restart')).router.state, 'running');
     assert.equal((await ui.call('router/stop')).router.state, 'stopped');
@@ -197,5 +197,38 @@ test('arayüz: yedekleri listele ve geri yükle, resmî giriş, orijinalleri ger
     const info = await ui.call('info');
     assert.equal(info.paths.claude, settings);
     assert.ok(info.version);
+  } finally { await ui.stop(); }
+});
+
+test('arayüz v0.3.0: profiller, yedek zinciri, kullanım, MCP, dışa/içe aktarma, güncelleme uçları', async () => {
+  process.env.ASWITCH_NO_UPDATE_CHECK = '1';
+  const ui = await open({ autoStartRouter: false });
+  try {
+    core.setKey('deepseek', 'sk-deepseek-123456');
+    await ui.call('use', { provider: 'deepseek', model: 'deepseek-chat', tools: ['claude'] });
+    assert.ok((await ui.call('profile/save', { name: 'p1' })).tools.claude);
+    assert.equal((await ui.call('profiles')).profiles[0].name, 'p1');
+    assert.equal((await ui.call('profile/use', { name: 'p1' })).name, 'p1');
+    assert.equal((await ui.call('status')).activeProfile, 'p1');
+    assert.equal((await ui.call('profile/save', { name: 'bad name' })).status, 400);
+    assert.deepEqual((await ui.call('fallback/set', { tool: 'claude', specs: ['openrouter:a/b'] })).claude, [{ provider: 'openrouter', model: 'a/b' }]);
+    assert.equal((await ui.call('fallback')).claude.length, 1);
+    await ui.call('fallback/set', { tool: 'claude', specs: [] });
+    const u = await ui.call('usage', { days: 7 });
+    assert.equal(u.log, true); assert.equal(u.total.requests, 0);
+    assert.equal((await ui.call('usage/log', { on: false })).log, false);
+    await ui.call('usage/log', { on: true });
+    assert.ok('claude' in (await ui.call('mcp')));
+    assert.ok(Array.isArray(await ui.call('mcp/sync', { from: 'claude', to: ['gemini'] })));
+    const ex = await ui.call('export', { withKeys: false });
+    assert.equal(ex.format, 'agent-switchboard'); assert.equal('keys' in ex, false);
+    assert.equal((await ui.call('import', { data: ex })).profiles, 0);
+    assert.equal((await ui.call('import', { data: { format: 'nope' } })).status, 400);
+    assert.equal((await ui.call('update')).disabled, true);
+    const ping = await ui.call('ping', { ids: ['ollama'] });
+    assert.equal(ping[0].id, 'ollama');
+    await ui.call('profile/remove', { name: 'p1' });
+    const page = await (await fetch(ui.base)).text();
+    for (const id of ['tab-profiles', 'tab-usage', 'tab-mcp', 'fbSave', 'pingAll', 'ioExport', 'updCheck', 'value="gemini"']) assert.ok(page.includes(id), id);
   } finally { await ui.stop(); }
 });

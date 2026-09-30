@@ -51,7 +51,7 @@ export async function startUi({ port = 4567, open = true, locale, onLangChange, 
     if (router) return { port: routerPort, already: true };
     const tg = core.routerTargets(); // throws a translated error when no tool needs the router
     try {
-      router = await startRouter({ port: tg.port, targets: () => core.routerTargets(), log });
+      router = await startRouter({ port: tg.port, targets: () => core.routerTargets(), log, onUsage: await core.routerUsageHook() });
     } catch (e) {
       if (e.code === 'EADDRINUSE') {
         const ext = await probeRouter(tg.port);
@@ -107,7 +107,7 @@ export async function startUi({ port = 4567, open = true, locale, onLangChange, 
       const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
       const str = v => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
       switch (u.pathname) {
-        case '/api/info': return json(200, { version: VERSION, lang: getLang(), settings: core.getSettings(), paths: core.paths(), electron: !!process.versions.electron, platform: process.platform, codexKeyModes: process.versions.electron ? ['env'] : core.CODEX_KEY_MODES, defaultShell: defaultShell() });
+        case '/api/info': return json(200, { version: VERSION, lang: getLang(), settings: core.getSettings(), paths: core.paths(), electron: !!process.versions.electron, platform: process.platform, codexKeyModes: process.versions.electron ? ['env'] : core.CODEX_KEY_MODES, defaultShell: defaultShell(), geminiInstalled: core.defaultTools().includes('gemini') });
         case '/api/status': { const st = core.status(); return json(200, { ...st, routerConfig: st.router, router: await routerState() }); }
         case '/api/providers': return json(200, core.providers());
         case '/api/models': return json(200, await core.models(str(body.provider), { refresh: !!body.refresh }));
@@ -153,6 +153,25 @@ export async function startUi({ port = 4567, open = true, locale, onLangChange, 
           if (body.routerAutoStart) await maybeAutoStart();
           return json(200, s);
         }
+        case '/api/fallback': return json(200, core.getFallback());
+        case '/api/fallback/set': return json(200, core.setFallback(str(body.tool), Array.isArray(body.specs) ? body.specs.map(String).filter(x => x.trim()) : []));
+        case '/api/ping': return json(200, await core.pingProviders(Array.isArray(body.ids) ? body.ids.map(String) : undefined));
+        case '/api/usage': return json(200, { ...(await core.usageReport({ days: Number.isFinite(body.days) ? body.days : 7 })), log: core.routerLogEnabled() });
+        case '/api/usage/clear': core.clearUsage(); return json(200, { ok: true });
+        case '/api/usage/log': core.setRouterLog(!!body.on); return json(200, { ok: true, log: core.routerLogEnabled() });
+        case '/api/profiles': return json(200, { profiles: core.listProfiles(), project: core.projectProfile() });
+        case '/api/profile/save': return json(200, core.saveProfile(str(body.name)));
+        case '/api/profile/use': {
+          const r = await core.useProfile(str(body.name));
+          const auto = r.results.some(x => x.viaRouter) ? await maybeAutoStart() : null;
+          return json(200, { ...r, routerAutoStarted: !!auto && !auto.already });
+        }
+        case '/api/profile/remove': core.removeProfile(str(body.name)); return json(200, { ok: true });
+        case '/api/export': return json(200, core.exportConfig({ withKeys: !!body.withKeys }));
+        case '/api/import': return json(200, core.importConfig(body.data, { overwrite: !!body.overwrite }));
+        case '/api/mcp': return json(200, core.allMcp());
+        case '/api/mcp/sync': return json(200, core.syncMcp({ from: str(body.from) || 'claude', to: Array.isArray(body.to) ? body.to : undefined, overwrite: !!body.overwrite }));
+        case '/api/update': return json(200, await core.checkForUpdate(VERSION, { force: !!body.force }));
         default: return json(404, { error: t('ui.notFound') });
       }
     } catch (e) { return json(400, { error: e.message, code: e.code }); }

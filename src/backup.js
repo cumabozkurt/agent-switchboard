@@ -16,7 +16,7 @@ export function ensureOriginal(target, file) {
   const dir = path.join(appDir(), 'originals');
   mkdirPrivate(appDir()); mkdirPrivate(path.dirname(dir)); mkdirPrivate(dir);
   if (exists(file)) {
-    const copy = path.join(dir, target + path.extname(file));
+    const copy = path.join(dir, target + extOf(file));
     fs.copyFileSync(file, copy);
     mf[target] = { file, copy, existed: true, at: new Date().toISOString() };
   } else {
@@ -25,13 +25,16 @@ export function ensureOriginal(target, file) {
   writeJson(manifestPath(), mf);
 }
 
+// Dotfiles such as ".env" have no extname; keep their name as the extension so backups stay recognisable.
+const extOf = file => path.extname(file) || (path.basename(file).startsWith('.') ? path.basename(file) : '');
+
 export function snapshot(target, file) {
   if (!exists(file)) return null;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const dir = path.join(appDir(), 'backups', stamp);
   mkdirPrivate(appDir()); mkdirPrivate(path.dirname(dir)); mkdirPrivate(dir);
-  let dest = path.join(dir, target + path.extname(file));
-  for (let i = 2; exists(dest); i++) dest = path.join(dir, `${target}-${i}${path.extname(file)}`);
+  let dest = path.join(dir, target + extOf(file));
+  for (let i = 2; exists(dest); i++) dest = path.join(dir, `${target}-${i}${extOf(file)}`);
   fs.copyFileSync(file, dest);
   pruneBackups();
   return dest;

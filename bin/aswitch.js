@@ -40,7 +40,8 @@ function askHidden(q) {
 
 const toolsOf = f => (typeof f.tools === 'string' ? f.tools.split(',').map(s => s.trim()).filter(Boolean) : undefined);
 const str = v => (typeof v === 'string' ? v : undefined);
-const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' }[id] || id);
+const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', gemini: 'Gemini CLI' }[id] || id);
+const listOf = v => (typeof v === 'string' ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined);
 
 function printStatus(s) {
   for (const tool of core.TOOLS) {
@@ -53,11 +54,16 @@ function printStatus(s) {
     if (st.error) console.log(`  ! ${st.error}`);
   }
   const r = s.router;
-  const needed = !!(r && (r.claude || r.codex));
+  const needed = !!(r && core.ROUTED_TOOLS.some(k => r[k]));
   console.log(`${t('ui.tab.router')}  ${needed ? t('cli.routerNeeded', { port: r.port || core.DEFAULT_ROUTER_PORT }) : t('ui.router.notNeeded')}`);
   if (r?.claude) console.log(`  Claude Code → ${r.claude.provider} · ${r.claude.model}${r.claude.fastModel ? ' / ' + r.claude.fastModel : ''}`);
   if (r?.codex) console.log(`  Codex       → ${r.codex.provider} · ${r.codex.model}`);
+  if (r?.gemini) console.log(`  Gemini CLI  → ${r.gemini.provider} · ${r.gemini.model}${r.gemini.fastModel ? ' / ' + r.gemini.fastModel : ''}`);
+  for (const [tool, list] of Object.entries(r?.fallback || {})) if (list.length) console.log(`  ${t('ui.fallback.title')} ${toolName(tool)}: ${list.map(f => f.provider + ':' + f.model).join(' → ')}`);
 }
+
+const fmtN = n => (n || 0).toLocaleString('en-US');
+const fmtCost = c => (c == null ? '—' : '$' + c.toFixed(4));
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -82,6 +88,7 @@ async function main() {
     case 'status': {
       const s = core.status();
       if (f.json) console.log(JSON.stringify(s, null, 2)); else printStatus(s);
+      if (!f.json && s.envConflicts?.length) console.log('\n⚠ ' + t('status.envConflicts', { list: s.envConflicts.map(c => `${c.name} (${toolName(c.tool)})`).join(', ') }));
       break;
     }
     case 'providers':
@@ -159,7 +166,7 @@ async function main() {
       const tg = core.routerTargets();
       const port = Number(f.port) || tg.port;
       let server;
-      try { server = await startRouter({ port, targets: () => core.routerTargets() }); } catch (e) {
+      try { server = await startRouter({ port, targets: () => core.routerTargets(), onUsage: await core.routerUsageHook() }); } catch (e) {
         if (e.code === 'EADDRINUSE') throw new Error(t('router.portInUse', { port }));
         throw e;
       }
@@ -173,6 +180,9 @@ async function main() {
         }
       }
       if (tg.codex) console.log(`  Codex       → ${tg.codex.baseUrl}/chat/completions (${tg.codex.model})`);
+      if (tg.gemini) console.log(`  Gemini CLI  → ${tg.gemini.provider} (${[tg.gemini.model, tg.gemini.fastModel].filter(Boolean).join(' / ')})`);
+      for (const k of core.ROUTED_TOOLS) if (tg[k]?.fallbacks?.length) console.log(`  ${t('ui.fallback.title')} ${toolName(k)}: ${tg[k].fallbacks.map(f => f.provider + ':' + f.model).join(' → ')}`);
+      if (!core.routerLogEnabled()) console.log('  ' + t('cli.logOff'));
       const shutdown = () => { server.close(); server.closeAllConnections?.(); console.log(t('ui.router.stopped')); process.exit(0); };
       process.once('SIGINT', shutdown); process.once('SIGTERM', shutdown);
       break;
@@ -199,6 +209,91 @@ async function main() {
       console.log(t('cli.uiAt', { url }));
       const shutdown = () => stop().then(() => process.exit(0));
       process.once('SIGINT', shutdown); process.once('SIGTERM', shutdown);
+      break;
+    }
+    case 'fallback': {
+      const [sub, tool, ...specs] = f._;
+      if (sub === 'set') { core.setFallback(tool, specs); console.log(t('cli.saved')); }
+      else if (sub === 'clear') { core.setFallback(tool, []); console.log(t('cli.removed')); }
+      else if (sub && sub !== 'list') { help(); process.exitCode = 1; break; }
+      const fb = core.getFallback();
+      for (const [k, list] of Object.entries(fb)) console.log(`${toolName(k).padEnd(12)} ${list.length ? list.map(x => x.provider + ':' + x.model).join(' → ') : t('ui.none')}`);
+      break;
+    }
+    case 'ping': {
+      const list = await core.pingProviders(f._);
+      if (f.json) { console.log(JSON.stringify(list, null, 2)); break; }
+      if (!list.length) console.log(t('cli.pingNone'));
+      for (const r of list.sort((a, b) => (b.ok - a.ok) || a.ms - b.ms)) {
+        const state = r.ok ? t('ui.ping.ok') : r.auth === 'rejected' ? t('ui.ping.auth') : r.error ? t('ui.ping.fail', { reason: r.error }) : 'HTTP ' + r.status;
+        console.log(`${r.ok ? '●' : '○'} ${r.id.padEnd(14)} ${String(r.ms).padStart(5)} ms  ${state}`);
+      }
+      break;
+    }
+    case 'usage': {
+      if (f.clear) { core.clearUsage(); console.log(t('cli.removed')); break; }
+      if (typeof f.log === 'string') { core.setRouterLog(f.log !== 'off'); console.log(t(f.log === 'off' ? 'cli.logOff' : 'cli.logOn')); break; }
+      const rep = await core.usageReport({ days: f.days != null ? Number(f.days) : 7 });
+      if (f.json) { console.log(JSON.stringify(rep, null, 2)); break; }
+      if (f.recent) {
+        for (const e of rep.recent.slice(0, Number(f.limit) || 20)) console.log(`${e.ts.replace('T', ' ').slice(0, 19)}  ${String(e.status).padEnd(3)} ${(e.tool || '').padEnd(7)} ${e.provider}:${e.model}  ${e.ms} ms  ${fmtN(e.in)}→${fmtN(e.out)}${e.fallback ? '  ↪' + e.fallback : ''}${e.error ? '  ! ' + e.error : ''}`);
+        break;
+      }
+      console.log(t('cli.usageTotal', { days: rep.days || '∞', requests: fmtN(rep.total.requests), errors: fmtN(rep.total.errors), input: fmtN(rep.total.input), output: fmtN(rep.total.output), cost: fmtCost(rep.total.cost) }));
+      for (const r of rep.rows) console.log(`  ${(r.provider + ':' + r.model).padEnd(46)} ${String(r.requests).padStart(5)}×  ${fmtN(r.input)}→${fmtN(r.output)}  ${r.avgMs} ms${r.avgTtft != null ? ' / TTFT ' + r.avgTtft + ' ms' : ''}  ${fmtCost(r.cost)}`);
+      if (!core.routerLogEnabled()) console.log(t('cli.logOff'));
+      break;
+    }
+    case 'profile': {
+      const [sub, name] = f._;
+      if (sub === 'save') { core.saveProfile(name, { tools: toolsOf(f) }); console.log(t('ui.profiles.saved', { name })); }
+      else if (sub === 'use') {
+        const r = await core.useProfile(name);
+        console.log(t('ui.profiles.applied', { name }));
+        for (const x of r.results) console.log(`  ${x.tool.padEnd(9)} ${x.provider}  ${x.file || ''}`);
+      } else if (sub === 'rm') { core.removeProfile(name); console.log(t('cli.removed')); }
+      else if (sub === 'project') { console.log(t('cli.projectSet', { file: core.setProjectProfile(name) })); }
+      else if (!sub || sub === 'list') {
+        const list = core.listProfiles();
+        if (!list.length) console.log(t('ui.profiles.none'));
+        for (const p of list) console.log(`${p.name.padEnd(16)} ${Object.entries(p.tools).map(([k, v]) => `${k}=${v.provider}${v.model ? ':' + v.model : ''}`).join('  ')}`);
+        const pp = core.projectProfile();
+        if (pp) console.log(t('cli.projectProfileFound', { profile: pp.profile, file: pp.file }));
+      } else { help(); process.exitCode = 1; }
+      break;
+    }
+    case 'export': {
+      const data = JSON.stringify(core.exportConfig({ withKeys: !!f['with-keys'] }), null, 2) + '\n';
+      if (f._[0]) { fs.writeFileSync(f._[0], data, { mode: 0o600 }); console.error(t('cli.exported', { file: f._[0] })); } else process.stdout.write(data);
+      if (f['with-keys']) console.error(t('cli.exportKeysWarn'));
+      break;
+    }
+    case 'import': {
+      if (!f._[0]) throw new Error(t('cli.importNeedFile'));
+      const c = core.importConfig(JSON.parse(fs.readFileSync(f._[0], 'utf8')), { overwrite: !!f.overwrite });
+      console.log(t('ui.import.done', c));
+      break;
+    }
+    case 'mcp': {
+      const [sub] = f._;
+      if (sub === 'sync') {
+        const res = core.syncMcp({ from: str(f.from) || 'claude', to: listOf(f.to) || core.MCP_TARGETS, only: listOf(f.only), overwrite: !!f.overwrite });
+        for (const r of res) console.log(`${toolName(r.tool).padEnd(12)} ${t('ui.mcp.syncResult', { added: r.added.length, skipped: r.skipped.length })}${r.added.length ? '  + ' + r.added.join(', ') : ''}  (${r.file})`);
+        break;
+      }
+      if (sub && sub !== 'list') { help(); process.exitCode = 1; break; }
+      const all = core.allMcp();
+      if (f.json) { console.log(JSON.stringify(all, null, 2)); break; }
+      for (const [tool, v] of Object.entries(all)) {
+        console.log(`${toolName(tool)} (${v.servers.length})${v.error ? '  ! ' + v.error : ''}`);
+        for (const sv of v.servers) console.log(`  ${sv.name.padEnd(20)} ${sv.type.padEnd(5)} ${sv.type === 'stdio' ? [sv.command, ...sv.args].join(' ') : sv.url}`);
+      }
+      break;
+    }
+    case 'update': {
+      const u = await core.checkForUpdate(VERSION, { force: true });
+      console.log(u.update ? t('cli.updateAvailable', { latest: u.latest, current: u.current }) : t('cli.upToDate', { current: u.current }));
+      if (u.update) { console.log('  ' + u.install); console.log('  ' + u.url); }
       break;
     }
     default: console.error(t('cli.unknownCommand', { cmd })); process.exitCode = 1;

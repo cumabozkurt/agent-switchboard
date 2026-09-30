@@ -99,10 +99,79 @@ export const PRESETS = {
   },
   gemini: {
     label: 'Google Gemini',
+    geminiBase: 'https://generativelanguage.googleapis.com', // Gemini CLI connects natively (no router)
     openaiBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
     codexWire: 'chat',
     modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
     keyEnv: 'GEMINI_API_KEY'
+  },
+  // v0.3.0 presets. Endpoints from each vendor's official docs (links in docs/PROVIDERS.md).
+  minimax: {
+    label: 'MiniMax',
+    anthropicBase: 'https://api.minimax.io/anthropic',
+    openaiBase: 'https://api.minimax.io/v1',
+    codexWire: 'chat',
+    keyEnv: 'MINIMAX_API_KEY',
+    keyUrl: 'https://platform.minimax.io/user-center/basic-information/interface-key'
+  },
+  xai: {
+    label: 'xAI Grok',
+    openaiBase: 'https://api.x.ai/v1',
+    codexWire: 'responses',
+    modelsUrl: 'https://api.x.ai/v1/models',
+    keyEnv: 'XAI_API_KEY',
+    keyUrl: 'https://console.x.ai'
+  },
+  groq: {
+    label: 'Groq',
+    openaiBase: 'https://api.groq.com/openai/v1',
+    codexWire: 'chat',
+    modelsUrl: 'https://api.groq.com/openai/v1/models',
+    keyEnv: 'GROQ_API_KEY',
+    keyUrl: 'https://console.groq.com/keys'
+  },
+  mistral: {
+    label: 'Mistral',
+    openaiBase: 'https://api.mistral.ai/v1',
+    codexWire: 'chat',
+    modelsUrl: 'https://api.mistral.ai/v1/models',
+    keyEnv: 'MISTRAL_API_KEY',
+    keyUrl: 'https://console.mistral.ai/api-keys'
+  },
+  cerebras: {
+    label: 'Cerebras',
+    openaiBase: 'https://api.cerebras.ai/v1',
+    codexWire: 'chat',
+    modelsUrl: 'https://api.cerebras.ai/v1/models',
+    keyEnv: 'CEREBRAS_API_KEY',
+    keyUrl: 'https://cloud.cerebras.ai'
+  },
+  nvidia: {
+    label: 'NVIDIA NIM',
+    openaiBase: 'https://integrate.api.nvidia.com/v1',
+    codexWire: 'chat',
+    modelsUrl: 'https://integrate.api.nvidia.com/v1/models',
+    modelsPublic: true,
+    keyEnv: 'NVIDIA_API_KEY',
+    keyUrl: 'https://build.nvidia.com'
+  },
+  siliconflow: {
+    label: 'SiliconFlow',
+    anthropicBase: 'https://api.siliconflow.com',
+    openaiBase: 'https://api.siliconflow.com/v1',
+    codexWire: 'chat',
+    modelsUrl: 'https://api.siliconflow.com/v1/models',
+    keyEnv: 'SILICONFLOW_API_KEY',
+    keyUrl: 'https://cloud.siliconflow.com/account/ak'
+  },
+  lmstudio: {
+    label: 'LM Studio',
+    anthropicBase: 'http://localhost:1234', // LM Studio ≥ 0.4: POST /v1/messages (https://lmstudio.ai/docs/developer/anthropic-compat)
+    openaiBase: 'http://localhost:1234/v1',
+    codexWire: 'responses', // LM Studio ≥ 0.3.29: POST /v1/responses
+    modelsUrl: 'http://localhost:1234/v1/models',
+    modelsPublic: true,
+    noKey: true
   },
   ollama: {
     label: 'Ollama',
@@ -161,6 +230,14 @@ export function codexMode(provider, model) {
   if (api === 'responses' || (api === null && provider.codexWire === 'responses')) return 'direct';
   if (api === 'chat' || api === null) return 'router';
   return null;
+}
+
+// Gemini CLI: 'direct' (the provider speaks the Gemini API natively), 'router' (the local router
+// translates Gemini generateContent ⇄ the provider's Anthropic/Chat/Responses API) or null.
+export function geminiMode(provider, model) {
+  const api = modelApi(provider, model);
+  if (provider.geminiBase && (api === null || api === 'google')) return 'direct';
+  return claudeMode(provider, model) ? 'router' : null;
 }
 
 export function listProviderIds(cfg) {

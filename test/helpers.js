@@ -12,3 +12,13 @@ export function sandbox() {
   if (!process.env.ASWITCH_TEST_KEEP_LANG) process.env.ASWITCH_LANG = 'tr';
   return dir;
 }
+
+// A fake provider: records every request and lets the test answer it. handler(body, res, req, n)
+export async function fakeUpstream(handler) {
+  const http = await import('node:http');
+  const seen = [];
+  const s = http.createServer((req, res) => {
+    let b = ''; req.on('data', c => { b += c; }); req.on('end', () => { const body = b ? JSON.parse(b) : {}; seen.push({ url: req.url, body, headers: req.headers }); handler(body, res, req, seen.length); });
+  });
+  return new Promise(r => s.listen(0, '127.0.0.1', () => r({ s, seen, root: `http://127.0.0.1:${s.address().port}`, base: `http://127.0.0.1:${s.address().port}/v1` })));
+}

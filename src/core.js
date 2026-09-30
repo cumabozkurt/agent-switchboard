@@ -2,20 +2,22 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, saveConfig, getKey, mask } from './config.js';
-import { resolveProvider, listProviderIds, PRESETS, claudeMode, codexMode, modelApi, claudeRouterApi } from './providers.js';
+import { resolveProvider, listProviderIds, PRESETS, claudeMode, codexMode, geminiMode, modelApi, claudeRouterApi } from './providers.js';
+import { applyGemini, clearGemini, statusGemini, buildGeminiEnv } from './targets/gemini.js';
 import { fetchModels, resolveModelAlias } from './models.js';
 import { applyClaude, clearClaude, statusClaude } from './targets/claude.js';
 import { applyCodex, clearCodex, statusCodex } from './targets/codex.js';
 import { applyOpencode, statusOpencode } from './targets/opencode.js';
 import fs from 'node:fs';
 import { restoreOriginal, listBackups, backupFile, ensureOriginal, snapshot } from './backup.js';
-import { claudeSettingsPath, codexConfigPath, appDir } from './paths.js';
+import { claudeSettingsPath, codexConfigPath, appDir, geminiSettingsPath, geminiEnvPath } from './paths.js';
 import { opencodeFile } from './targets/opencode.js';
 import { configPath } from './config.js';
 import { t, LANGS, normalizeLang, resetLangCache, getLang } from './i18n/index.js';
 
-export const TOOLS = ['claude', 'codex', 'opencode'];
-export const OFFICIAL_TOOLS = ['claude', 'codex'];
+export const TOOLS = ['claude', 'codex', 'opencode', 'gemini'];
+export const OFFICIAL_TOOLS = ['claude', 'codex', 'gemini'];
+export const ROUTED_TOOLS = ['claude', 'codex', 'gemini'];
 export const DEFAULT_ROUTER_PORT = 3456;
 export const CODEX_KEY_MODES = ['env', 'command'];
 
@@ -41,11 +43,17 @@ function authCommand(pid) {
 function routerCfg(cfg) {
   const r = cfg.router;
   if (!r) return null;
-  if (r.provider && !r.claude && !r.codex) return { port: r.port, claude: { provider: r.provider, model: r.model, fastModel: r.fastModel } };
+  if (r.provider && !r.claude && !r.codex && !r.gemini) return { port: r.port, claude: { provider: r.provider, model: r.model, fastModel: r.fastModel } };
   return r;
 }
 
-export async function useProvider({ tools = TOOLS, provider: pid, model, fastModel, port, codexKey }) {
+// Default targets for "use": Gemini CLI is included only when it has a config directory (i.e. it is
+// installed/used), so upgrading aswitch never creates ~/.gemini on machines without Gemini CLI.
+export function defaultTools() {
+  return fs.existsSync(path.dirname(geminiSettingsPath())) ? TOOLS : TOOLS.filter(t => t !== 'gemini');
+}
+
+export async function useProvider({ tools = defaultTools(), provider: pid, model, fastModel, port, codexKey }) {
   const cfg = loadConfig();
   need(pid, 'err.noProvider');
   const provider = resolveProvider(cfg, pid);
@@ -88,6 +96,11 @@ export async function useProvider({ tools = TOOLS, provider: pid, model, fastMod
       plan.codex = mode;
     } else if (tool === 'opencode') {
       need(provider.openaiBase, 'err.providerNoOpenai', { id: pid, tool: 'OpenCode' });
+    } else if (tool === 'gemini') {
+      const mode = geminiMode(provider, model);
+      need(mode, api ? 'err.modelApiUnsupported' : 'err.providerNoClaude', { id: pid, model, api, tool: 'Gemini CLI' });
+      need(mode === 'direct' || model, 'err.routerNeedsModel', { id: pid, tool: 'Gemini CLI' });
+      plan.gemini = mode;
     }
   }
 
@@ -109,12 +122,18 @@ export async function useProvider({ tools = TOOLS, provider: pid, model, fastMod
     } else if (tool === 'opencode') {
       const file = applyOpencode({ provider, model, keyEnvName: keyEnvName(provider) });
       results.push({ tool, file, keyEnv: provider.noKey ? null : keyEnvName(provider) });
+    } else if (tool === 'gemini') {
+      const file = applyGemini({ provider, key, model, routerUrl, mode: plan.gemini });
+      if (plan.gemini === 'router') router.gemini = { provider: pid, model, fastModel: fastModel || null }; else delete router.gemini;
+      results.push({ tool, file, viaRouter: plan.gemini === 'router' });
     }
     cfg.active[tool] = { provider: pid, model: model || null, fastModel: fastModel || null, at: new Date().toISOString() };
   }
   // The port is kept even when no tool needs the router, so a custom --port survives later switches.
-  cfg.router = { port: routerPort, ...(router.claude ? { claude: router.claude } : {}), ...(router.codex ? { codex: router.codex } : {}) };
-  if (!router.claude && !router.codex && routerPort === DEFAULT_ROUTER_PORT) delete cfg.router;
+  const keep = Object.fromEntries(Object.entries(router).filter(([k]) => !ROUTED_TOOLS.includes(k) && k !== 'port'));
+  cfg.router = { port: routerPort, ...keep, ...Object.fromEntries(ROUTED_TOOLS.filter(k => router[k]).map(k => [k, router[k]])) };
+  if (!ROUTED_TOOLS.some(k => router[k]) && routerPort === DEFAULT_ROUTER_PORT && !Object.keys(keep).length) delete cfg.router;
+  delete cfg.activeProfile; // a manual switch leaves any profile
   saveConfig(cfg);
   return { provider: pid, model, fastModel, results };
 }
@@ -123,7 +142,7 @@ function dropRouter(cfg, tools) {
   const r = routerCfg(cfg);
   if (!r) return;
   for (const tool of tools) delete r[tool];
-  if (r.claude || r.codex || (r.port && r.port !== DEFAULT_ROUTER_PORT)) cfg.router = r; else delete cfg.router;
+  if (ROUTED_TOOLS.some(k => r[k]) || (r.port && r.port !== DEFAULT_ROUTER_PORT) || r.fallback || r.log !== undefined) cfg.router = r; else delete cfg.router;
 }
 
 // Aracın kendi resmî girişine (Claude Pro/Max OAuth, ChatGPT girişi) döner; diğer ayarlar korunur.
@@ -135,31 +154,53 @@ export function useOfficial(tools = OFFICIAL_TOOLS) {
   for (const tool of tools) {
     if (tool === 'claude') out.push({ tool: tool, file: clearClaude() });
     else if (tool === 'codex') out.push({ tool: tool, file: clearCodex() });
+    else if (tool === 'gemini') out.push({ tool: tool, file: clearGemini() });
     else if (tool === 'opencode') { const r = restoreOriginal('opencode'); out.push({ tool: tool, file: r.file, note: r.restored ? t('restore.done') : r.reason }); }
     cfg.active[tool] = { provider: 'official', at: new Date().toISOString() };
   }
+  dropRouter(cfg, tools);
+  delete cfg.activeProfile;
+  saveConfig(cfg);
+  return out;
+}
+
+export function restore(tools = TOOLS) {  // restoring an untouched tool is a no-op
+  checkTools(tools);
+  const cfg = loadConfig();
+  const out = tools.map(tool => {
+    delete cfg.active[tool];
+    const r = restoreOriginal(tool);
+    if (tool === 'gemini') { const e = restoreOriginal('gemini-env'); if (!r.restored && e.restored) return { ...e, target: 'gemini' }; }
+    return r;
+  });
   dropRouter(cfg, tools);
   saveConfig(cfg);
   return out;
 }
 
-export function restore(tools = TOOLS) {
-  checkTools(tools);
-  const cfg = loadConfig();
-  const out = tools.map(tool => { delete cfg.active[tool]; return restoreOriginal(tool); });
-  dropRouter(cfg, tools);
-  saveConfig(cfg);
+// Shell variables that silently win over the files aswitch writes (the tools read the environment first).
+export const ENV_OVERRIDES = {
+  claude: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_MODEL'],
+  codex: ['OPENAI_BASE_URL'],
+  gemini: ['GOOGLE_GEMINI_BASE_URL', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_MODEL']
+};
+export function envConflicts(env = process.env) {
+  const out = [];
+  for (const [tool, names] of Object.entries(ENV_OVERRIDES)) for (const name of names) if (env[name]) out.push({ tool, name });
   return out;
 }
 
 export function status() {
   const cfg = loadConfig();
   return {
+    envConflicts: envConflicts(),
     active: cfg.active,
+    activeProfile: cfg.activeProfile || null,
     router: routerCfg(cfg),
     claude: statusClaude(),
     codex: statusCodex(),
     opencode: statusOpencode(),
+    gemini: statusGemini(),
     keys: Object.fromEntries(listProviderIds(cfg).map(id => {
       const p = resolveProvider(cfg, id);
       return [id, !p ? t('key.invalid') : p.noKey && !cfg.keys?.[id] ? t('key.notNeeded') : mask(getKey(cfg, p))];
@@ -176,6 +217,7 @@ export function providers() {
     return {
       id, label: p?.label || id, desc: custom ? '' : t(`provider.${id}`), custom,
       claude: !!p?.anthropicBase || !!p?.openaiBase, codex: !!p?.openaiBase, codexDirect: p?.codexWire === 'responses',
+      gemini: !!p && !!(p.geminiBase || p.anthropicBase || p.openaiBase), geminiDirect: !!p?.geminiBase,
       hasKey: !!(p && !p.noKey && key), noKey: !!p?.noKey, keyMasked: p?.noKey ? '' : mask(key),
       keySource: p?.noKey ? null : cfg.keys?.[id] ? 'saved' : key ? 'env' : null,
       keyEnv: p ? keyEnvName(p) : null, keyUrl: p?.keyUrl || null, oauth: !!p?.oauth,
@@ -231,7 +273,7 @@ export async function models(pid, { refresh } = {}) {
 
 // Araçların beklediği ortam değişkenleri. Varsayılan: yalnızca aktif Codex/OpenCode sağlayıcılarının
 // anahtarları (ANTHROPIC_API_KEY gibi bir değişkeni kabuğa kalıcı eklemek aboneliğin önüne geçebilir).
-export function toolEnv({ all = false, tools = ['codex', 'opencode'] } = {}) {
+export function toolEnv({ all = false, tools = ['codex', 'opencode'], geminiRun = false } = {}) {
   const cfg = loadConfig();
   const env = {};
   const add = id => {
@@ -246,6 +288,16 @@ export function toolEnv({ all = false, tools = ['codex', 'opencode'] } = {}) {
     const a = cfg.active?.[tool];
     // Claude Code anahtarı settings.json'dan okur; yönlendiriciden geçen Codex'in anahtara ihtiyacı yoktur.
     if (!a || a.provider === 'official' || tool === 'claude' || (tool === 'codex' && viaRouter.codex)) continue;
+    if (tool === 'gemini') {
+      // `aswitch run gemini` passes the managed variables directly, because Gemini CLI loads only the
+      // first .env it finds (a project .env would otherwise hide ~/.gemini/.env).
+      if (!geminiRun) continue;
+      const p = resolveProvider(cfg, a.provider);
+      if (!p) continue;
+      const port = viaRouter.port || DEFAULT_ROUTER_PORT;
+      Object.assign(env, buildGeminiEnv({ provider: p, key: getKey(cfg, p), model: a.model, routerUrl: `http://127.0.0.1:${port}`, mode: viaRouter.gemini ? 'router' : 'direct' }));
+      continue;
+    }
     add(a.provider);
   }
   return env;
@@ -258,10 +310,13 @@ export function winQuote(a) {
   return '"' + a.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1') + '"';
 }
 
-export function run(tool, args = []) {
+export async function run(tool, args = []) {
   need(tool, 'err.runNoTool');
-  const bin = { claude: 'claude', codex: 'codex', opencode: 'opencode' }[tool] || tool;
-  const env = { ...process.env, ...toolEnv({ tools: TOOLS.includes(tool) ? [tool] : ['codex', 'opencode'] }) };
+  // A ".aswitch.json" in the project switches the tools to that project's profile first.
+  const pp = await applyProjectProfile();
+  if (pp?.applied) process.stderr.write(t('cli.projectProfile', { profile: pp.profile, file: pp.file }) + '\n');
+  const bin = { claude: 'claude', codex: 'codex', opencode: 'opencode', gemini: 'gemini' }[tool] || tool;
+  const env = { ...process.env, ...toolEnv({ tools: TOOLS.includes(tool) ? [tool] : ['codex', 'opencode'], geminiRun: tool === 'gemini' }) };
   const child = process.platform === 'win32'
     ? spawn([bin, ...args].map(winQuote).join(' '), { stdio: 'inherit', env, shell: true })
     : spawn(bin, args, { stdio: 'inherit', env });
@@ -274,14 +329,26 @@ export function run(tool, args = []) {
 export function routerTargets() {
   const cfg = loadConfig();
   const r = routerCfg(cfg);
-  need(r && (r.claude || r.codex), 'err.routerNotNeeded');
-  const mk = x => {
-    if (!x) return undefined;
-    const p = resolveProvider(cfg, x.provider);
-    need(p, 'err.routerProviderMissing', { id: x.provider });
-    return { provider: x.provider, baseUrl: p.openaiBase, anthropicBase: p.anthropicBase, key: p.noKey ? '' : getKey(cfg, p), model: x.model, fastModel: x.fastModel, apiFor: m => claudeRouterApi(p, m) };
+  need(r && ROUTED_TOOLS.some(k => r[k]), 'err.routerNotNeeded');
+  const one = (id, model, fastModel) => {
+    const p = resolveProvider(cfg, id);
+    need(p, 'err.routerProviderMissing', { id });
+    return { provider: id, baseUrl: p.openaiBase, anthropicBase: p.anthropicBase, key: p.noKey ? '' : getKey(cfg, p), model, fastModel, apiFor: m => claudeRouterApi(p, m), codexApi: m => codexMode(p, m) === 'direct' ? 'responses' : 'chat' };
   };
-  return { port: r.port || DEFAULT_ROUTER_PORT, claude: mk(r.claude), codex: mk(r.codex) };
+  const mk = (x, tool) => {
+    if (!x) return undefined;
+    const t = one(x.provider, x.model, x.fastModel);
+    if (tool === 'gemini') {
+      // Gemini CLI has no direct Anthropic mode, so a provider's Anthropic endpoint is the best route.
+      const p = resolveProvider(cfg, x.provider);
+      t.apiFor = m => { const a = modelApi(p, m); return (a === 'messages' || a === null) && p.anthropicBase ? 'messages' : claudeRouterApi(p, m); };
+    }
+    // Ordered fallback chain (provider:model) tried on 429/5xx/network errors before any byte is sent.
+    const chain = (r.fallback?.[tool] || []).map(f => { try { return one(f.provider, f.model, f.model); } catch { return null; } }).filter(Boolean);
+    if (chain.length) t.fallbacks = chain;
+    return t;
+  };
+  return { port: r.port || DEFAULT_ROUTER_PORT, claude: mk(r.claude, 'claude'), codex: mk(r.codex, 'codex'), gemini: mk(r.gemini, 'gemini'), log: r.log !== false };
 }
 
 // Geriye dönük uyumluluk: tek hedef (Claude) döndürür.
@@ -295,7 +362,7 @@ export { listBackups };
 
 // Current file for each tool (used by backup restore and the UI's "files" view).
 export function toolFile(tool) {
-  return { claude: claudeSettingsPath, codex: codexConfigPath, opencode: opencodeFile }[tool]?.();
+  return { claude: claudeSettingsPath, codex: codexConfigPath, opencode: opencodeFile, gemini: geminiSettingsPath, 'gemini-env': geminiEnvPath }[tool]?.();
 }
 
 // Restores one timestamped backup file over the tool's current config. The current file is
@@ -304,16 +371,17 @@ export function restoreBackup(id, name) {
   const b = listBackups().find(x => x.id === id);
   need(b && b.files.includes(name), 'err.backupNotFound', { id, name });
   const tool = String(name).replace(/(-\d+)?\.[^.]+$/, '');
-  need(TOOLS.includes(tool), 'err.backupNotFound', { id, name });
+  need(TOOLS.includes(tool) || tool === 'gemini-env', 'err.backupNotFound', { id, name });
   const dest = toolFile(tool);
   ensureOriginal(tool, dest);
   snapshot(tool, dest);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(backupFile(id, name), dest);
   const cfg = loadConfig();
-  cfg.active[tool] = { provider: 'backup', backup: id, at: new Date().toISOString() };
+  const activeTool = tool === 'gemini-env' ? 'gemini' : tool;
+  cfg.active[activeTool] = { provider: 'backup', backup: id, at: new Date().toISOString() };
   saveConfig(cfg);
-  return { tool, file: dest };
+  return { tool: activeTool, file: dest };
 }
 
 // App settings shown in the UI / `aswitch lang`.
@@ -335,11 +403,236 @@ export function setSettings({ lang, routerAutoStart } = {}) {
 }
 
 export function paths() {
-  return { config: configPath(), appDir: appDir(), claude: toolFile('claude'), codex: toolFile('codex'), opencode: toolFile('opencode') };
+  return { config: configPath(), appDir: appDir(), claude: toolFile('claude'), codex: toolFile('codex'), opencode: toolFile('opencode'), gemini: toolFile('gemini'), geminiEnv: toolFile('gemini-env') };
 }
 
 // Is the router needed by the current configuration?
 export function routerNeeded() {
   const r = routerCfg(loadConfig());
-  return !!(r && (r.claude || r.codex));
+  return !!(r && ROUTED_TOOLS.some(k => r[k]));
+}
+
+// ---------------------------------------------------------------------------------------------
+// v0.3.0: fallback chains, profiles (+ per-project), import/export, endpoint ping, usage, MCP, updates.
+
+const FALLBACK_TOOLS = ['claude', 'codex', 'gemini'];
+
+// specs: ["provider:model", ...] tried in order when the primary provider answers 429/5xx or is unreachable.
+export function setFallback(tool, specs = []) {
+  need(FALLBACK_TOOLS.includes(tool), 'err.fallbackTool', { tool, tools: FALLBACK_TOOLS.join(' | ') });
+  const cfg = loadConfig();
+  const list = specs.map(s => {
+    const str = String(s).trim();
+    const i = str.indexOf(':');
+    need(i > 0 && i < str.length - 1, 'err.fallbackSpec', { spec: str });
+    const provider = str.slice(0, i), model = str.slice(i + 1);
+    const p = resolveProvider(cfg, provider);
+    need(p, 'err.unknownProvider', { id: provider });
+    need(tool === 'codex' ? p.openaiBase : (p.anthropicBase || p.openaiBase), 'err.providerNoClaude', { id: provider });
+    return { provider, model };
+  });
+  const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
+  r.fallback = { ...(r.fallback || {}) };
+  if (list.length) r.fallback[tool] = list; else delete r.fallback[tool];
+  if (!Object.keys(r.fallback).length) delete r.fallback;
+  cfg.router = r;
+  if (!ROUTED_TOOLS.some(k => r[k]) && !r.fallback && (r.port || DEFAULT_ROUTER_PORT) === DEFAULT_ROUTER_PORT && r.log === undefined) delete cfg.router;
+  saveConfig(cfg);
+  return getFallback();
+}
+
+export function getFallback() {
+  const r = routerCfg(loadConfig());
+  return Object.fromEntries(FALLBACK_TOOLS.map(t => [t, r?.fallback?.[t] || []]));
+}
+
+// Router request logging (metadata only) — on by default, can be turned off.
+export function setRouterLog(on) {
+  const cfg = loadConfig();
+  const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
+  if (on) delete r.log; else r.log = false;
+  cfg.router = r;
+  if (!ROUTED_TOOLS.some(k => r[k]) && !r.fallback && (r.port || DEFAULT_ROUTER_PORT) === DEFAULT_ROUTER_PORT && r.log === undefined) delete cfg.router;
+  saveConfig(cfg);
+}
+export function routerLogEnabled() { return routerCfg(loadConfig())?.log !== false; }
+
+const PROFILE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/;
+
+// A profile is a named copy of what each tool uses right now (provider/model/fast model or "official").
+export function saveProfile(name, { tools } = {}) {
+  need(name && PROFILE_RE.test(name), 'err.badProfileName');
+  const cfg = loadConfig();
+  const pick = tools || Object.keys(cfg.active || {});
+  const entry = {};
+  for (const tool of pick) {
+    const a = cfg.active?.[tool];
+    if (!a || !TOOLS.includes(tool) || a.provider === 'backup') continue;
+    entry[tool] = a.provider === 'official' ? { provider: 'official' } : { provider: a.provider, model: a.model || null, fastModel: a.fastModel || null };
+  }
+  need(Object.keys(entry).length, 'err.profileEmpty');
+  cfg.profiles = { ...(cfg.profiles || {}), [name]: { tools: entry, at: new Date().toISOString() } };
+  saveConfig(cfg);
+  return cfg.profiles[name];
+}
+
+export function listProfiles() {
+  const cfg = loadConfig();
+  return Object.entries(cfg.profiles || {}).map(([name, p]) => ({ name, ...p }));
+}
+
+export function removeProfile(name) {
+  const cfg = loadConfig();
+  need(cfg.profiles?.[name], 'err.profileNotFound', { name });
+  delete cfg.profiles[name];
+  saveConfig(cfg);
+}
+
+export async function useProfile(name) {
+  const cfg = loadConfig();
+  const p = cfg.profiles?.[name];
+  need(p, 'err.profileNotFound', { name });
+  const results = [];
+  const official = Object.entries(p.tools).filter(([, v]) => v.provider === 'official').map(([k]) => k);
+  if (official.length) results.push(...useOfficial(official.filter(t => OFFICIAL_TOOLS.includes(t))).map(r => ({ ...r, provider: 'official' })));
+  // Group tools that share provider + models so each group is one atomic "use".
+  const groups = new Map();
+  for (const [tool, v] of Object.entries(p.tools)) {
+    if (v.provider === 'official') continue;
+    const k = JSON.stringify([v.provider, v.model, v.fastModel]);
+    groups.set(k, [...(groups.get(k) || []), tool]);
+  }
+  for (const [k, tools] of groups) {
+    const [provider, model, fastModel] = JSON.parse(k);
+    const r = await useProvider({ provider, model: model || undefined, fastModel: fastModel || undefined, tools });
+    results.push(...r.results.map(x => ({ ...x, provider })));
+  }
+  const c2 = loadConfig(); c2.activeProfile = name; saveConfig(c2);
+  return { name, results };
+}
+
+// Per-project profile: the nearest ".aswitch.json" ({"profile": "name"}) from cwd upwards.
+export function projectProfile(cwd = process.cwd()) {
+  let dir = path.resolve(cwd);
+  for (;;) {
+    const f = path.join(dir, '.aswitch.json');
+    if (fs.existsSync(f)) {
+      try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); if (j && typeof j.profile === 'string') return { file: f, profile: j.profile }; } catch { /* ignore invalid file */ }
+    }
+    const up = path.dirname(dir);
+    if (up === dir) return null;
+    dir = up;
+  }
+}
+
+export function setProjectProfile(name, cwd = process.cwd()) {
+  need(loadConfig().profiles?.[name], 'err.profileNotFound', { name });
+  const f = path.join(path.resolve(cwd), '.aswitch.json');
+  fs.writeFileSync(f, JSON.stringify({ profile: name }, null, 2) + '\n');
+  return f;
+}
+
+// Applies the project's profile if the tools are not already on it. Returns the profile name or null.
+export async function applyProjectProfile(cwd = process.cwd()) {
+  const pp = projectProfile(cwd);
+  if (!pp) return null;
+  if (loadConfig().activeProfile === pp.profile) return { ...pp, applied: false };
+  await useProfile(pp.profile);
+  return { ...pp, applied: true };
+}
+
+// Export: custom providers, profiles, fallback chains and settings. Keys only with withKeys (plain text!).
+export function exportConfig({ withKeys = false } = {}) {
+  const cfg = loadConfig();
+  const r = routerCfg(cfg);
+  return {
+    format: 'agent-switchboard', formatVersion: 1, exportedAt: new Date().toISOString(),
+    providers: cfg.providers || {}, profiles: cfg.profiles || {},
+    fallback: r?.fallback || {}, settings: { lang: cfg.lang, routerAutoStart: !!cfg.routerAutoStart, codexKeyMode: cfg.codexKeyMode },
+    ...(withKeys ? { keys: cfg.keys || {} } : {})
+  };
+}
+
+export function importConfig(data, { overwrite = false } = {}) {
+  need(data && data.format === 'agent-switchboard' && data.formatVersion === 1, 'err.badImport');
+  const cfg = loadConfig();
+  const counts = { providers: 0, profiles: 0, keys: 0, fallback: 0 };
+  for (const [id, spec] of Object.entries(data.providers || {})) {
+    if (PRESETS[id] || (cfg.providers[id] && !overwrite)) continue;
+    const old = cfg.providers[id];
+    addProvider(id, spec); counts.providers++;
+    // An imported file must not be able to send an existing saved key to a different server.
+    const now = loadConfig().providers[id];
+    if (old && now && (old.openaiBase !== now.openaiBase || (old.anthropicBase || '') !== (now.anthropicBase || ''))) {
+      const c = loadConfig(); delete c.keys[id]; saveConfig(c);
+    }
+  }
+  const fresh = loadConfig();
+  for (const [name, p] of Object.entries(data.profiles || {})) {
+    if (!PROFILE_RE.test(name) || !p?.tools || typeof p.tools !== 'object' || (fresh.profiles?.[name] && !overwrite)) continue;
+    const tools = {};
+    for (const [tool, v] of Object.entries(p.tools)) {
+      if (!TOOLS.includes(tool) || !v || typeof v.provider !== 'string') continue;
+      tools[tool] = { provider: v.provider, model: typeof v.model === 'string' ? v.model : null, fastModel: typeof v.fastModel === 'string' ? v.fastModel : null };
+    }
+    if (!Object.keys(tools).length) continue;
+    fresh.profiles = { ...(fresh.profiles || {}), [name]: { tools } }; counts.profiles++;
+  }
+  for (const [id, key] of Object.entries(data.keys || {})) {
+    if (typeof key !== 'string' || !key || !resolveProvider(fresh, id) || (fresh.keys[id] && !overwrite)) continue;
+    fresh.keys[id] = key; counts.keys++;
+  }
+  if (data.fallback && typeof data.fallback === 'object') {
+    const r = routerCfg(fresh) || { port: DEFAULT_ROUTER_PORT };
+    for (const tool of FALLBACK_TOOLS) {
+      const list = Array.isArray(data.fallback[tool]) ? data.fallback[tool].filter(f => f && resolveProvider(fresh, f.provider) && typeof f.model === 'string') : [];
+      if (list.length && (overwrite || !r.fallback?.[tool])) { r.fallback = { ...(r.fallback || {}), [tool]: list }; counts.fallback++; }
+    }
+    if (r.fallback) fresh.router = r;
+  }
+  saveConfig(fresh);
+  return counts;
+}
+
+// Endpoint latency check: one authenticated GET per provider (models list when available).
+export async function pingProviders(ids, { fetchImpl = fetch, timeoutMs = 8000 } = {}) {
+  const cfg = loadConfig();
+  const all = listProviderIds(cfg).map(id => resolveProvider(cfg, id)).filter(Boolean);
+  const pick = ids?.length ? ids.map(id => { const p = resolveProvider(cfg, id); need(p, 'err.unknownProvider', { id }); return p; })
+    : all.filter(p => p.noKey ? false : !!getKey(cfg, p));
+  return Promise.all(pick.map(async p => {
+    const key = getKey(cfg, p);
+    const url = p.modelsUrl ? (p.modelsAuth === 'anthropic' ? `${p.modelsUrl}?limit=1` : p.modelsUrl) : (p.openaiBase ? p.openaiBase.replace(/\/$/, '') + '/models' : p.anthropicBase);
+    const headers = { accept: 'application/json' };
+    if (p.modelsAuth === 'anthropic') { headers['x-api-key'] = key; headers['anthropic-version'] = '2023-06-01'; } else if (key && !p.noKey) headers.authorization = `Bearer ${key}`;
+    const started = Date.now();
+    try {
+      const r = await fetchImpl(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+      const ms = Date.now() - started;
+      try { await r.arrayBuffer(); } catch { /* ignore */ }
+      return { id: p.id, url, status: r.status, ms, ok: r.ok, auth: r.status === 401 || r.status === 403 ? 'rejected' : r.ok ? 'ok' : null };
+    } catch (e) {
+      return { id: p.id, url, status: 0, ms: Date.now() - started, ok: false, error: e.name === 'TimeoutError' ? 'timeout' : (e.cause?.code || e.message) };
+    }
+  }));
+}
+
+export { recordUsage, readUsage, summarizeUsage, clearUsage, estimateCost } from './usage.js';
+export { allMcp, listMcp, syncMcp, MCP_TOOLS, MCP_TARGETS } from './mcp.js';
+export { checkForUpdate, compareVersions } from './update.js';
+
+// Usage report for the last `days` days (0 = everything in the log).
+export async function usageReport({ days = 7 } = {}) {
+  const { readUsage, summarizeUsage } = await import('./usage.js');
+  const entries = readUsage({ since: days ? Date.now() - days * 864e5 : 0 });
+  return { days, ...summarizeUsage(entries), recent: entries.slice(-100).reverse() };
+}
+
+// Router usage callback: adds a cost estimate when the provider publishes prices (OpenRouter).
+export async function routerUsageHook() {
+  const { recordUsage, estimateCost } = await import('./usage.js');
+  return entry => {
+    if (!routerLogEnabled()) return;
+    recordUsage({ ...entry, cost: estimateCost(entry.provider, entry.model, entry.in, entry.out) });
+  };
 }

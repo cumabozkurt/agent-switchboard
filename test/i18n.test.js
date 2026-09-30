@@ -85,8 +85,8 @@ test('i18n: dil çözümleme sırası ve normalleştirme', () => {
     process.env.ASWITCH_LANG = 'tr';
     i18n.resetLangCache(); assert.equal(i18n.getLang(), 'tr', 'ASWITCH_LANG config.json\'dan önce gelir');
     i18n.setLang('en'); assert.equal(i18n.getLang(), 'en', 'setLang (ör. --lang) her şeyden önce gelir');
-    assert.equal(i18n.t('err.unknownTool', { tool: 'x' }), 'Unknown tool: x (claude | codex | opencode)');
-    assert.equal(i18n.t('err.unknownTool', { tool: 'x' }, 'tr'), 'Bilinmeyen araç: x (claude | codex | opencode)');
+    assert.equal(i18n.t('err.unknownTool', { tool: 'x' }), 'Unknown tool: x (claude | codex | opencode | gemini)');
+    assert.equal(i18n.t('err.unknownTool', { tool: 'x' }, 'tr'), 'Bilinmeyen araç: x (claude | codex | opencode | gemini)');
     assert.throws(() => i18n.setLang('xx'), /xx/);
   } finally {
     i18n.setLang(null); i18n.setLocaleHint(null);
