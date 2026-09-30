@@ -14,7 +14,7 @@ The v0.3.0 and v0.2.0 reports below still apply to the unchanged parts.
 
 Method:
 - `npm test`: 157 tests (156 plus a real OS-keychain round-trip that runs on macOS/Windows), on macOS/Windows/Linux × Node 18/20/22 in CI.
-- The real Electron 44 app driven by Playwright (`desktop/test/e2e.mjs`, 54 checks) on **Linux, macOS and Windows** in CI. It uses a local mock upstream, so no internet is needed.
+- The real Electron 44 app driven by Playwright (`desktop/test/e2e.mjs`, 54 checks; 51 on Windows) on **Linux, macOS and Windows** in CI. It uses a local mock upstream, so no internet is needed.
 - The **real Gemini CLI 0.62.0** (`@google/gemini-cli` from npm) run headless through the router in a throwaway HOME (`scripts/gemini-cli-e2e.mjs`, CI job `gemini-cli`).
 - The Electron 33 → 44 breaking-change notes were read against `desktop/main.js`, and a full `release.yml` build ran on the Dependabot branch.
 - Sandbox as before: `ASWITCH_HOME_OVERRIDE`, `ASWITCH_DIR`, `XDG_CONFIG_HOME`; `CODEX_HOME`, `CLAUDE_CONFIG_DIR` and `GEMINI_CLI_HOME` unset. The real `~/.claude`, `~/.codex`, `~/.gemini` and OpenCode configs were never touched.
@@ -38,6 +38,7 @@ Method:
 | Model lists | Remote lists were stored as-is | Sanitized: ≤ 5000 entries, ids ≤ 200 chars without control characters, finite non-negative numbers; test |
 | Gemini CLI | Gemini CLI 0.62 loads `~/.gemini/.env` **only in trusted folders**, and in headless mode refuses untrusted folders (exit 55) | **Documented + hint after apply**: trust the folder, use `aswitch run gemini`, or `--skip-trust` / `GEMINI_CLI_TRUST_WORKSPACE=true` for headless runs. With that, the real CLI works end to end: streaming, tool declarations translated, `list_directory` round-trip, usage logged |
 | UI | Models tab: a late answer for the previously selected provider could clear the current table (seen once the e2e went offline) | **Fixed**: stale answers are ignored |
+| e2e (Windows) | Playwright's `_electron.launch` hangs on Windows with Electron 42+: it attaches to the Node inspector and the app never reaches "ready". The same binary starts normally without Playwright (checked in a diagnostic CI run); another project reports the same with Electron 42 | **Worked around**: on Windows the e2e starts Electron itself, drives the window with `chromium.connectOverCDP`, and evaluates main-process code through the Node inspector (hooks only with `ASWITCH_E2E_HOOKS=1`). All 54 checks pass on Linux on that path too (`E2E_CDP=1`). On Windows 51 run, because the 3 keychain UI checks use a stand-in `secret-tool` that exists only on Linux/macOS; the real Windows Credential Manager round-trip runs in `npm test` |
 | e2e | The breaker save raced a policy reload; the second-instance check raced Playwright's debugger attach | **Fixed** (re-fill + poll `/health`; the second instance is now a plain child process) |
 
 ## CodeQL
@@ -52,7 +53,9 @@ After the v0.3.0 triage, alerts #6–#12 were open. Each was re-checked for v0.4
 | 9 | `js/file-access-to-http` | `src/ui/server.js` | **Fixed**: the router-probe port comes from config and is now validated by `netguard.checkPort` |
 | 10 | `js/http-to-file-access` | `scripts/snapshot-models.js` | **Dismissed: won't fix.** A maintainer script that writes public model lists to `models/*.json` on purpose; data goes through `normalizeModels` |
 | 11, 12 | `js/http-to-file-access` | `src/fsutil.js` | **Dismissed: won't fix.** The atomic writer behind the model cache; data sanitized by `normalizeModels`, parsed only as JSON |
-| 13–23 | URL substring checks, log lines from page text | new tests (`e2e.mjs`, `links-keychain.test.js`, `gemini-cli-e2e.mjs`) | **Fixed** in the tests: exact comparisons, and single-line log output |
+| 13–21 | URL substring checks, log lines from page text | new tests (`e2e.mjs`, `links-keychain.test.js`, `gemini-cli-e2e.mjs`) | **Fixed** in the tests: exact comparisons, and single-line log output |
+| 22, 23 | `js/log-injection` | `desktop/test/e2e.mjs`, `scripts/gemini-cli-e2e.mjs` | **Dismissed: used in tests.** Test output that goes only to the CI log, already reduced to one line with control characters stripped |
+| 24 | `js/unvalidated-dynamic-method-call` | `desktop/test/e2e.mjs` (inspector client) | **Fixed**: only integer ids are looked up, and only functions are called |
 
 The dismissals were made through `gh api -X PATCH …/code-scanning/alerts/N` with the comments above (GitHub limits each comment to 280 characters).
 

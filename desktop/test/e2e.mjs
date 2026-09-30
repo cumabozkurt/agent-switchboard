@@ -92,7 +92,13 @@ async function launchCdp() {
   const ws = new WebSocket(urls.node);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
   let seq = 0; const pending = new Map();
-  ws.onmessage = m => { const d = JSON.parse(m.data); pending.get(d.id)?.(d); pending.delete(d.id); };
+  ws.onmessage = m => {
+    const d = JSON.parse(m.data);
+    if (!Number.isInteger(d.id)) return; // events (no id) are not ours
+    const done = pending.get(d.id);
+    pending.delete(d.id);
+    if (typeof done === 'function') done(d);
+  };
   const call = (method, params) => new Promise(r => { const id = ++seq; pending.set(id, r); ws.send(JSON.stringify({ id, method, params })); });
   const evaluate = async fn => {
     const d = await call('Runtime.evaluate', { expression: `(${fn})(globalThis.__aswitchE2E)`, returnByValue: true, awaitPromise: true });
