@@ -4,6 +4,7 @@ import * as core from '../src/core.js';
 import { startRouter } from '../src/router.js';
 import { openRouterLogin } from '../src/oauth.js';
 import { startUi } from '../src/ui/server.js';
+import { parseDeepLink, applyDeepLink, makeDeepLink } from '../src/deeplink.js';
 import { flags, envLine, defaultShell, extractLang } from '../src/cli.js';
 import { t, setLang, getLang, LANGS, LANG_NAMES } from '../src/i18n/index.js';
 
@@ -36,6 +37,31 @@ function askHidden(q) {
     };
     stdin.on('data', onData);
   });
+}
+
+function askYesNo(q) {
+  if (!process.stdin.isTTY) return Promise.resolve(false);
+  return new Promise(resolve => {
+    process.stdout.write(q + ' ');
+    process.stdin.resume(); process.stdin.setEncoding('utf8');
+    process.stdin.once('data', d => { process.stdin.pause(); resolve(/^(y|yes|e|evet)$/i.test(String(d).trim())); });
+  });
+}
+
+function printLinkPreview(pv) {
+  for (const p of pv.providers) {
+    console.log(`${t('ui.link.provider')}: ${p.id} (${p.label})${p.exists ? '  — ' + t('ui.link.exists') : ''}`);
+    for (const k of ['openaiBase', 'anthropicBase', 'modelsUrl']) if (p[k]) console.log(`  ${k.padEnd(14)} ${p[k]}`);
+    if (p.error) console.log('  ! ' + p.error);
+  }
+  for (const p of pv.profiles) {
+    console.log(`${t('ui.link.profile')}: ${p.name}${p.exists ? '  — ' + t('ui.link.exists') : ''}`);
+    for (const [tool, v] of Object.entries(p.tools)) console.log(`  ${toolName(tool).padEnd(12)} ${v}`);
+    if (p.missing.length) console.log('  ! ' + t('ui.link.missing', { list: p.missing.join(', ') }));
+  }
+  if (pv.fallback.length) console.log(`${t('ui.fallback.title')}: ${pv.fallback.map(toolName).join(', ')}`);
+  if (pv.keysStripped) console.log('⚠ ' + t('ui.link.keysStripped'));
+  console.log(t('ui.link.noKeys'));
 }
 
 const toolsOf = f => (typeof f.tools === 'string' ? f.tools.split(',').map(s => s.trim()).filter(Boolean) : undefined);
@@ -335,6 +361,30 @@ async function main() {
         console.log(`${toolName(tool)} (${v.servers.length})${v.error ? '  ! ' + v.error : ''}`);
         for (const sv of v.servers) console.log(`  ${sv.name.padEnd(20)} ${sv.type.padEnd(5)} ${sv.type === 'stdio' ? [sv.command, ...sv.args].join(' ') : sv.url}`);
       }
+      break;
+    }
+    case 'link': {
+      const [a, b, c] = f._;
+      if (a === 'make') { console.log(makeDeepLink(b, c)); break; }
+      if (!a) { help(); process.exitCode = 1; break; }
+      const parsed = parseDeepLink(a);
+      if (f.json && !f.yes) { console.log(JSON.stringify(parsed.preview, null, 2)); break; }
+      printLinkPreview(parsed.preview);
+      const ok = f.yes || await askYesNo(t('cli.linkConfirm'));
+      if (!ok) { console.log(t(process.stdin.isTTY ? 'cli.cancelled' : 'cli.linkNeedYes')); process.exitCode = 1; break; }
+      const r = applyDeepLink(parsed, { overwrite: !!f.overwrite });
+      console.log(t('ui.import.done', r.counts));
+      break;
+    }
+    case 'keychain': {
+      const [sub] = f._;
+      if (sub === 'on' || sub === 'off') {
+        const r = core.setKeyStore(sub === 'on' ? 'keychain' : 'file');
+        console.log(t('cli.keychainMoved', { n: r.moved.length, store: t('ui.keychain.store.' + r.store) }));
+      } else if (sub && sub !== 'status') { help(); process.exitCode = 1; break; }
+      const k = core.getKeyStore();
+      if (f.json) { console.log(JSON.stringify(k, null, 2)); break; }
+      console.log(t('cli.keychainStatus', { store: t('ui.keychain.store.' + k.store), backend: k.backend ? t('ui.keychain.backend.' + k.backend) : t('ui.keychain.unavailable'), inKeychain: k.inKeychain, inFile: k.inFile }));
       break;
     }
     case 'update': {

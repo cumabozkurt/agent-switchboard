@@ -15,6 +15,7 @@ import { restoreOriginal, listBackups, backupFile, ensureOriginal, snapshot } fr
 import { claudeSettingsPath, codexConfigPath, appDir, geminiSettingsPath, geminiEnvPath } from './paths.js';
 import { opencodeFile } from './targets/opencode.js';
 import { configPath } from './config.js';
+import { KEYCHAIN_REF, keychainBackend, kcSet, kcGet, kcDelete } from './keychain.js';
 import { t, LANGS, normalizeLang, resetLangCache, getLang } from './i18n/index.js';
 
 export const TOOLS = ['claude', 'codex', 'opencode', 'gemini'];
@@ -244,8 +245,50 @@ export function providers() {
 export function setKey(pid, key) {
   const cfg = loadConfig();
   need(resolveProvider(cfg, pid), 'err.unknownProvider', { id: pid });
-  if (key) cfg.keys[pid] = key; else delete cfg.keys[pid];
+  storeKey(cfg, pid, key);
   saveConfig(cfg);
+}
+
+// Writes a key into cfg (file) or the OS keychain (cfg.keyStore === 'keychain'); '' removes it.
+function storeKey(cfg, pid, key) {
+  const had = cfg.keys[pid];
+  if (cfg.keyStore === 'keychain' && key) { kcSet(pid, key); cfg.keys[pid] = KEYCHAIN_REF; return; }
+  if (had === KEYCHAIN_REF) { try { kcDelete(pid); } catch { /* already gone */ } }
+  if (key) cfg.keys[pid] = key; else delete cfg.keys[pid];
+}
+
+export function getKeyStore() {
+  const cfg = loadConfig();
+  const backend = keychainBackend();
+  return { store: cfg.keyStore === 'keychain' ? 'keychain' : 'file', backend, available: !!backend,
+    inKeychain: Object.values(cfg.keys).filter(v => v === KEYCHAIN_REF).length, inFile: Object.values(cfg.keys).filter(v => v && v !== KEYCHAIN_REF).length };
+}
+
+// Moves every saved key to the OS keychain (each one read back before the file copy is removed) or back to the file.
+export function setKeyStore(store) {
+  need(['keychain', 'file'].includes(store), 'err.badKeyStore');
+  const cfg = loadConfig();
+  const moved = [];
+  if (store === 'keychain') {
+    need(keychainBackend(), 'err.noKeychain');
+    for (const [id, key] of Object.entries(cfg.keys)) {
+      if (!key || key === KEYCHAIN_REF) continue;
+      kcSet(id, key);
+      need(kcGet(id) === key, 'err.keychainVerify', { id });
+      cfg.keys[id] = KEYCHAIN_REF; moved.push(id);
+    }
+  } else {
+    for (const [id, key] of Object.entries(cfg.keys)) {
+      if (key !== KEYCHAIN_REF) continue;
+      const real = kcGet(id);
+      need(real, 'err.keychainRead', { id });
+      cfg.keys[id] = real; moved.push(id);
+    }
+    for (const id of moved) { try { kcDelete(id); } catch { /* keep going */ } }
+  }
+  if (store === 'keychain') cfg.keyStore = 'keychain'; else delete cfg.keyStore;
+  saveConfig(cfg);
+  return { ...getKeyStore(), moved };
 }
 
 export function getProviderKey(pid) {
@@ -275,7 +318,8 @@ export function addProvider(id, spec = {}) {
 export function removeProvider(id) {
   const cfg = loadConfig();
   need(cfg.providers[id], 'err.notCustom', { id });
-  delete cfg.providers[id]; delete cfg.keys[id];
+  storeKey(cfg, id, '');
+  delete cfg.providers[id];
   saveConfig(cfg);
 }
 
@@ -660,7 +704,7 @@ export function exportConfig({ withKeys = false } = {}) {
     format: 'agent-switchboard', formatVersion: 1, exportedAt: new Date().toISOString(),
     providers: cfg.providers || {}, profiles: cfg.profiles || {},
     fallback: r?.fallback || {}, settings: { lang: cfg.lang, routerAutoStart: !!cfg.routerAutoStart, codexKeyMode: cfg.codexKeyMode },
-    ...(withKeys ? { keys: cfg.keys || {} } : {})
+    ...(withKeys ? { keys: Object.fromEntries(Object.entries(cfg.keys || {}).map(([id, k]) => [id, k === KEYCHAIN_REF ? kcGet(id) : k]).filter(([, k]) => k)) } : {})
   };
 }
 
@@ -675,7 +719,7 @@ export function importConfig(data, { overwrite = false } = {}) {
     // An imported file must not be able to send an existing saved key to a different server.
     const now = loadConfig().providers[id];
     if (old && now && (old.openaiBase !== now.openaiBase || (old.anthropicBase || '') !== (now.anthropicBase || ''))) {
-      const c = loadConfig(); delete c.keys[id]; saveConfig(c);
+      const c = loadConfig(); storeKey(c, id, ''); saveConfig(c);
     }
   }
   const fresh = loadConfig();
@@ -691,7 +735,7 @@ export function importConfig(data, { overwrite = false } = {}) {
   }
   for (const [id, key] of Object.entries(data.keys || {})) {
     if (typeof key !== 'string' || !key || !resolveProvider(fresh, id) || (fresh.keys[id] && !overwrite)) continue;
-    fresh.keys[id] = key; counts.keys++;
+    storeKey(fresh, id, key); counts.keys++;
   }
   if (data.fallback && typeof data.fallback === 'object') {
     const r = routerCfg(fresh) || { port: DEFAULT_ROUTER_PORT };

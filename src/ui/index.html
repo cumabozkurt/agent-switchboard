@@ -311,6 +311,20 @@
         <label for="ioFile" data-i18n="ui.io.import"></label><input id="ioFile" type="file" accept="application/json,.json">
         <div class="checks"><label><input type="checkbox" id="ioOverwrite"> <span data-i18n="ui.io.overwrite"></span></label></div>
       </div>
+      <div class="card" id="linkCard"><h3 data-i18n="ui.link.title"></h3><p class="muted" data-i18n="ui.link.lead"></p>
+        <label for="lkKind" data-i18n="ui.link.kind"></label>
+        <select id="lkKind"><option value="provider" data-i18n="ui.link.provider"></option><option value="profile" data-i18n="ui.link.profile"></option><option value="all" data-i18n="ui.link.all"></option></select>
+        <label for="lkId" data-i18n="ui.link.item"></label><select id="lkId"></select>
+        <button id="lkMake" data-i18n="ui.link.make"></button>
+        <input id="lkOut" readonly data-i18n-aria-label="ui.link.out" style="width:100%;margin-top:8px">
+        <label for="lkIn" data-i18n="ui.link.open"></label>
+        <input id="lkIn" placeholder="aswitch://provider?id=…" style="width:100%">
+        <button id="lkPreview" data-i18n="ui.link.preview"></button>
+      </div>
+      <div class="card" id="kcCard"><h3 data-i18n="ui.keychain.title"></h3><p class="muted" data-i18n="ui.keychain.lead"></p>
+        <p id="kcState" role="status" aria-live="polite"></p>
+        <button id="kcOn" data-i18n="ui.keychain.on"></button> <button id="kcOff" data-i18n="ui.keychain.off"></button>
+      </div>
       <div class="card"><h3 data-i18n="ui.update.title"></h3><p class="muted" data-i18n="ui.update.lead"></p>
         <button id="updCheck" data-i18n="ui.update.check"></button> <span id="updState" role="status" aria-live="polite"></span></div>
       <div class="card"><h3 data-i18n="ui.settings.files"></h3><dl class="kv" id="pathsInfo"></dl></div>
@@ -321,6 +335,12 @@
     <div class="card"><h3 data-i18n="ui.log"></h3><pre id="log" role="log" aria-live="polite"></pre></div>
   </main>
 </div>
+<dialog id="linkDialog" aria-labelledby="ldTitle" style="max-width:640px;border:1px solid var(--b);border-radius:12px;background:var(--card);color:var(--fg)">
+  <h3 id="ldTitle" data-i18n="ui.link.confirmTitle"></h3>
+  <div id="ldBody"></div>
+  <div class="checks"><label><input type="checkbox" id="ldOverwrite"> <span data-i18n="ui.io.overwrite"></span></label></div>
+  <button id="ldApply" class="primary" data-i18n="ui.link.apply"></button> <button id="ldCancel" data-i18n="ui.link.cancel"></button>
+</dialog>
 <script>
 const BOOT = /*__BOOT__*/null;
 const token = location.hash.slice(1);
@@ -399,8 +419,8 @@ function selectTab(name, focus) {
   }
   if (name === 'restore') loadBackups().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
   if (name === 'env') loadEnv().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
-  if (name === 'models' && !$('mRows').children.length && $('mProv').value) loadModelTable(false);
-  const loaders = { profiles: loadProfiles, usage: loadUsage, mcp: loadMcp, router: () => Promise.all([loadFallback(), loadPolicies()]) };
+  if (name === 'models' && !$('mRows').children.length && $('mProv').value) loadModelTable(false).catch(e => log(t('ui.error', { msg: e.message }), 'err'));
+  const loaders = { settings: () => Promise.all([fillLinkIds(), loadKeychain()]), profiles: loadProfiles, usage: loadUsage, mcp: loadMcp, router: () => Promise.all([loadFallback(), loadPolicies()]) };
   if (loaders[name]) loaders[name]().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
 }
 for (const tab of tabs) {
@@ -566,7 +586,9 @@ async function loadModelTable(refreshList) {
   const pid = $('mProv').value;
   $('mCount').textContent = t('ui.loading');
   let ms;
-  try { ms = await fetchModels(pid, refreshList); } catch (e) { $('mCount').textContent = ''; fill($('mRows'), ); throw e; }
+  // A slower answer for a provider that is no longer selected must not overwrite (or clear) the current table.
+  try { ms = await fetchModels(pid, refreshList); } catch (e) { if (pid !== $('mProv').value) return []; $('mCount').textContent = ''; fill($('mRows'), ); throw e; }
+  if (pid !== $('mProv').value) return ms;
   renderModelTable();
   return ms;
 }
@@ -755,6 +777,65 @@ function showUpdate(u, manual) {
   if (manual) $('updState').textContent = u.update ? t('cli.updateAvailable', { latest: u.latest, current: u.current }) : t('cli.upToDate', { current: u.current });
 }
 $('updCheck').onclick = act($('updCheck'), async () => showUpdate(await api('update', { force: true }), true));
+
+// ---------------------------------------------------------------- deep links (aswitch://) — always confirmed, never keys
+async function fillLinkIds() {
+  const kind = $('lkKind').value;
+  const items = kind === 'provider' ? state.providers.filter(p => p.custom).map(p => p.id)
+    : kind === 'profile' ? (await api('profiles')).profiles.map(p => p.name) : [];
+  fill($('lkId'), ...items.map(i => h('option', { value: i }, i)));
+  $('lkId').disabled = kind === 'all';
+}
+$('lkKind').onchange = () => fillLinkIds().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
+$('lkMake').onclick = act($('lkMake'), async () => {
+  const r = await api('link/make', { kind: $('lkKind').value, id: $('lkId').value });
+  $('lkOut').value = r.url; $('lkOut').select();
+  try { await navigator.clipboard.writeText(r.url); log(t('ui.link.copied'), 'ok'); } catch { log(t('ui.link.made'), 'ok'); }
+});
+let pendingLink = null;
+async function showLinkDialog(url) {
+  selectTab('settings');
+  $('lkIn').value = url;
+  const pv = await api('link/preview', { url });
+  pendingLink = url;
+  const rows = [];
+  for (const p of pv.providers) rows.push(h('p', {}, h('strong', {}, t('ui.link.provider') + ': ' + p.id), ' (' + p.label + ')', p.exists ? ' — ' + t('ui.link.exists') : '',
+    h('dl', { class: 'kv' }, ...['openaiBase', 'anthropicBase', 'modelsUrl'].filter(k => p[k]).flatMap(k => [h('dt', {}, k), h('dd', {}, h('code', {}, p[k]))])),
+    p.error ? h('span', { class: 'err' }, '! ' + p.error) : null));
+  for (const p of pv.profiles) rows.push(h('p', {}, h('strong', {}, t('ui.link.profile') + ': ' + p.name), p.exists ? ' — ' + t('ui.link.exists') : '',
+    h('dl', { class: 'kv' }, ...Object.entries(p.tools).flatMap(([tool, v]) => [h('dt', {}, toolName(tool)), h('dd', {}, v)])),
+    p.missing.length ? h('span', { class: 'warn' }, '! ' + t('ui.link.missing', { list: p.missing.join(', ') })) : null));
+  if (pv.fallback.length) rows.push(h('p', {}, t('ui.fallback.title') + ': ' + pv.fallback.map(toolName).join(', ')));
+  if (pv.keysStripped) rows.push(h('p', { class: 'warn' }, '⚠ ' + t('ui.link.keysStripped')));
+  rows.push(h('p', { class: 'muted' }, t('ui.link.noKeys')));
+  fill($('ldBody'), ...rows);
+  $('ldApply').disabled = pv.providers.some(p => p.error);
+  $('ldOverwrite').checked = false;
+  $('linkDialog').showModal();
+}
+window.openDeepLink = url => showLinkDialog(url).catch(e => log(t('ui.error', { msg: e.message }), 'err'));
+$('lkPreview').onclick = act($('lkPreview'), () => showLinkDialog($('lkIn').value.trim()));
+$('ldCancel').onclick = () => { pendingLink = null; $('linkDialog').close(); log(t('ui.link.cancelled')); };
+$('ldApply').onclick = act($('ldApply'), async () => {
+  const r = await api('link/apply', { url: pendingLink, overwrite: $('ldOverwrite').checked });
+  $('linkDialog').close(); pendingLink = null;
+  log(t('ui.import.done', r.counts), 'ok'); await refresh(); fillLinkIds().catch(() => {});
+});
+
+// ---------------------------------------------------------------- OS keychain
+async function loadKeychain() {
+  const k = await api('keychain');
+  $('kcState').textContent = t('cli.keychainStatus', { store: t('ui.keychain.store.' + k.store), backend: k.backend ? t('ui.keychain.backend.' + k.backend) : t('ui.keychain.unavailable'), inKeychain: k.inKeychain, inFile: k.inFile });
+  $('kcOn').disabled = !k.available || (k.store === 'keychain' && !k.inFile);
+  $('kcOff').disabled = k.store === 'file' && !k.inKeychain;
+}
+const setStore = store => async () => {
+  const r = await api('keychain/set', { store });
+  log(t('cli.keychainMoved', { n: r.moved.length, store: t('ui.keychain.store.' + r.store) }), 'ok');
+  await loadKeychain(); await refresh();
+};
+$('kcOn').onclick = act(null, setStore('keychain'));
+$('kcOff').onclick = act(null, setStore('file'));
 
 // ---------------------------------------------------------------- boot
 (async () => {

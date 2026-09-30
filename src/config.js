@@ -2,6 +2,7 @@ import path from 'node:path';
 import { appDir } from './paths.js';
 import { readJsonStrict, writeJson, mkdirPrivate } from './fsutil.js';
 import { t } from './i18n/index.js';
+import { KEYCHAIN_REF, kcGet } from './keychain.js';
 
 export function configPath() { return path.join(appDir(), 'config.json'); }
 
@@ -21,7 +22,10 @@ export function saveConfig(cfg) {
 // Anahtar önceliği: kayıtlı anahtar > ortam değişkeni
 export function getKey(cfg, provider) {
   if (provider.noKey) return 'ollama';
-  return cfg.keys?.[provider.id] || (provider.keyEnv && process.env[provider.keyEnv]) || '';
+  const saved = cfg.keys?.[provider.id];
+  // "@keychain": the key lives in the OS keychain (see keychain.js); an unreadable keychain falls back to the env var.
+  const key = saved === KEYCHAIN_REF ? kcGet(provider.id) : saved;
+  return key || (provider.keyEnv && process.env[provider.keyEnv]) || '';
 }
 
 export function mask(key) {

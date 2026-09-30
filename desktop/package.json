@@ -20,6 +20,14 @@
     "appId": "io.github.cumabozkurt.agentswitchboard",
     "productName": "Agent Switchboard",
     "icon": "assets/icon.png",
+    "protocols": [
+      {
+        "name": "Agent Switchboard link",
+        "schemes": [
+          "aswitch"
+        ]
+      }
+    ],
     "files": [
       "main.js",
       "app-src/**",

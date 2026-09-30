@@ -11,9 +11,23 @@ let quitting = false;
 let tray = null;
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+// aswitch:// deep links (share a provider/profile). The page shows a confirmation dialog; nothing is applied
+// automatically and links never carry keys. Windows/Linux pass the link on the command line, macOS via open-url.
+const linkIn = argv => (argv || []).find(a => typeof a === 'string' && /^aswitch:\/\//i.test(a) && a.length <= 16384) || null;
+let pendingLink = linkIn(process.argv);
+function deliverLink(url) {
+  if (!url) return;
+  if (!win || win.webContents.isLoading()) { pendingLink = url; return; }
+  showWindow();
+  win.webContents.executeJavaScript(`window.openDeepLink && window.openDeepLink(${JSON.stringify(url)})`).catch(() => {});
+}
+app.on('open-url', (e, url) => { e.preventDefault(); deliverLink(url); });
+// Register the scheme only for the installed app (dev/test runs must not touch the desktop's protocol handlers).
+if (app.isPackaged && !process.env.ASWITCH_NO_PROTOCOL) app.setAsDefaultProtocolClient('aswitch');
+
 // One instance only: a second launch focuses the existing window (two apps would fight over the router port).
 if (!app.requestSingleInstanceLock()) app.quit();
-app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+app.on('second-instance', (e, argv) => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } deliverLink(linkIn(argv)); });
 
 function buildMenu() {
   const isMac = process.platform === 'darwin';
@@ -105,6 +119,7 @@ async function create() {
   win.on('page-title-updated', e => e.preventDefault());
   win.on('closed', () => { win = null; });
   await win.loadURL(ui.url);
+  if (pendingLink) { const u = pendingLink; pendingLink = null; deliverLink(u); }
 }
 
 app.whenReady().then(create);

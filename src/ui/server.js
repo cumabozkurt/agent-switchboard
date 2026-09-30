@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as core from '../core.js';
+import { parseDeepLink, applyDeepLink, makeDeepLink } from '../deeplink.js';
 import { openUrl } from '../open.js';
 import { openRouterLogin } from '../oauth.js';
 import { startRouter } from '../router.js';
@@ -189,6 +190,11 @@ export async function startUi({ port = 4567, open = true, locale, onLangChange, 
         case '/api/profile/remove': core.removeProfile(str(body.name)); return json(200, { ok: true });
         case '/api/export': return json(200, core.exportConfig({ withKeys: !!body.withKeys }));
         case '/api/import': return json(200, core.importConfig(body.data, { overwrite: !!body.overwrite }));
+        case '/api/link/preview': { const p = parseDeepLink(str(body.url)); return json(200, { kind: p.kind, ...p.preview }); }
+        case '/api/link/apply': return json(200, applyDeepLink(str(body.url), { overwrite: !!body.overwrite }));
+        case '/api/link/make': return json(200, { url: makeDeepLink(str(body.kind), str(body.id)) });
+        case '/api/keychain': return json(200, core.getKeyStore());
+        case '/api/keychain/set': return json(200, core.setKeyStore(str(body.store)));
         case '/api/mcp': return json(200, core.allMcp());
         case '/api/mcp/sync': return json(200, core.syncMcp({ from: str(body.from) || 'claude', to: Array.isArray(body.to) ? body.to : undefined, overwrite: !!body.overwrite }));
         case '/api/update': return json(200, await core.checkForUpdate(VERSION, { force: !!body.force }));
