@@ -566,5 +566,6 @@ Genel seçenekler:
   'ui.keychain.backend.windows': "Windows Kimlik Bilgisi Yöneticisi",
   'ui.keychain.backend.linux': "Linux Secret Service (secret-tool)",
   'ui.keychain.backend.fake': "test arka ucu",
-  'ui.keychain.unavailable': "kullanılamıyor"
+  'ui.keychain.unavailable': "kullanılamıyor",
+  'cli.geminiTrust': "Gemini CLI ~/.gemini/.env dosyasını yalnızca güvendiğiniz klasörlerde okur. Gemini CLI sorduğunda klasöre güvenin ya da \"aswitch run gemini\" ile başlatın (başsız -p çalıştırmaları ayrıca --skip-trust ya da GEMINI_CLI_TRUST_WORKSPACE=true ister)."
 };

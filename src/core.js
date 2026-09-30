@@ -142,7 +142,7 @@ export async function useProvider({ tools = defaultTools(), provider: pid, model
     } else if (tool === 'gemini') {
       const file = applyGemini({ provider, key, model, routerUrl, mode: plan.gemini });
       if (plan.gemini === 'router') router.gemini = { provider: pid, model, fastModel: fastModel || null }; else delete router.gemini;
-      results.push({ tool, file, viaRouter: plan.gemini === 'router' });
+      results.push({ tool, file, viaRouter: plan.gemini === 'router', geminiTrust: true });
     }
     cfg.active[tool] = { provider: pid, model: model || null, fastModel: fastModel || null, at: new Date().toISOString() };
   }

@@ -573,7 +573,8 @@ function renderApply() {
   box.classList.remove('hidden');
   const items = r.results.map(x => h('li', {}, h('b', {}, toolName(x.tool)), ' → ', h('code', {}, x.file),
     x.viaRouter ? h('div', { class: router.state === 'stopped' ? 'warn' : 'ok' }, router.state === 'stopped' ? t('ui.apply.viaRouterStopped') : t('ui.apply.viaRouterOk', { port: router.port })) : null,
-    x.keyEnv ? h('div', { class: 'muted' }, t('ui.apply.keyEnv', { env: x.keyEnv, tool: x.tool }), ' ', h('button', { 'data-goto': 'env' }, t('ui.tab.env'))) : null));
+    x.keyEnv ? h('div', { class: 'muted' }, t('ui.apply.keyEnv', { env: x.keyEnv, tool: x.tool }), ' ', h('button', { 'data-goto': 'env' }, t('ui.tab.env'))) : null,
+    x.geminiTrust ? h('div', { class: 'muted' }, t('cli.geminiTrust')) : null));
   const needStart = r.results.some(x => x.viaRouter) && router.state === 'stopped';
   fill(box, h('h3', {}, t('ui.apply.done', { provider: r.provider, model: r.model || t('ui.defaultModel') })), h('ul', {}, items),
     r.routerAutoStarted ? h('p', { class: 'ok' }, t('ui.apply.autoStarted', { port: r.router.port })) : null,

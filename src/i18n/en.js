@@ -566,5 +566,6 @@ Global options:
   'ui.keychain.backend.windows': "Windows Credential Manager",
   'ui.keychain.backend.linux': "Secret Service (secret-tool)",
   'ui.keychain.backend.fake': "test backend",
-  'ui.keychain.unavailable': "not available"
+  'ui.keychain.unavailable': "not available",
+  'cli.geminiTrust': "Gemini CLI reads ~/.gemini/.env only in folders you have trusted. Trust the folder when Gemini CLI asks, or start it with \"aswitch run gemini\" (headless -p runs also need --skip-trust or GEMINI_CLI_TRUST_WORKSPACE=true)."
 };

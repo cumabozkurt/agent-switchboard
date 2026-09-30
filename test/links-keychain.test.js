@@ -160,7 +160,7 @@ test('anahtar zinciri: gerçek işletim sistemi deposu (CI macOS/Windows)', { sk
   const secret = 'sk-ci-' + Math.random().toString(36).slice(2) + '-ü';
   kc.kcSet(acct, secret);
   kc.clearKeychainCache();
-  assert.equal(kc.kcGet(acct), secret);
+  assert.equal(kc.kcGet(acct), secret, kc.lastKeychainError());
   kc.kcDelete(acct);
   kc.clearKeychainCache();
   assert.equal(kc.kcGet(acct), '');

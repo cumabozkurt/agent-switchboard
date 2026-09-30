@@ -10,6 +10,8 @@ import path from 'node:path';
 export const KEYCHAIN_REF = '@keychain';
 export const SERVICE = 'agent-switchboard';
 const cache = new Map();
+let lastErr = '';
+export const lastKeychainError = () => lastErr;
 
 function onPath(bin) {
   const exts = process.platform === 'win32' ? ['.exe', '.cmd', ''] : [''];
@@ -52,9 +54,10 @@ public static class AswCred {
 }
 "@
 `;
-function winPs(body) {
-  const r = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', '-'], WIN_CS + body + '\n');
-  return r;
+// The script travels as -EncodedCommand (no secret in it); the secret goes over stdin as base64 (ASCII-safe).
+function winPs(body, input = '') {
+  const script = "$ErrorActionPreference = 'Stop'\n" + WIN_CS + body;
+  return run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], input);
 }
 const b64 = s => Buffer.from(s, 'utf8').toString('base64');
 const psStr = s => `[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64(s)}'))`;
@@ -63,8 +66,8 @@ export function kcSet(account, secret, backend = keychainBackend()) {
   const acct = safeAcct(account);
   if (!secret) return kcDelete(acct, backend);
   let r;
-  if (backend === 'macos') r = run('security', ['-i'], `add-generic-password -U -s ${SERVICE} -a ${acct} -l ${SERVICE} -X ${hex(secret)}\n`);
-  else if (backend === 'windows') r = winPs(`if ([AswCred]::Write(${psStr(`${SERVICE}:${acct}`)}, ${psStr(secret)})) { 'ok' } else { exit 3 }`);
+  if (backend === 'macos') r = run('security', ['-i'], `add-generic-password -U -s ${SERVICE} -a ${acct} -l ${SERVICE} -X ${hex('b64:' + b64(secret))}\n`);
+  else if (backend === 'windows') r = winPs(`$s = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd().Trim())); if ([AswCred]::Write(${psStr(`${SERVICE}:${acct}`)}, $s)) { 'ok' } else { exit 3 }`, b64(secret));
   else if (backend === 'linux') r = run('secret-tool', ['store', `--label=${SERVICE} ${acct}`, 'service', SERVICE, 'account', acct], secret);
   else throw new Error('no keychain');
   if (r.error || r.status !== 0) throw new Error(`keychain write failed: ${(r.stderr || r.error?.message || '').trim().slice(0, 200)}`);
@@ -79,8 +82,10 @@ export function kcGet(account, backend = keychainBackend()) {
   else if (backend === 'windows') r = winPs(`$v = [AswCred]::Read(${psStr(`${SERVICE}:${acct}`)}); if ($v -eq $null) { exit 4 }; [Console]::Out.Write([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($v)))`);
   else if (backend === 'linux') r = run('secret-tool', ['lookup', 'service', SERVICE, 'account', acct]);
   else return '';
-  if (r.error || r.status !== 0) return '';
-  const v = backend === 'windows' ? Buffer.from(r.stdout.trim(), 'base64').toString('utf8') : r.stdout.replace(/\r?\n$/, '');
+  if (r.error || r.status !== 0) { lastErr = `exit ${r.status}: ${(r.stderr || r.error?.message || '').trim().slice(0, 400)}`; return ''; }
+  let v = backend === 'windows' ? Buffer.from(r.stdout.trim(), 'base64').toString('utf8') : r.stdout.replace(/\r?\n$/, '');
+  // macOS entries are stored as "b64:<base64>" (security -w prints non-ASCII data as hex otherwise).
+  if (backend === 'macos' && v.startsWith('b64:')) v = Buffer.from(v.slice(4), 'base64').toString('utf8');
   if (v) cache.set(acct, v);
   return v;
 }

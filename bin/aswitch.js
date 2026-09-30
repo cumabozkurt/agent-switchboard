@@ -166,6 +166,7 @@ async function main() {
         console.log(`  ${x.tool.padEnd(9)} ${x.file}`);
         if (x.viaRouter) console.log('            ' + t('cli.viaRouter'));
         if (x.keyEnv) console.log('            ' + t('cli.keyEnvHint', { env: x.keyEnv, tool: x.tool }));
+        if (x.geminiTrust) console.log('            ' + t('cli.geminiTrust'));
       }
       break;
     }

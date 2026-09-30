@@ -262,10 +262,14 @@ await page.waitForFunction(() => document.querySelector('#scList').textContent.i
 mockSeen.length = 0;
 await (await fetch(`http://127.0.0.1:${routerPort}/v1beta/models/gemini-3-pro:generateContent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'long '.repeat(2000) }] }] }) })).json();
 check('scenario routing sends long prompts to the long-context model', mockSeen.some(r => r.model === 'mock-long'), mockSeen.map(r => r.model).join(','));
-await page.fill('#brFailures', '5'); await page.fill('#brCooldown', '45');
-await page.click('#brSave');
+// (the Router tab reloads its policy cards after each save, so re-fill if a reload raced the typing)
 let h2 = {};
-for (let i = 0; i < 20 && h2.breaker?.failures !== 5; i++) { await sleep(250); h2 = await (await fetch(`http://127.0.0.1:${routerPort}/health`)).json(); }
+for (let attempt = 0; attempt < 3 && h2.breaker?.failures !== 5; attempt++) {
+  await sleep(300);
+  await page.fill('#brFailures', '5'); await page.fill('#brCooldown', '45');
+  await page.click('#brSave');
+  for (let i = 0; i < 12 && h2.breaker?.failures !== 5; i++) { await sleep(250); h2 = await (await fetch(`http://127.0.0.1:${routerPort}/health`)).json(); }
+}
 check('balance / scenario / breaker are live in the router', h2.gemini?.balance?.strategy === 'round-robin' && h2.gemini?.scenarios?.longContext && h2.breaker?.failures === 5 && h2.breaker?.cooldownSec === 45, JSON.stringify({ b: h2.gemini?.balance, s: h2.gemini?.scenarios, br: h2.breaker }));
 await shot(page, 'router-en.png');
 

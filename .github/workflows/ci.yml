@@ -46,3 +46,11 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: { name: e2e-screenshots, path: e2e-shots, if-no-files-found: ignore }
+  gemini-cli:
+    # The real @google/gemini-cli (latest from npm) against the aswitch router and a local mock upstream.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      - run: node scripts/gemini-cli-e2e.mjs
