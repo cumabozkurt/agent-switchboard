@@ -81,6 +81,7 @@ $('apply').onclick = act(async () => {
   const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.');
   const r = await api('use', { provider: $('prov').value, model: $('model').value.trim() || undefined, fastModel: $('fast').value.trim() || undefined, tools: t });
   log(r.provider + ' uygulandı (' + (r.model || 'varsayılan model') + ') → ' + r.results.map(x => x.tool + (x.viaRouter ? ' [yönlendirici]' : '')).join(', '));
+  if (r.results.some(x => x.viaRouter)) log('Bu araç(lar) yerel yönlendirici üzerinden bağlanır: aswitch router açık olmalı (aşağıdaki "Yönlendirici" düğmesiyle başlatabilirsiniz).');
 });
 $('saveKey').onclick = act(async () => { await api('key', { provider: $('prov').value, key: $('key').value.trim() }); $('key').value = ''; log('Anahtar kaydedildi.'); });
 $('orLogin').onclick = act(async () => { log('Tarayıcıda OpenRouter girişi açılıyor…'); await api('login/openrouter'); log('OpenRouter anahtarı alındı.'); });

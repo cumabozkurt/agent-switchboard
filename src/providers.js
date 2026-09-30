@@ -133,13 +133,24 @@ export function modelApi(provider, model) {
   return null;
 }
 
-// Claude Code için bağlantı biçimi: 'direct' (Anthropic uyumlu uç nokta), 'router' (yerel çevirici → /chat/completions)
-// veya null (desteklenmiyor).
+// Claude Code için bağlantı biçimi: 'direct' (Anthropic uyumlu uç nokta), 'router' (yerel çevirici →
+// /chat/completions ya da /responses) veya null (desteklenmiyor).
 export function claudeMode(provider, model) {
   const api = modelApi(provider, model);
   if (api === 'messages' || (api === null && provider.anthropicBase)) return provider.anthropicBase ? 'direct' : null;
-  if ((api === 'chat' || api === null) && provider.openaiBase) return 'router';
+  if ((api === 'chat' || api === 'responses' || api === null) && provider.openaiBase) return 'router';
   return null;
+}
+
+// Yönlendiricinin Claude Code isteklerini bu model için hangi API'ye çevireceği: 'messages' (olduğu gibi
+// iletilir), 'responses' veya 'chat'. Tabloda olmayan modellerde, Anthropic uç noktası olmayan ve Responses
+// sunan sağlayıcılar (ör. OpenAI) Responses ile, diğerleri Chat Completions ile konuşur.
+export function claudeRouterApi(provider, model) {
+  const api = modelApi(provider, model);
+  if (api === 'messages' && provider.anthropicBase) return 'messages';
+  if (api === 'responses') return 'responses';
+  if (api === null && !provider.anthropicBase && provider.codexWire === 'responses') return 'responses';
+  return 'chat';
 }
 
 // Codex için bağlantı biçimi: 'direct' (sağlayıcının /responses uç noktası), 'router' (yerel çevirici

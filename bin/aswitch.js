@@ -28,7 +28,7 @@ Kullanım:
   aswitch provider add <id> --openai-base URL [--anthropic-base URL] [--models-url URL]
                            [--wire responses|chat] [--key-env AD] [--label ad]
   aswitch provider rm <id>
-  aswitch router [--port 3456]                 Chat Completions sağlayıcılarını Claude Code ve Codex'e bağlayan yerel çevirici
+  aswitch router [--port 3456]                 Chat/Responses sağlayıcılarını Claude Code'a, Chat sağlayıcılarını Codex'e bağlayan yerel çevirici
   aswitch run <claude|codex|opencode> [argümanlar]  Aracı kayıtlı anahtarla başlat (argümanlar araca aynen geçer)
   aswitch env [--shell sh|fish|powershell|cmd] [--all]  Aktif Codex/OpenCode anahtarlarını ortam değişkeni olarak yazdır
   aswitch ui [--port 4567] [--no-open]         Masaüstü arayüzünü tarayıcıda aç
@@ -143,7 +143,13 @@ async function main() {
       const port = Number(f.port) || t.port;
       await startRouter({ port, targets: () => core.routerTargets() });
       console.log(`Yönlendirici http://127.0.0.1:${port} çalışıyor. Durdurmak için Ctrl+C.`);
-      if (t.claude) console.log(`  Claude Code → ${t.claude.baseUrl} (${t.claude.model})`);
+      if (t.claude) {
+        for (const m of [...new Set([t.claude.model, t.claude.fastModel].filter(Boolean))]) {
+          const api = t.claude.apiFor ? t.claude.apiFor(m) : 'chat';
+          const where = api === 'messages' ? `${t.claude.anthropicBase}/v1/messages` : `${t.claude.baseUrl}/${api === 'responses' ? 'responses' : 'chat/completions'}`;
+          console.log(`  Claude Code → ${where} (${m})`);
+        }
+      }
       if (t.codex) console.log(`  Codex       → ${t.codex.baseUrl} (${t.codex.model})`);
       break;
     }

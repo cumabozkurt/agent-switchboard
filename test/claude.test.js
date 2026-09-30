@@ -68,13 +68,53 @@ test('Claude: bozuk settings.json asla üzerine yazılmaz', async () => {
   assert.equal(fs.readFileSync(f, 'utf8'), '{ "theme": "dark", // yorum\n');
 });
 
-test('Claude: Zen üzerindeki GPT modeli (yalnız /responses) Claude Code için reddedilir', async () => {
+test('Claude: Zen/Go üzerindeki yalnız-/responses modelleri yönlendirici üzerinden bağlanır (Responses çevirisi)', async () => {
   fs.writeFileSync(f, '{}');
   core.setKey('opencode-zen', 'z');
-  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'gpt-5.5', tools: ['claude'] }), /Claude Code ile kullanılamaz/);
-  const r = await core.useProvider({ provider: 'opencode-zen', model: 'kimi-k3', tools: ['claude'] });
+  core.setKey('opencode-go', 'g');
+  const r1 = await core.useProvider({ provider: 'opencode-go', model: 'gpt-6-luna', tools: ['claude'] });
+  assert.equal(r1.results[0].viaRouter, true);
+  assert.equal(read().env.ANTHROPIC_BASE_URL, 'http://127.0.0.1:3456');
+  assert.equal(read().env.ANTHROPIC_MODEL, 'gpt-6-luna');
+  const t1 = core.routerTargets().claude;
+  assert.equal(t1.baseUrl, 'https://opencode.ai/zen/go/v1');
+  assert.equal(t1.apiFor('gpt-6-luna'), 'responses');
+  assert.equal(t1.apiFor('grok-5'), 'responses');
+  assert.equal(t1.apiFor('kimi-k3'), 'chat');
+  assert.equal(t1.apiFor('minimax-m3'), 'messages');
+  const r2 = await core.useProvider({ provider: 'opencode-zen', model: 'gpt-5.5', tools: ['claude'] });
+  assert.equal(r2.results[0].viaRouter, true);
+  assert.equal(core.routerTargets().claude.apiFor('gpt-5.5'), 'responses');
+  const r3 = await core.useProvider({ provider: 'opencode-zen', model: 'kimi-k3', tools: ['claude'] });
+  assert.equal(r3.results[0].viaRouter, true);
+  assert.equal(core.routerTargets().claude.apiFor('kimi-k3'), 'chat');
+  // Google-native Gemini hâlâ desteklenmez
+  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'gemini-3-pro', tools: ['claude'] }), /Claude Code ile kullanılamaz/);
+});
+
+test('Claude: ana model /messages, hızlı model /responses ise ikisi de yönlendiriciden geçer', async () => {
+  fs.writeFileSync(f, '{}');
+  const r = await core.useProvider({ provider: 'opencode-zen', model: 'claude-opus-5', fastModel: 'gpt-5.5-mini', tools: ['claude'] });
   assert.equal(r.results[0].viaRouter, true);
-  assert.equal(core.routerTargets().claude.baseUrl, 'https://opencode.ai/zen/v1');
+  const t = core.routerTargets().claude;
+  assert.equal(t.apiFor('claude-opus-5'), 'messages');
+  assert.equal(t.apiFor('gpt-5.5-mini'), 'responses');
+  assert.equal(t.anthropicBase, 'https://opencode.ai/zen');
+  // ikisi de /messages ise doğrudan bağlanır
+  const r2 = await core.useProvider({ provider: 'opencode-zen', model: 'claude-opus-5', fastModel: 'claude-haiku-5', tools: ['claude'] });
+  assert.equal(r2.results[0].viaRouter, false);
+  assert.equal(read().env.ANTHROPIC_BASE_URL, 'https://opencode.ai/zen');
+});
+
+test('Claude: OpenAI (Anthropic uç noktası yok, Responses var) Claude Code için Responses ile yönlendirilir', async () => {
+  fs.writeFileSync(f, '{}');
+  core.setKey('openai', 'o');
+  core.setKey('deepseek', 'd');
+  await core.useProvider({ provider: 'openai', model: 'gpt-6', tools: ['claude'] });
+  assert.equal(core.routerTargets().claude.apiFor('gpt-6'), 'responses');
+  core.setKey('gemini', 'g');
+  await core.useProvider({ provider: 'gemini', model: 'gemini-3-pro', tools: ['claude'] });
+  assert.equal(core.routerTargets().claude.apiFor('gemini-3-pro'), 'chat');
 });
 
 test('Claude: yönlendirici modu model olmadan reddedilir', async () => {

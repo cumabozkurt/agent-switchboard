@@ -34,3 +34,23 @@ test('arayüz: yabancı Host başlığı (DNS yeniden bağlama) reddedilir', asy
   assert.equal(status, 403);
   server.close();
 });
+
+test('arayüz: yalnız-/responses modeli Claude Code için yönlendiriciyle uygulanır ve yönlendirici Responses kullanır', async () => {
+  const net = await import('node:net');
+  const core = await import('../src/core.js');
+  const port = await new Promise(r => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
+  core.setKey('opencode-go', 'g');
+  await core.useProvider({ provider: 'opencode-go', model: 'kimi-k3', tools: ['claude'], port }); // yönlendirici portunu sabitle
+  const { server, url, token } = await startUi({ port: 0, open: false });
+  const base = url.split('#')[0];
+  const call = async (p, body) => (await fetch(base + 'api/' + p, { method: 'POST', headers: { 'x-aswitch-token': token, 'content-type': 'application/json' }, body: JSON.stringify(body || {}) })).json();
+  try {
+    const r = await call('use', { provider: 'opencode-go', model: 'gpt-6-luna', tools: ['claude'] });
+    assert.equal(r.error, undefined);
+    assert.equal(r.results[0].viaRouter, true);
+    assert.deepEqual((await call('router/start')), { ok: true });
+    const h = await (await fetch(`http://127.0.0.1:${port}/health`)).json();
+    assert.deepEqual(h.claude, { target: 'https://opencode.ai/zen/go/v1', model: 'gpt-6-luna', api: 'responses' });
+    await call('router/stop');
+  } finally { server.close(); }
+});

@@ -2,7 +2,8 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 
 // Yerel çeviri yönlendiricisi. İki yönde çalışır:
-//  • /v1/messages  : Claude Code'un Anthropic Messages isteklerini OpenAI Chat Completions'a çevirir.
+//  • /v1/messages  : Claude Code'un Anthropic Messages isteklerini modele göre OpenAI Chat Completions'a
+//                    ya da OpenAI Responses'a çevirir (Anthropic uç noktası olan modellerde olduğu gibi iletir).
 //  • /v1/responses : Codex'in OpenAI Responses isteklerini Chat Completions'a çevirir (güncel Codex yalnızca
 //                    Responses API konuşur; DeepSeek, Kimi, GLM, Gemini gibi sağlayıcılar yalnızca Chat sunar).
 // Yalnızca 127.0.0.1'e bağlanır; tarayıcıdan gelen (Origin başlıklı) istekler reddedilir.
@@ -362,6 +363,193 @@ export function createResponsesStreamTranslator(model, emit, kinds = new Map()) 
 }
 
 // ---------------------------------------------------------------------------------------------
+// Claude Code: Anthropic Messages ⇄ OpenAI Responses
+// (yalnızca /responses ile sunulan modeller için; ör. OpenCode Go/Zen gpt-*, grok-*, muse-*)
+
+function responsesImage(b) {
+  if (b.source?.type === 'base64') return { type: 'input_image', image_url: `data:${b.source.media_type};base64,${b.source.data}`, detail: 'auto' };
+  if (b.source?.type === 'url') return { type: 'input_image', image_url: b.source.url, detail: 'auto' };
+  return null;
+}
+
+export function anthropicToResponses(req, { model } = {}) {
+  const input = [];
+  for (const m of req.messages || []) {
+    const blocks = typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : (Array.isArray(m.content) ? m.content : []);
+    if (m.role === 'assistant') {
+      // thinking / redacted_thinking blokları taşınmaz.
+      const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('');
+      if (text) input.push({ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] });
+      for (const b of blocks) {
+        if (b.type === 'tool_use') input.push({ type: 'function_call', call_id: b.id, name: b.name, arguments: JSON.stringify(b.input ?? {}) });
+      }
+      continue;
+    }
+    const parts = [];
+    const toolImages = [];
+    for (const b of blocks) {
+      if (b.type === 'tool_result') {
+        const items = typeof b.content === 'string' ? [{ type: 'text', text: b.content }] : (b.content || []);
+        const c = textOf(items);
+        for (const it of items) { const img = it?.type === 'image' && responsesImage(it); if (img) toolImages.push(img); }
+        const imgNote = items.some(it => it?.type === 'image') ? (c ? '\n' : '') + '[görsel çıktı bir sonraki kullanıcı mesajında]' : '';
+        input.push({ type: 'function_call_output', call_id: b.tool_use_id, output: (b.is_error ? '[HATA] ' : '') + (c || '') + imgNote });
+      } else if (b.type === 'text') {
+        parts.push({ type: 'input_text', text: b.text });
+      } else if (b.type === 'image') {
+        const img = responsesImage(b); if (img) parts.push(img);
+      }
+    }
+    if (toolImages.length) parts.unshift({ type: 'input_text', text: 'Araç çıktısındaki görsel(ler):' }, ...toolImages);
+    if (parts.length) input.push({ type: 'message', role: 'user', content: parts });
+  }
+  const out = { model: model || req.model, input, stream: !!req.stream, store: false };
+  const sys = textOf(req.system);
+  if (sys) out.instructions = sys;
+  if (req.max_tokens != null) out.max_output_tokens = req.max_tokens;
+  if (req.temperature != null) out.temperature = req.temperature;
+  if (req.top_p != null) out.top_p = req.top_p;
+  // stop_sequences'in Responses API'de karşılığı yok; atlanır.
+  if (req.tools?.length) {
+    const tools = req.tools.filter(t => t.input_schema).map(t => ({ type: 'function', name: t.name, description: t.description || '', parameters: t.input_schema, strict: false }));
+    if (tools.length) {
+      out.tools = tools;
+      const tc = req.tool_choice;
+      if (tc?.type === 'any') out.tool_choice = 'required';
+      else if (tc?.type === 'tool') out.tool_choice = { type: 'function', name: tc.name };
+      else if (tc?.type === 'none') out.tool_choice = 'none';
+      else if (tc?.type === 'auto') out.tool_choice = 'auto';
+      if (tc?.disable_parallel_tool_use) out.parallel_tool_calls = false;
+    }
+  }
+  return out;
+}
+
+const parseArgs = a => { try { return JSON.parse(a || '{}'); } catch { return { _raw: a }; } };
+const anthUsage = u => ({ input_tokens: u?.input_tokens || 0, output_tokens: u?.output_tokens || 0 });
+
+function responsesStop(r, sawTool) {
+  if (r?.status === 'incomplete') return r.incomplete_details?.reason === 'content_filter' ? 'refusal' : 'max_tokens';
+  return sawTool ? 'tool_use' : 'end_turn';
+}
+
+export function responsesToAnthropic(res, model) {
+  if (res.error || res.status === 'failed') throw Object.assign(new Error(res.error?.message || 'Sağlayıcı yanıtı başarısız oldu'), { status: 502 });
+  const content = [];
+  let sawTool = false;
+  for (const it of res.output || []) {
+    if (it.type === 'message') {
+      const text = (it.content || []).map(p => p.type === 'output_text' ? p.text : p.type === 'refusal' ? p.refusal : '').join('');
+      if (text) content.push({ type: 'text', text });
+    } else if (it.type === 'function_call') {
+      sawTool = true;
+      content.push({ type: 'tool_use', id: it.call_id || it.id || 'toolu_' + crypto.randomUUID(), name: it.name, input: parseArgs(it.arguments) });
+    }
+    // reasoning ve diğer öğeler atlanır.
+  }
+  if (!content.length) content.push({ type: 'text', text: typeof res.output_text === 'string' ? res.output_text : '' });
+  return {
+    id: 'msg_' + String(res.id || crypto.randomUUID()).replace(/^resp_/, ''),
+    type: 'message', role: 'assistant', model, content,
+    stop_reason: responsesStop(res, sawTool), stop_sequence: null,
+    usage: anthUsage(res.usage)
+  };
+}
+
+// Responses SSE olaylarını Anthropic SSE olaylarına çeviren durum makinesi.
+export function createAnthropicFromResponsesStream(model, emit) {
+  let index = -1, started = false, ended = false, sawTool = false, openKey = null;
+  let usage = { input_tokens: 0, output_tokens: 0 };
+  const blocks = new Map(); // öğe anahtarı → { index, kind, gotArgs }
+  const send = (event, data) => emit(`event: ${event}\ndata: ${JSON.stringify({ type: event, ...data })}\n\n`);
+  const start = () => {
+    if (started) return; started = true;
+    send('message_start', { message: { id: 'msg_' + crypto.randomUUID(), type: 'message', role: 'assistant', model, content: [], stop_reason: null, stop_sequence: null, usage: { ...usage } } });
+  };
+  const keyOf = e => e.item_id || e.item?.id || (e.output_index != null ? 'o' + e.output_index : 'x');
+  const close = () => { if (openKey != null) { send('content_block_stop', { index: blocks.get(openKey).index }); openKey = null; } };
+  const openText = key => {
+    if (openKey === key && blocks.get(key)?.kind === 'text') return blocks.get(key);
+    close(); index++;
+    const b = { index, kind: 'text' }; blocks.set(key, b); openKey = key;
+    send('content_block_start', { index, content_block: { type: 'text', text: '' } });
+    return b;
+  };
+  const openTool = (key, item) => {
+    if (blocks.has(key)) return blocks.get(key);
+    close(); index++; sawTool = true;
+    const b = { index, kind: 'tool', gotArgs: false }; blocks.set(key, b); openKey = key;
+    send('content_block_start', { index, content_block: { type: 'tool_use', id: item.call_id || item.id || 'toolu_' + crypto.randomUUID(), name: item.name || '', input: {} } });
+    return b;
+  };
+  const tr = {
+    event(e) {
+      if (ended || !e || typeof e !== 'object') return;
+      const t = e.type || '';
+      if (t === 'error' || (!t && e.error)) { tr.error(e.message || e.error?.message || JSON.stringify(e.error || e), e.code || e.error?.code); return; }
+      if (t === 'response.failed') { const er = e.response?.error; tr.error(er?.message || 'Sağlayıcı yanıtı başarısız oldu', er?.code); return; }
+      start();
+      if (t === 'response.output_item.added' && e.item?.type === 'function_call') {
+        openTool(keyOf(e), e.item);
+      } else if (t === 'response.output_text.delta' || t === 'response.refusal.delta') {
+        if (e.delta) send('content_block_delta', { index: openText(keyOf(e)).index, delta: { type: 'text_delta', text: e.delta } });
+      } else if (t === 'response.function_call_arguments.delta') {
+        const b = blocks.get(keyOf(e)) || openTool(keyOf(e), { id: e.item_id });
+        if (e.delta) { b.gotArgs = true; send('content_block_delta', { index: b.index, delta: { type: 'input_json_delta', partial_json: e.delta } }); }
+      } else if (t === 'response.function_call_arguments.done' || (t === 'response.output_item.done' && e.item?.type === 'function_call')) {
+        const key = keyOf(e);
+        const b = blocks.get(key) || openTool(key, e.item || { id: e.item_id, name: e.name });
+        const args = e.arguments ?? e.item?.arguments;
+        if (!b.gotArgs && args) { b.gotArgs = true; send('content_block_delta', { index: b.index, delta: { type: 'input_json_delta', partial_json: args } }); }
+        if (t === 'response.output_item.done' && openKey === key) close();
+      } else if (t === 'response.output_item.done' && e.item?.type === 'message') {
+        // Delta gelmeden tamamlanan metin öğeleri (bazı sağlayıcılar) için metni tek parçada gönder.
+        const key = keyOf(e);
+        if (!blocks.has(key)) {
+          const text = (e.item.content || []).map(p => p.type === 'output_text' ? p.text : p.type === 'refusal' ? p.refusal : '').join('');
+          if (text) send('content_block_delta', { index: openText(key).index, delta: { type: 'text_delta', text } });
+        }
+        if (openKey === key) close();
+      } else if (t === 'response.completed' || t === 'response.incomplete') {
+        if (e.response?.usage) usage = anthUsage(e.response.usage);
+        tr.finish(responsesStop(e.response, sawTool));
+      }
+    },
+    error(message, code) {
+      if (ended) return; ended = true;
+      close();
+      send('error', { error: { type: ERR_TYPE[code] || 'api_error', message: String(message).slice(0, 2000) } });
+    },
+    finish(stop) {
+      if (ended) return; ended = true;
+      start(); close();
+      send('message_delta', { delta: { stop_reason: stop || (sawTool ? 'tool_use' : 'end_turn'), stop_sequence: null }, usage: { ...usage } });
+      send('message_stop', {});
+    },
+    end() { tr.finish(null); }
+  };
+  return tr;
+}
+
+// Tamamlanmış bir Anthropic mesajını Anthropic SSE olayları olarak yayınlar (akış istendi ama JSON geldiyse).
+export function emitAnthropicMessage(msg, emit) {
+  const send = (event, data) => emit(`event: ${event}\ndata: ${JSON.stringify({ type: event, ...data })}\n\n`);
+  send('message_start', { message: { ...msg, content: [], stop_reason: null, usage: { input_tokens: msg.usage.input_tokens, output_tokens: 0 } } });
+  msg.content.forEach((b, index) => {
+    if (b.type === 'tool_use') {
+      send('content_block_start', { index, content_block: { ...b, input: {} } });
+      send('content_block_delta', { index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(b.input ?? {}) } });
+    } else {
+      send('content_block_start', { index, content_block: { type: 'text', text: '' } });
+      if (b.text) send('content_block_delta', { index, delta: { type: 'text_delta', text: b.text } });
+    }
+    send('content_block_stop', { index });
+  });
+  send('message_delta', { delta: { stop_reason: msg.stop_reason, stop_sequence: null }, usage: { ...msg.usage } });
+  send('message_stop', {});
+}
+
+// ---------------------------------------------------------------------------------------------
 
 // Kaba ama tutarlı token tahmini (≈4 karakter/token): yalnızca metin içerikleri sayılır.
 export function estimateTokens(body) {
@@ -402,6 +590,18 @@ function upstreamMessage(text) {
   try { const j = JSON.parse(text); return j.error?.message || j.message || text; } catch { return text; }
 }
 
+// Sağlayıcının Anthropic uyumlu uç noktasında sunulan modeller (ör. yönlendirici modunda hızlı model
+// olarak seçilmiş bir claude-* modeli) çevrilmeden iletilir.
+async function passthroughMessages(req, res, t, body, fetchImpl) {
+  const headers = { 'content-type': 'application/json', 'anthropic-version': req.headers['anthropic-version'] || '2023-06-01' };
+  if (req.headers['anthropic-beta']) headers['anthropic-beta'] = req.headers['anthropic-beta'];
+  if (t.key) { headers.authorization = `Bearer ${t.key}`; headers['x-api-key'] = t.key; }
+  const up = await fetchImpl(`${t.anthropicBase.replace(/\/$/, '')}/v1/messages`, { method: 'POST', headers, body: JSON.stringify(body) });
+  res.writeHead(up.status, { 'content-type': up.headers.get('content-type') || 'application/json', 'cache-control': 'no-cache' });
+  if (up.body) for await (const part of up.body) res.write(part);
+  res.end();
+}
+
 const isLocalHost = h => /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(h || '');
 
 // targets: { claude?: {baseUrl,key,model,fastModel}, codex?: {baseUrl,key,model} } veya her istekte
@@ -419,7 +619,7 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
       let tg;
       try { tg = getTargets() || {}; } catch (e) { return sendJson(503, { type: 'error', error: { type: 'api_error', message: e.message } }); }
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
-        return sendJson(200, { ok: true, claude: tg.claude ? { target: tg.claude.baseUrl, model: tg.claude.model } : null, codex: tg.codex ? { target: tg.codex.baseUrl, model: tg.codex.model } : null });
+        return sendJson(200, { ok: true, claude: tg.claude ? { target: tg.claude.baseUrl, model: tg.claude.model, api: typeof tg.claude.apiFor === 'function' ? tg.claude.apiFor(tg.claude.model) : (tg.claude.api || 'chat') } : null, codex: tg.codex ? { target: tg.codex.baseUrl, model: tg.codex.model } : null });
       }
       if (req.method !== 'POST') return sendJson(404, { type: 'error', error: { type: 'not_found_error', message: 'Bulunamadı' } });
       const chunks = []; for await (const c of req) chunks.push(c);
@@ -433,15 +633,18 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
       if (!t) return sendJson(503, { type: 'error', error: { type: 'api_error', message: `Yönlendirici ${isClaude ? 'Claude Code' : 'Codex'} için yapılandırılmamış. "aswitch use <sağlayıcı> --tools ${isClaude ? 'claude' : 'codex'}" çalıştırın.` } });
       if (isClaude && url.pathname.startsWith('/v1/messages/count_tokens')) return sendJson(200, { input_tokens: estimateTokens(body) });
 
-      let oreq, model, kinds;
+      let oreq, model, kinds, api = 'chat';
       if (isClaude) {
         model = !body.model ? t.model : /haiku/i.test(body.model) && t.fastModel ? t.fastModel : /^claude-/i.test(body.model) && t.model ? t.model : body.model;
-        oreq = anthropicToOpenAI(body, { model, baseUrl: t.baseUrl });
+        api = (typeof t.apiFor === 'function' ? t.apiFor(model) : t.api) || 'chat';
+        if (api === 'messages' && t.anthropicBase) return await passthroughMessages(req, res, t, { ...body, model }, fetchImpl);
+        if (api === 'responses') oreq = anthropicToResponses(body, { model });
+        else { api = 'chat'; oreq = anthropicToOpenAI(body, { model, baseUrl: t.baseUrl }); }
       } else {
         model = t.model || body.model;
         ({ body: oreq, kinds } = responsesToChat(body, { model, baseUrl: t.baseUrl }));
       }
-      const up = await fetchImpl(`${t.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      const up = await fetchImpl(`${t.baseUrl.replace(/\/$/, '')}/${api === 'responses' ? 'responses' : 'chat/completions'}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: oreq.stream ? 'text/event-stream' : 'application/json', ...(t.key ? { authorization: `Bearer ${t.key}` } : {}) },
         body: JSON.stringify(oreq)
@@ -457,6 +660,13 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
         const text = await up.text();
         let json; try { json = JSON.parse(text); } catch { throw new Error(`Sağlayıcıdan beklenmeyen yanıt: ${text.slice(0, 300)}`); }
         if (json.error) throw Object.assign(new Error(json.error.message || JSON.stringify(json.error)), { status: 502 });
+        if (api === 'responses') {
+          const msg = responsesToAnthropic(json, model);
+          if (!oreq.stream) return sendJson(200, msg);
+          res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
+          emitAnthropicMessage(msg, s => res.write(s));
+          return res.end();
+        }
         if (!oreq.stream) return sendJson(200, isClaude ? openAIToAnthropic(json, model) : chatToResponse(json, model, kinds));
         // Akış istendi ama JSON geldi: tek parçalık bir akışa dönüştür.
         res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
@@ -466,8 +676,13 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
         tr.end(); return res.end();
       }
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
-      tr = isClaude ? createStreamTranslator(model, s => res.write(s)) : createResponsesStreamTranslator(model, s => res.write(s), kinds);
-      await readSse(up.body, obj => tr.chunk(obj));
+      if (api === 'responses') {
+        tr = createAnthropicFromResponsesStream(model, s => res.write(s));
+        await readSse(up.body, obj => tr.event(obj));
+      } else {
+        tr = isClaude ? createStreamTranslator(model, s => res.write(s)) : createResponsesStreamTranslator(model, s => res.write(s), kinds);
+        await readSse(up.body, obj => tr.chunk(obj));
+      }
       tr.end(); res.end();
     } catch (e) {
       log('Yönlendirici hatası:', e.message);

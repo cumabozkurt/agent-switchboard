@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, saveConfig, getKey, mask } from './config.js';
-import { resolveProvider, listProviderIds, PRESETS, claudeMode, codexMode, modelApi } from './providers.js';
+import { resolveProvider, listProviderIds, PRESETS, claudeMode, codexMode, modelApi, claudeRouterApi } from './providers.js';
 import { fetchModels, resolveModelAlias } from './models.js';
 import { applyClaude, clearClaude, statusClaude } from './targets/claude.js';
 import { applyCodex, clearCodex, statusCodex } from './targets/codex.js';
@@ -69,6 +69,13 @@ export async function useProvider({ tools = TOOLS, provider: pid, model, fastMod
       need(mode, api ? `${pid} üzerinde ${model} modeli ${api} uç noktasıyla sunuluyor; Claude Code ile kullanılamaz.` : `${pid} Claude Code ile kullanılamaz.`);
       need(mode === 'direct' || model, `${pid} Claude Code'a yerel yönlendirici üzerinden bağlanır; --model belirtin (ör. --model latest).`);
       plan.claude = mode;
+      if (fastModel && fastModel !== model) {
+        // Hızlı model başka bir uç noktadaysa (ör. ana model /messages, hızlı model /responses) her iki
+        // modeli de yönlendirici taşır; yönlendirici /messages modellerini çevirmeden iletir.
+        const fmode = claudeMode(provider, fastModel);
+        need(fmode, `${pid} üzerinde ${fastModel} modeli ${modelApi(provider, fastModel)} uç noktasıyla sunuluyor; Claude Code ile kullanılamaz.`);
+        if (fmode === 'router') plan.claude = 'router';
+      }
     } else if (tool === 'codex') {
       const mode = codexMode(provider, model);
       need(mode, provider.openaiBase ? `${pid} üzerinde ${model} modeli ${api} uç noktasıyla sunuluyor; Codex ile kullanılamaz.` : `${pid} OpenAI uyumlu uç nokta sunmuyor; Codex için kullanılamaz.`);
@@ -256,7 +263,7 @@ export function routerTargets() {
     if (!x) return undefined;
     const p = resolveProvider(cfg, x.provider);
     need(p, `Yönlendirici sağlayıcısı bulunamadı: ${x.provider}`);
-    return { provider: x.provider, baseUrl: p.openaiBase, key: p.noKey ? '' : getKey(cfg, p), model: x.model, fastModel: x.fastModel };
+    return { provider: x.provider, baseUrl: p.openaiBase, anthropicBase: p.anthropicBase, key: p.noKey ? '' : getKey(cfg, p), model: x.model, fastModel: x.fastModel, apiFor: m => claudeRouterApi(p, m) };
   };
   return { port: r.port || DEFAULT_ROUTER_PORT, claude: mk(r.claude), codex: mk(r.codex) };
 }
