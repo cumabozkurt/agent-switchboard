@@ -32,20 +32,30 @@ jobs:
         run: node -e "const a=require('./package.json').version,b=require('./desktop/package.json').version;if(a!==b){console.error(a+' != '+b);process.exit(1)}console.log('version '+a)"
       - run: node scripts/release-notes.js > /dev/null
   e2e:
-    # Real Electron app driven by Playwright under a virtual X server, with a throwaway HOME.
-    runs-on: ubuntu-latest
+    # Real Electron app driven by Playwright (Linux under a virtual X server), with a throwaway HOME and a local
+    # mock upstream, so no internet is needed (E2E_LIVE=1 adds live model-list refreshes).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults: { run: { working-directory: desktop } }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with: { node-version: 22 }
-      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: npm install --no-audit --no-fund
-      - run: xvfb-run -a -s "-screen 0 1400x1000x24" npm run e2e
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a -s "-screen 0 1400x1000x24" npm run e2e
+        env: { SHOTS_DIR: '${{ github.workspace }}/e2e-shots' }
+      - if: runner.os != 'Linux'
+        run: npm run e2e
         env: { SHOTS_DIR: '${{ github.workspace }}/e2e-shots' }
       - uses: actions/upload-artifact@v7
         if: always()
-        with: { name: e2e-screenshots, path: e2e-shots, if-no-files-found: ignore }
+        with: { name: 'e2e-screenshots-${{ matrix.os }}', path: e2e-shots, if-no-files-found: ignore }
   gemini-cli:
     # The real @google/gemini-cli (latest from npm) against the aswitch router and a local mock upstream.
     runs-on: ubuntu-latest

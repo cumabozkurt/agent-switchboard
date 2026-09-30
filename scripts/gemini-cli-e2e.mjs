@@ -20,7 +20,8 @@ const home = path.join(tmp, 'home'), work = path.join(tmp, 'work'), inst = path.
 for (const d of [home, work, inst, path.join(home, '.gemini')]) fs.mkdirSync(d, { recursive: true });
 fs.writeFileSync(path.join(work, 'a.txt'), 'hello\n');
 const results = [];
-const check = (name, ok, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
+const oneLine = v => String(v).replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
+const check = (name, ok, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + oneLine(detail) : ''}`); };
 const free = () => new Promise(r => { const s = http.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 // ---- mock upstream (OpenAI chat completions, streaming + one tool call when the prompt says LIST_DIR)
@@ -91,7 +92,7 @@ try {
   let r = await run(['-p', 'say hi']);
   check('untrusted folder: Gemini CLI ignores ~/.gemini/.env / refuses headless mode (its folder-trust policy)', r.code !== 0 && /trust|GEMINI_API_KEY/i.test(r.out), `exit ${r.code}`);
   r = await run(['--skip-trust', '-p', 'say hi']);
-  check('gemini -p → router → mock upstream (streaming answer)', r.code === 0 && r.out.includes('Hello from the mock upstream!'), r.out.split('\n').filter(l => !/^Warning|STARTUP/.test(l)).join(' | ').slice(0, 200));
+  check('gemini -p → router → mock upstream (streaming answer)', r.code === 0 && r.out.includes('Hello from the mock upstream!'), r.out.split('\n').filter(l => !/^(Warning|\[STARTUP\])/.test(l)).join(' | ').slice(0, 200));
   const first = seen.find(s => s.url === '/v1/chat/completions');
   check('upstream got the saved key, the chosen model, streaming and the CLI tools', first?.auth === 'Bearer mock-key-123' && first?.model === 'mock-large' && first?.stream && first?.tools > 0, JSON.stringify({ model: first?.model, tools: first?.tools }));
   seen.length = 0;

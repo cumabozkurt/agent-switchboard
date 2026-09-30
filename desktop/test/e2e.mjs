@@ -377,9 +377,13 @@ check('relaunch auto-starts the needed router', await probe());
 // A second launch carrying an aswitch:// link (what the OS does on click) → no second window, the running
 // app shows the confirmation dialog; the provider is added only after "Import", and never with the key.
 const link = 'aswitch://provider?id=shared-gw&label=Shared&openaiBase=https%3A%2F%2Fshared.example.com%2Fv1&apikey=sk-nope';
-const second = await _electron.launch({ executablePath: require('electron'), args: [desktop, '--no-sandbox', '--disable-gpu', link], cwd: desktop, env }).catch(e => e);
-if (!(second instanceof Error)) { await sleep(1500); let wins = []; try { wins = second.windows(); } catch { /* already gone */ } check('second instance does not open a second window', wins.length === 0); await second.close().catch(() => {}); }
-else check('second instance does not open a second window', true, 'exited immediately');
+// Plain child process (not Playwright): the second instance quits right away, which a debugger attach would race.
+const { spawn } = await import('node:child_process');
+const second = spawn(require('electron'), [desktop, '--no-sandbox', '--disable-gpu', link], { cwd: desktop, env, stdio: 'ignore' });
+const secondExit = await Promise.race([new Promise(r => second.on('exit', c => r(c ?? 0))), sleep(15000).then(() => 'timeout')]);
+if (secondExit === 'timeout') second.kill();
+const winCount = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length);
+check('second instance exits and does not open a second window', secondExit !== 'timeout' && winCount === 1, `exit ${secondExit}, windows ${winCount}`);
 const gotDlg = await page.waitForSelector('#linkDialog[open]', { timeout: 10000 }).then(() => true).catch(() => false);
 check('aswitch:// link from the OS opens the confirmation dialog', gotDlg && (await page.textContent('#linkDialog')).includes('https://shared.example.com/v1'));
 await shot(page, 'link-dialog-tr.png');
