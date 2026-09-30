@@ -84,6 +84,23 @@ node scripts/release.js X.Y.Z             # bump, test, commit, tag, push
 gh run watch "$(gh run list --workflow release.yml -L1 --json databaseId -q '.[0].databaseId')"
 ```
 
+## v0.4.0 evidence
+
+- Release: <https://github.com/cumabozkurt/agent-switchboard/releases/tag/v0.4.0>. Tag `v0.4.0` on commit `3d509b9`, published on 2026-10-01 (Europe/Istanbul) with `scripts/release.js`.
+- Release workflow: [run 36786802483](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36786802483). All jobs were green: release, build on macOS, Windows and Ubuntu, and verify.
+- Assets: 10 installers + `SHA256SUMS.txt`, checked by the `verify` job:
+  - mac arm64/x64 dmg + zip
+  - Windows Setup + Portable (x64)
+  - Linux x86_64/arm64 AppImage and amd64/arm64 deb
+- CI:
+  - on the release commit: [run 36786627411](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36786627411), 14/14 jobs green (9 test, package, e2e on ubuntu/macos/windows, gemini-cli);
+  - on the tag: [run 36786802527](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36786802527).
+- CodeQL on the release commit: [run 36786627405](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36786627405) (success), 0 open alerts.
+- Pre-release checks:
+  - Dependabot branch build: [run 36782607796](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36782607796).
+  - arm64 build: [run 36784759781](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36784759781).
+  - Windows e2e diagnosis: [run 36785751904](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36785751904), branch `diag/windows-e2e`. It showed that Electron 44 starts normally on Windows and that only Playwright's `_electron.launch` hangs.
+
 ## v0.3.0 evidence
 
 - CI on the release commit `3e59988`: [run 36781698782](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36781698782) (11/11 jobs green: 9 test, package, e2e). First 0.3.0 push: [run 36781410452](https://github.com/cumabozkurt/agent-switchboard/actions/runs/36781410452)
