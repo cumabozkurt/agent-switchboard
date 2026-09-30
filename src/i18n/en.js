@@ -12,9 +12,10 @@ Usage:
   aswitch login openrouter [--port 3000]        Get an OpenRouter key via OAuth (PKCE)
   aswitch models <provider> [--refresh] [--filter x] [--limit 50] [--json]
                                                 Fetch the live model list (newest first; offline: bundled snapshot)
-  aswitch use <provider> [--model m] [--fast m] [--tools claude,codex,opencode,gemini] [--codex-key env|command] [--port 3456]
+  aswitch use <provider> [--model m] [--fast m] [--tools claude,codex,opencode,gemini] [--codex-key env|command] [--port 3456] [--via-router]
                                                 Apply a provider to the tools (default: all installed). The model may be
-                                                "latest" or "latest:opus": the newest match is picked at apply time
+                                                "latest" or "latest:opus": the newest match is picked at apply time.
+                                                --via-router always goes through the local router (fallback/balance/scenarios)
   aswitch official [--tools claude,codex,gemini]
                                                 Go back to the tool's own login (Claude Pro/Max, ChatGPT, Google)
   aswitch restore [--tools ...]                 Put the files back exactly as they were before aswitch
@@ -29,6 +30,12 @@ Usage:
   aswitch ping [provider ...] [--json]          Measure endpoint latency and check keys
   aswitch fallback [set <tool> p:model ... | clear <tool>]
                                                 Router fallback chain on 429/5xx/network errors (claude|codex|gemini)
+  aswitch balance [set <tool> p:model*weight ... [--strategy weighted|round-robin] | clear <tool> | list] [--json]
+                                                Spread requests over several provider/models (at least two)
+  aswitch scenario [set <tool> <image|longContext|webSearch|think|background> p:model | clear <tool> [name] | threshold <tokens>] [--json]
+                                                Send some kinds of requests to a different model
+  aswitch breaker [on|off|set --failures 3 --cooldown 30|status] [--json]
+                                                Circuit breaker: skip a failing provider for a while, then retry once
   aswitch usage [--days 7] [--recent] [--json] [--clear] [--log on|off]
                                                 Router request log: tokens, latency, estimated cost
   aswitch mcp [list] [--json]                   Show MCP servers of every tool
@@ -36,6 +43,10 @@ Usage:
                                                 Copy MCP servers from one tool to the others
   aswitch export [file] [--with-keys]           Export custom providers, profiles, fallbacks, settings
   aswitch import <file> [--overwrite]           Import such a file
+  aswitch link <aswitch://…> [--yes] [--overwrite] [--json]
+                                                Preview and import a share link (never contains keys; asks first)
+  aswitch link make provider|profile|all [id]   Create a share link
+  aswitch keychain [on|off|status] [--json]     Keep saved keys in the OS keychain instead of config.json
   aswitch update                                Check GitHub for a newer release
   aswitch router [--port 3456]                  Local translator: Chat/Responses providers for Claude Code and
                                                 Gemini CLI, Chat providers for Codex

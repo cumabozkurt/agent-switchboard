@@ -12,9 +12,10 @@ Kullanım:
   aswitch login openrouter [--port 3000]        OpenRouter anahtarını OAuth (PKCE) ile al
   aswitch models <sağlayıcı> [--refresh] [--filter x] [--limit 50] [--json]
                                                 Canlı model listesini çek (en yeni en üstte; çevrimdışı: paketteki liste)
-  aswitch use <sağlayıcı> [--model m] [--fast m] [--tools claude,codex,opencode,gemini] [--codex-key env|command] [--port 3456]
+  aswitch use <sağlayıcı> [--model m] [--fast m] [--tools claude,codex,opencode,gemini] [--codex-key env|command] [--port 3456] [--via-router]
                                                 Sağlayıcıyı araçlara uygula (varsayılan: kurulu olanların hepsi). Model
-                                                "latest" veya "latest:opus" olabilir: uygulama anında en yeni eşleşme seçilir
+                                                "latest" veya "latest:opus" olabilir: uygulama anında en yeni eşleşme seçilir.
+                                                --via-router her zaman yerel yönlendiriciden geçirir (yedek/dengeleme/senaryo)
   aswitch official [--tools claude,codex,gemini]
                                                 Aracın kendi girişine dön (Claude Pro/Max, ChatGPT, Google)
   aswitch restore [--tools ...]                 Dosyaları aswitch'ten önceki hâline birebir geri getir
@@ -29,6 +30,12 @@ Kullanım:
   aswitch ping [sağlayıcı ...] [--json]         Uç nokta gecikmesini ölç, anahtarları denetle
   aswitch fallback [set <araç> s:model ... | clear <araç>]
                                                 429/5xx/ağ hatasında yönlendiricinin yedek zinciri (claude|codex|gemini)
+  aswitch balance [set <araç> s:model*ağırlık ... [--strategy weighted|round-robin] | clear <araç> | list] [--json]
+                                                İstekleri birden çok sağlayıcı/modele dağıt (en az iki)
+  aswitch scenario [set <araç> <image|longContext|webSearch|think|background> s:model | clear <araç> [ad] | threshold <token>] [--json]
+                                                Bazı istek türlerini başka bir modele gönder
+  aswitch breaker [on|off|set --failures 3 --cooldown 30|status] [--json]
+                                                Devre kesici: hata veren sağlayıcıyı bir süre atla, sonra bir kez yeniden dene
   aswitch usage [--days 7] [--recent] [--json] [--clear] [--log on|off]
                                                 Yönlendirici istek kaydı: token, gecikme, tahmini maliyet
   aswitch mcp [list] [--json]                   Her aracın MCP sunucularını göster
@@ -36,6 +43,11 @@ Kullanım:
                                                 MCP sunucularını bir araçtan diğerlerine kopyala
   aswitch export [dosya] [--with-keys]          Özel sağlayıcıları, profilleri, yedek zincirlerini, ayarları dışa aktar
   aswitch import <dosya> [--overwrite]          Böyle bir dosyayı içe aktar
+  aswitch link <aswitch://…> [--yes] [--overwrite] [--json]
+                                                Paylaşım bağlantısını önizle ve içe aktar (anahtar içermez; önce sorar)
+  aswitch link make provider|profile|all [kimlik]
+                                                Paylaşım bağlantısı oluştur
+  aswitch keychain [on|off|status] [--json]     Kayıtlı anahtarları config.json yerine işletim sistemi anahtar zincirinde tut
   aswitch update                                GitHub'da daha yeni sürüm var mı bak
   aswitch router [--port 3456]                  Yerel çevirici: Chat/Responses sağlayıcılarını Claude Code'a ve
                                                 Gemini CLI'a, Chat sağlayıcılarını Codex'e bağlar
