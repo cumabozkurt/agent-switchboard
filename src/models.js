@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { appDir } from './paths.js';
 import { readJson, writeJson } from './fsutil.js';
+import { t } from './i18n/index.js';
 
 const cachePath = () => path.join(appDir(), 'models-cache.json');
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -10,7 +11,7 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
   const cache = readJson(cachePath(), {});
   const hit = cache[provider.id];
   if (!refresh && hit && Date.now() - hit.at < TTL_MS) return hit.models;
-  if (!provider.modelsUrl) throw new Error(`${provider.id} için model listesi uç noktası yok; modeli elle yazın.`);
+  if (!provider.modelsUrl) throw new Error(t('err.noModelsUrl', { id: provider.id }));
   const headers = { accept: 'application/json' };
   if (provider.modelsAuth === 'anthropic') {
     headers['x-api-key'] = key; headers['anthropic-version'] = '2023-06-01';
@@ -22,11 +23,11 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
   try {
     res = await fetchImpl(url, { headers, signal: AbortSignal.timeout(20000) });
   } catch (e) {
-    throw new Error(`${provider.id} model listesine ulaşılamadı (${url}): ${e.cause?.code || e.message}`);
+    throw new Error(t('err.modelsUnreachable', { id: provider.id, url, reason: e.cause?.code || e.cause?.errors?.[0]?.code || e.cause?.message || e.message }));
   }
   if (!res.ok) {
-    const hint = (res.status === 401 || res.status === 403) && !key ? ` — anahtar gerekli: "aswitch key set ${provider.id}"` : '';
-    throw new Error(`${provider.id} model listesi alınamadı: HTTP ${res.status}${hint}`);
+    const hint = (res.status === 401 || res.status === 403) && !key ? t('err.modelsNeedKey', { id: provider.id }) : '';
+    throw new Error(t('err.modelsHttp', { id: provider.id, status: res.status }) + hint);
   }
   const body = await res.json();
   const models = normalizeModels(body);
@@ -67,7 +68,7 @@ export function resolveModelAlias(spec, models) {
   if (!spec || !spec.startsWith('latest')) return spec;
   const filter = spec.split(':').slice(1).join(':').toLowerCase();
   const pool = filter ? models.filter(m => m.id.toLowerCase().includes(filter)) : models;
-  if (!pool.length) throw new Error(`"${spec}" ile eşleşen model bulunamadı.`);
+  if (!pool.length) throw new Error(t('err.noModelMatch', { spec }));
   // OpenRouter'ın ":free", ":batch", ":extended" gibi varyantları ve "~" takma adları yalnızca
   // filtre açıkça istediğinde seçilir; aksi hâlde asıl model tercih edilir.
   const plain = filter.includes(':') || filter.startsWith('~') ? pool : pool.filter(m => !m.id.includes(':') && !m.id.startsWith('~'));

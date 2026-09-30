@@ -1,4 +1,4 @@
-// CLI yardımcıları (test edilebilsin diye bin/ dışında).
+// CLI helpers (kept outside bin/ so they can be unit tested).
 
 // Değer almayan bayraklar: ardından gelen sözcüğü değer olarak yutmazlar.
 const BOOLEAN = new Set(['refresh', 'no-open', 'all', 'help', 'version', 'json']);
@@ -33,3 +33,15 @@ export function defaultShell() {
   return 'powershell';
 }
 
+
+// Global --lang tr|en (or --lang=tr) may appear anywhere before `run`; returns the remaining args.
+export function extractLang(argv) {
+  const rest = []; let lang = null;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--lang') { lang = argv[i + 1] ?? ''; i++; }
+    else if (a.startsWith('--lang=')) lang = a.slice(7);
+    else rest.push(a);
+  }
+  return { lang, rest };
+}

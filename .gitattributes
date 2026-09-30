@@ -1,0 +1,5 @@
+# Keep LF everywhere so the CLI shebang works when the repo is checked out or packed on Windows.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary

@@ -90,7 +90,7 @@ test('Codex: yalnız /messages sunan model (Zen Claude) Codex için reddedilir v
   const f = path.join(dir, '.codex', 'config.toml');
   const before = fs.readFileSync(f, 'utf8');
   core.setKey('opencode-zen', 'z');
-  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'claude-opus-4-8', tools: ['claude', 'codex'] }), /Codex ile kullanılamaz/);
+  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'claude-opus-4-8', tools: ['claude', 'codex'] }), /Codex bu uç noktayı kullanamaz/);
   assert.equal(fs.readFileSync(f, 'utf8'), before);
   assert.ok(!fs.existsSync(path.join(dir, '.claude', 'settings.json')), 'doğrulama başarısızsa Claude da yazılmamalı');
 });

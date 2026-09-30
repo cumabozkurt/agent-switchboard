@@ -41,6 +41,6 @@ export function statusOpencode() {
   const file = opencodeFile();
   try {
     const c = readJsonStrict(file, {}, { jsonc: true });
-    return { file, model: c.model || '(varsayılan)' };
-  } catch (e) { return { file, model: '?', error: e.message }; }
+    return { file, mode: c.model ? 'custom' : 'default', model: c.model || null };
+  } catch (e) { return { file, mode: 'error', model: null, error: e.message }; }
 }

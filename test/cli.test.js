@@ -50,14 +50,18 @@ test('uçtan uca: key set (borudan) → key get → use → status → env → o
   r = cli('use', 'deepseek', '--model', 'deepseek-chat', '--tools', 'claude,codex');
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /yönlendirici/);
-  const st = JSON.parse(cli('status').stdout);
+  const st = JSON.parse(cli('status', '--json').stdout);
+  assert.match(cli('status').stdout, /Claude Code  \[Özel sağlayıcı\]/);
+  assert.equal(st.codex.mode, 'router');
   assert.equal(st.claude.baseUrl, 'https://api.deepseek.com/anthropic');
   assert.equal(st.codex.baseUrl, 'http://127.0.0.1:3456/v1');
   r = cli('env', '--shell', 'sh');
   assert.equal(r.stdout.trim(), ''); // Codex yönlendiricide; anahtar değişkeni gerekmez
   r = cli('official');
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(JSON.parse(cli('status').stdout).codex.baseUrl, '(resmî OpenAI / ChatGPT girişi)');
+  const st2 = JSON.parse(cli('status', '--json').stdout);
+  assert.equal(st2.codex.mode, 'official');
+  assert.equal(st2.codex.baseUrl, null);
   r = cli('provider', 'add', 'Kötü İsim', '--openai-base', 'https://x');
   assert.notEqual(r.status, 0);
 });
@@ -82,4 +86,30 @@ test('config.json 0600 izinle yazılır', { skip: process.platform === 'win32' }
 test('status: anahtar gerektirmeyen sağlayıcı (ollama) "****" yerine "(gerekmez)" gösterir', async () => {
   const core = await import('../src/core.js');
   assert.equal(core.status().keys.ollama, '(gerekmez)');
+});
+
+test('bilinmeyen komut kısa bir ipucuyla 1 koduyla çıkar (tüm yardımı basmaz)', () => {
+  const r = cli('bogus');
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /Bilinmeyen komut: bogus/);
+  assert.doesNotMatch(r.stdout + r.stderr, /aswitch status \[--json\]/);
+});
+
+test('ağ hatası nedeni (ör. ECONNREFUSED) mesajda görünür', () => {
+  let r = cli('provider', 'add', 'deadnet', '--openai-base', 'http://127.0.0.1:59999/v1', '--key-env', 'DEADNET_KEY');
+  assert.equal(r.status, 0, r.stderr);
+  r = spawnSync(process.execPath, [bin, 'models', 'deadnet'], { encoding: 'utf8', env: { ...process.env, DEADNET_KEY: 'x' } });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /ECONNREFUSED/);
+  cli('provider', 'rm', 'deadnet');
+});
+
+test('URL açma: Windows\'ta & içeren adres bozulmadan rundll32\'ye verilir; yalnızca http(s) açılır', async () => {
+  const { openCommand } = await import('../src/open.js');
+  const url = 'https://openrouter.ai/auth?callback_url=http://localhost:3000/&code_challenge=abc&code_challenge_method=S256';
+  assert.deepEqual(openCommand(url, 'win32'), ['rundll32', ['url.dll,FileProtocolHandler', url]]);
+  assert.deepEqual(openCommand(url, 'darwin'), ['open', [url]]);
+  assert.deepEqual(openCommand(url, 'linux'), ['xdg-open', [url]]);
+  assert.equal(openCommand('file:///C:/Windows/System32/calc.exe', 'win32'), null);
+  assert.equal(openCommand('C:\\evil.exe', 'win32'), null);
 });

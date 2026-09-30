@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { appDir } from './paths.js';
-import { exists, readJson, writeJson } from './fsutil.js';
+import { exists, readJson, writeJson, mkdirPrivate } from './fsutil.js';
+import { t } from './i18n/index.js';
 
 const KEEP_BACKUPS = 50;
 
@@ -13,7 +14,7 @@ export function ensureOriginal(target, file) {
   const mf = readJson(manifestPath(), {});
   if (mf[target]) return;
   const dir = path.join(appDir(), 'originals');
-  fs.mkdirSync(dir, { recursive: true });
+  mkdirPrivate(appDir()); mkdirPrivate(path.dirname(dir)); mkdirPrivate(dir);
   if (exists(file)) {
     const copy = path.join(dir, target + path.extname(file));
     fs.copyFileSync(file, copy);
@@ -28,7 +29,7 @@ export function snapshot(target, file) {
   if (!exists(file)) return null;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const dir = path.join(appDir(), 'backups', stamp);
-  fs.mkdirSync(dir, { recursive: true });
+  mkdirPrivate(appDir()); mkdirPrivate(path.dirname(dir)); mkdirPrivate(dir);
   let dest = path.join(dir, target + path.extname(file));
   for (let i = 2; exists(dest); i++) dest = path.join(dir, `${target}-${i}${path.extname(file)}`);
   fs.copyFileSync(file, dest);
@@ -47,8 +48,8 @@ function pruneBackups() {
 export function restoreOriginal(target) {
   const mf = readJson(manifestPath(), {});
   const rec = mf[target];
-  if (!rec) return { target, restored: false, reason: 'Bu araç için değişiklik yapılmamış.' };
-  if (rec.existed && !exists(rec.copy)) return { target, restored: false, reason: `Orijinal kopya bulunamadı: ${rec.copy}` };
+  if (!rec) return { target, restored: false, reason: t('restore.untouched') };
+  if (rec.existed && !exists(rec.copy)) return { target, restored: false, reason: t('restore.copyMissing', { file: rec.copy }) };
   snapshot(target, rec.file);
   if (rec.existed) {
     fs.mkdirSync(path.dirname(rec.file), { recursive: true });
@@ -69,6 +70,8 @@ export function setState(target, value) {
   if (value === undefined) { if (!(target in s)) return; delete s[target]; } else s[target] = value;
   writeJson(statePath(), s);
 }
+
+export function backupFile(id, name) { return path.join(appDir(), 'backups', id, name); }
 
 export function listBackups() {
   const dir = path.join(appDir(), 'backups');

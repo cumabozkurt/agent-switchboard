@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability / Güvenlik açığı
+    url: https://github.com/cumabozkurt/agent-switchboard/security/advisories/new
+    about: Report privately / Gizli olarak bildirin

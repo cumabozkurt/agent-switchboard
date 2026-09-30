@@ -40,12 +40,12 @@ test('Anthropic → Responses: system, mesajlar, araç çağrısı/çıktısı, 
   assert.deepEqual(o.input[2], { type: 'function_call', call_id: 'toolu_1', name: 'Read', arguments: '{"p":"a"}' });
   assert.equal(o.input[3].type, 'function_call_output');
   assert.equal(o.input[3].call_id, 'toolu_1');
-  assert.match(o.input[3].output, /^dosya\n\[görsel/);
+  assert.match(o.input[3].output, /^dosya\n\[image output/);
   assert.equal(o.input[4].role, 'user');
   assert.deepEqual(o.input[4].content[1], { type: 'input_image', image_url: 'https://x/y.png', detail: 'auto' });
   assert.deepEqual(o.input[4].content.at(-1), { type: 'input_text', text: 'devam' });
   assert.deepEqual(o.input[5], { type: 'function_call', call_id: 'toolu_2', name: 'Read', arguments: '{}' });
-  assert.deepEqual(o.input[6], { type: 'function_call_output', call_id: 'toolu_2', output: '[HATA] yok' });
+  assert.deepEqual(o.input[6], { type: 'function_call_output', call_id: 'toolu_2', output: '[ERROR] yok' });
   assert.equal(o.input.length, 7);
   assert.deepEqual(o.tools, [{ type: 'function', name: 'Read', description: 'oku', parameters: { type: 'object', properties: { p: { type: 'string' } } }, strict: false }]);
   assert.deepEqual(o.tool_choice, { type: 'function', name: 'Read' });

@@ -1,5 +1,11 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { t as i18n } from './i18n/index.js';
+
+// Text the router injects into model-facing prompts is always English (models follow it best).
+const IMG_NOTE = '[image output is in the next user message]';
+const IMG_INTRO = 'Image(s) from the tool output:';
+const ERR_PREFIX = '[ERROR] ';
 
 // Yerel çeviri yönlendiricisi. İki yönde çalışır:
 //  • /v1/messages  : Claude Code'un Anthropic Messages isteklerini modele göre OpenAI Chat Completions'a
@@ -53,8 +59,8 @@ export function anthropicToOpenAI(req, { model, baseUrl } = {}) {
         const items = typeof b.content === 'string' ? [{ type: 'text', text: b.content }] : (b.content || []);
         const c = textOf(items);
         for (const it of items) { const img = it?.type === 'image' && imagePart(it); if (img) toolImages.push(img); }
-        const imgNote = items.some(it => it?.type === 'image') ? (c ? '\n' : '') + '[görsel çıktı bir sonraki kullanıcı mesajında]' : '';
-        messages.push({ role: 'tool', tool_call_id: b.tool_use_id, content: (b.is_error ? '[HATA] ' : '') + (c || '') + imgNote });
+        const imgNote = items.some(it => it?.type === 'image') ? (c ? '\n' : '') + IMG_NOTE : '';
+        messages.push({ role: 'tool', tool_call_id: b.tool_use_id, content: (b.is_error ? ERR_PREFIX : '') + (c || '') + imgNote });
       } else if (b.type === 'text') {
         parts.push({ type: 'text', text: b.text });
       } else if (b.type === 'image') {
@@ -62,7 +68,7 @@ export function anthropicToOpenAI(req, { model, baseUrl } = {}) {
       }
     }
     // Chat Completions'ta araç mesajı görsel taşıyamaz; araçtan dönen görseller ayrı bir kullanıcı mesajıyla iletilir.
-    if (toolImages.length) parts.unshift({ type: 'text', text: 'Araç çıktısındaki görsel(ler):' }, ...toolImages);
+    if (toolImages.length) parts.unshift({ type: 'text', text: IMG_INTRO }, ...toolImages);
     if (parts.length) messages.push({ role: 'user', content: parts.length === 1 && parts[0].type === 'text' ? parts[0].text : parts });
   }
   const out = { model: model || req.model, messages, stream: !!req.stream };
@@ -174,7 +180,7 @@ export function responsesToChat(req, { model, baseUrl } = {}) {
       kinds.set(t.name, 'function');
     } else if (t.type === 'custom') {
       // Serbest biçimli araç (ör. apply_patch): tek dizge parametreli bir fonksiyona çevrilir.
-      tools.push({ type: 'function', function: { name: t.name, description: `${t.description || ''}${t.format?.definition ? `\n\nGirdi biçimi (${t.format.syntax || 'grammar'}):\n${t.format.definition}` : ''}`.trim(), parameters: { type: 'object', properties: { [CUSTOM_PARAM]: { type: 'string', description: 'Aracın ham girdisi' } }, required: [CUSTOM_PARAM] } } });
+      tools.push({ type: 'function', function: { name: t.name, description: `${t.description || ''}${t.format?.definition ? `\n\nInput format (${t.format.syntax || 'grammar'}):\n${t.format.definition}` : ''}`.trim(), parameters: { type: 'object', properties: { [CUSTOM_PARAM]: { type: 'string', description: 'Raw input for the tool' } }, required: [CUSTOM_PARAM] } } });
       kinds.set(t.name, 'custom');
     } else if (t.type === 'local_shell') {
       tools.push({ type: 'function', function: { name: 'local_shell', description: 'Run a shell command locally.', parameters: { type: 'object', properties: { command: { type: 'array', items: { type: 'string' } }, workdir: { type: 'string' }, timeout_ms: { type: 'number' } }, required: ['command'] } } });
@@ -392,15 +398,15 @@ export function anthropicToResponses(req, { model } = {}) {
         const items = typeof b.content === 'string' ? [{ type: 'text', text: b.content }] : (b.content || []);
         const c = textOf(items);
         for (const it of items) { const img = it?.type === 'image' && responsesImage(it); if (img) toolImages.push(img); }
-        const imgNote = items.some(it => it?.type === 'image') ? (c ? '\n' : '') + '[görsel çıktı bir sonraki kullanıcı mesajında]' : '';
-        input.push({ type: 'function_call_output', call_id: b.tool_use_id, output: (b.is_error ? '[HATA] ' : '') + (c || '') + imgNote });
+        const imgNote = items.some(it => it?.type === 'image') ? (c ? '\n' : '') + IMG_NOTE : '';
+        input.push({ type: 'function_call_output', call_id: b.tool_use_id, output: (b.is_error ? ERR_PREFIX : '') + (c || '') + imgNote });
       } else if (b.type === 'text') {
         parts.push({ type: 'input_text', text: b.text });
       } else if (b.type === 'image') {
         const img = responsesImage(b); if (img) parts.push(img);
       }
     }
-    if (toolImages.length) parts.unshift({ type: 'input_text', text: 'Araç çıktısındaki görsel(ler):' }, ...toolImages);
+    if (toolImages.length) parts.unshift({ type: 'input_text', text: IMG_INTRO }, ...toolImages);
     if (parts.length) input.push({ type: 'message', role: 'user', content: parts });
   }
   const out = { model: model || req.model, input, stream: !!req.stream, store: false };
@@ -434,7 +440,7 @@ function responsesStop(r, sawTool) {
 }
 
 export function responsesToAnthropic(res, model) {
-  if (res.error || res.status === 'failed') throw Object.assign(new Error(res.error?.message || 'Sağlayıcı yanıtı başarısız oldu'), { status: 502 });
+  if (res.error || res.status === 'failed') throw Object.assign(new Error(res.error?.message || i18n('router.upstreamFailed')), { status: 502 });
   const content = [];
   let sawTool = false;
   for (const it of res.output || []) {
@@ -487,7 +493,7 @@ export function createAnthropicFromResponsesStream(model, emit) {
       if (ended || !e || typeof e !== 'object') return;
       const t = e.type || '';
       if (t === 'error' || (!t && e.error)) { tr.error(e.message || e.error?.message || JSON.stringify(e.error || e), e.code || e.error?.code); return; }
-      if (t === 'response.failed') { const er = e.response?.error; tr.error(er?.message || 'Sağlayıcı yanıtı başarısız oldu', er?.code); return; }
+      if (t === 'response.failed') { const er = e.response?.error; tr.error(er?.message || i18n('router.upstreamFailed'), er?.code); return; }
       start();
       if (t === 'response.output_item.added' && e.item?.type === 'function_call') {
         openTool(keyOf(e), e.item);
@@ -614,23 +620,23 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
     const sendJson = (code, obj) => { if (!res.headersSent) res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
     try {
       // Tarayıcı kaynaklı (CSRF) ve DNS yeniden bağlama saldırılarına karşı: yalnızca yerel araçlar.
-      if (req.headers.origin || !isLocalHost(req.headers.host)) return sendJson(403, { type: 'error', error: { type: 'permission_error', message: 'Yalnızca yerel araçlar kullanabilir.' } });
+      if (req.headers.origin || !isLocalHost(req.headers.host)) return sendJson(403, { type: 'error', error: { type: 'permission_error', message: i18n('router.localOnly') } });
       const url = new URL(req.url, 'http://127.0.0.1');
       let tg;
       try { tg = getTargets() || {}; } catch (e) { return sendJson(503, { type: 'error', error: { type: 'api_error', message: e.message } }); }
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
         return sendJson(200, { ok: true, claude: tg.claude ? { target: tg.claude.baseUrl, model: tg.claude.model, api: typeof tg.claude.apiFor === 'function' ? tg.claude.apiFor(tg.claude.model) : (tg.claude.api || 'chat') } : null, codex: tg.codex ? { target: tg.codex.baseUrl, model: tg.codex.model } : null });
       }
-      if (req.method !== 'POST') return sendJson(404, { type: 'error', error: { type: 'not_found_error', message: 'Bulunamadı' } });
+      if (req.method !== 'POST') return sendJson(404, { type: 'error', error: { type: 'not_found_error', message: i18n('router.notFound') } });
       const chunks = []; for await (const c of req) chunks.push(c);
       let body;
-      try { body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch { return sendJson(400, { type: 'error', error: { type: 'invalid_request_error', message: 'Geçersiz JSON' } }); }
+      try { body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch { return sendJson(400, { type: 'error', error: { type: 'invalid_request_error', message: i18n('router.badJson') } }); }
 
       const isClaude = url.pathname.startsWith('/v1/messages');
       const isCodex = url.pathname === '/v1/responses' || url.pathname === '/responses';
-      if (!isClaude && !isCodex) return sendJson(404, { type: 'error', error: { type: 'not_found_error', message: 'Bulunamadı' } });
+      if (!isClaude && !isCodex) return sendJson(404, { type: 'error', error: { type: 'not_found_error', message: i18n('router.notFound') } });
       const t = isClaude ? tg.claude : tg.codex;
-      if (!t) return sendJson(503, { type: 'error', error: { type: 'api_error', message: `Yönlendirici ${isClaude ? 'Claude Code' : 'Codex'} için yapılandırılmamış. "aswitch use <sağlayıcı> --tools ${isClaude ? 'claude' : 'codex'}" çalıştırın.` } });
+      if (!t) return sendJson(503, { type: 'error', error: { type: 'api_error', message: i18n('router.notConfigured', { tool: isClaude ? 'Claude Code' : 'Codex', flag: isClaude ? 'claude' : 'codex' }) } });
       if (isClaude && url.pathname.startsWith('/v1/messages/count_tokens')) return sendJson(200, { input_tokens: estimateTokens(body) });
 
       let oreq, model, kinds, api = 'chat';
@@ -658,7 +664,7 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
       if (!oreq.stream || !ctype.includes('text/event-stream')) {
         // Akış istenmediyse ya da sağlayıcı akış yerine düz JSON döndürdüyse.
         const text = await up.text();
-        let json; try { json = JSON.parse(text); } catch { throw new Error(`Sağlayıcıdan beklenmeyen yanıt: ${text.slice(0, 300)}`); }
+        let json; try { json = JSON.parse(text); } catch { throw new Error(i18n('router.unexpected', { text: text.slice(0, 300) })); }
         if (json.error) throw Object.assign(new Error(json.error.message || JSON.stringify(json.error)), { status: 502 });
         if (api === 'responses') {
           const msg = responsesToAnthropic(json, model);
@@ -685,7 +691,7 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
       }
       tr.end(); res.end();
     } catch (e) {
-      log('Yönlendirici hatası:', e.message);
+      log(i18n('router.logError'), e.message);
       if (tr && res.headersSent) { tr.error(e.message); return res.end(); }
       if (res.headersSent) return res.end();
       sendJson(e.status || 500, { type: 'error', error: { type: 'api_error', message: e.message } });

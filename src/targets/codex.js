@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { codexConfigPath } from '../paths.js';
 import { writeFileSafe, exists } from '../fsutil.js';
 import { ensureOriginal, snapshot } from '../backup.js';
+import { t } from '../i18n/index.js';
 
 // Codex CLI, Codex IDE uzantısı ve Codex masaüstü uygulaması ~/.codex/config.toml okur.
 // Alanlar: https://developers.openai.com/codex/config-reference (model_provider, model_providers.<id>.*)
@@ -86,7 +87,7 @@ export function buildCodexBlocks({ provider, model, keyEnvName, baseUrl, keyMode
       `args = [${authCommand.args.map(q).join(', ')}]`, 'refresh_interval_ms = 0');
   } else if (keyEnvName) {
     table.push(`env_key = ${q(keyEnvName)}`,
-      `env_key_instructions = ${q(`"aswitch run codex" ile başlatın veya "aswitch env" çıktısını kabuk profilinize ekleyin (${keyEnvName}).`)}`);
+      `env_key_instructions = ${q(t('codex.envKeyInstructions', { env: keyEnvName }))}`);
   }
   table.push(END);
   return { head, table };
@@ -154,5 +155,6 @@ export function statusCodex() {
     if (!inTable && !model) model = line.match(/^\s*model\s*=\s*"([^"]*)"/)?.[1];
     if (inBlock && !base) base = line.match(/^\s*base_url\s*=\s*"([^"]*)"/)?.[1];
   }
-  return { file, baseUrl: base || '(resmî OpenAI / ChatGPT girişi)', model: model || '(varsayılan)' };
+  const mode = !base ? 'official' : /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(base) ? 'router' : 'custom';
+  return { file, mode, baseUrl: base || null, model: model || null };
 }

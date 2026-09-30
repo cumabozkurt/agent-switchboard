@@ -4,38 +4,12 @@ import * as core from '../src/core.js';
 import { startRouter } from '../src/router.js';
 import { openRouterLogin } from '../src/oauth.js';
 import { startUi } from '../src/ui/server.js';
-import { flags, envLine, defaultShell } from '../src/cli.js';
+import { flags, envLine, defaultShell, extractLang } from '../src/cli.js';
+import { t, setLang, getLang, LANGS, LANG_NAMES } from '../src/i18n/index.js';
 
 const VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
-const HELP = `agent-switchboard (aswitch) ${VERSION} — Claude Code, Codex ve OpenCode için API/model yöneticisi
-
-Kullanım:
-  aswitch status                               Aktif sağlayıcı ve modelleri göster
-  aswitch providers                            Hazır ve özel sağlayıcıları listele
-  aswitch key set <sağlayıcı> [anahtar]        API anahtarını kaydet (boş bırakılırsa gizli sorar)
-  aswitch key rm <sağlayıcı>                   Anahtarı sil
-  aswitch key get <sağlayıcı>                  Anahtarı düz metin yazdır (Codex "--codex-key command" bunu kullanır)
-  aswitch login openrouter [--port 3000]       OpenRouter OAuth (PKCE) ile anahtar al
-  aswitch models <sağlayıcı> [--refresh] [--filter x] [--limit 50]
-                                               Canlı model listesini çek (yeniden eskiye)
-  aswitch use <sağlayıcı> [--model m] [--fast m] [--tools claude,codex,opencode] [--codex-key env|command]
-                                               Sağlayıcıyı araçlara uygula (varsayılan: üç araç). Model "latest"
-                                               veya "latest:opus" olabilir: uygulama anında en yenisi seçilir
-  aswitch official [--tools claude,codex]      Aracın kendi resmî girişine dön (Pro/Max, ChatGPT OAuth)
-  aswitch restore [--tools ...]                Dosyaları aswitch'ten önceki ORİJİNAL haline getir
-  aswitch backups                              Zaman damgalı yedekleri listele
-  aswitch provider add <id> --openai-base URL [--anthropic-base URL] [--models-url URL]
-                           [--wire responses|chat] [--key-env AD] [--label ad]
-  aswitch provider rm <id>
-  aswitch router [--port 3456]                 Chat/Responses sağlayıcılarını Claude Code'a, Chat sağlayıcılarını Codex'e bağlayan yerel çevirici
-  aswitch run <claude|codex|opencode> [argümanlar]  Aracı kayıtlı anahtarla başlat (argümanlar araca aynen geçer)
-  aswitch env [--shell sh|fish|powershell|cmd] [--all]  Aktif Codex/OpenCode anahtarlarını ortam değişkeni olarak yazdır
-  aswitch ui [--port 4567] [--no-open]         Masaüstü arayüzünü tarayıcıda aç
-  aswitch --version
-`;
-
-// Gizli giriş: TTY'de ham mod ile karakterler ekrana yazılmaz; boru/dosyadan gelen girişte ilk satır okunur.
+// Hidden input: raw mode on a TTY so the key is never echoed; with piped stdin the first line is read.
 function askHidden(q) {
   const stdin = process.stdin;
   if (!stdin.isTTY) {
@@ -55,7 +29,7 @@ function askHidden(q) {
     const onData = s => {
       for (const ch of s) {
         if (ch === '\r' || ch === '\n' || ch === '\u0004') return done();
-        if (ch === '\u0003') return done(new Error('İptal edildi.'));
+        if (ch === '\u0003') return done(new Error(t('cli.cancelled')));
         if (ch === '\u007f' || ch === '\b') buf = buf.slice(0, -1);
         else if (ch >= ' ') buf += ch;
       }
@@ -65,106 +39,170 @@ function askHidden(q) {
 }
 
 const toolsOf = f => (typeof f.tools === 'string' ? f.tools.split(',').map(s => s.trim()).filter(Boolean) : undefined);
+const str = v => (typeof v === 'string' ? v : undefined);
+const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' }[id] || id);
+
+function printStatus(s) {
+  for (const tool of core.TOOLS) {
+    const st = s[tool]; const a = s.active?.[tool];
+    console.log(`${toolName(tool)}  [${t('ui.mode.' + st.mode)}]`);
+    console.log(`  ${t('ui.col.provider').padEnd(10)} ${a ? a.provider : t('ui.none')}`);
+    console.log(`  ${t('ui.col.model').padEnd(10)} ${st.model || t('ui.defaultModel')}`);
+    if (st.baseUrl) console.log(`  ${t('ui.col.endpoint').padEnd(10)} ${st.baseUrl}`);
+    console.log(`  ${t('ui.col.file').padEnd(10)} ${st.file}`);
+    if (st.error) console.log(`  ! ${st.error}`);
+  }
+  const r = s.router;
+  const needed = !!(r && (r.claude || r.codex));
+  console.log(`${t('ui.tab.router')}  ${needed ? t('cli.routerNeeded', { port: r.port || core.DEFAULT_ROUTER_PORT }) : t('ui.router.notNeeded')}`);
+  if (r?.claude) console.log(`  Claude Code → ${r.claude.provider} · ${r.claude.model}${r.claude.fastModel ? ' / ' + r.claude.fastModel : ''}`);
+  if (r?.codex) console.log(`  Codex       → ${r.codex.provider} · ${r.codex.model}`);
+}
 
 async function main() {
-  const [cmd, ...rest] = process.argv.slice(2);
-  if (cmd === 'run') {
-    // run: araç adından sonraki her şey araca aynen iletilir (bayraklar dahil).
-    process.exitCode = await core.run(rest[0], rest.slice(1));
+  const argv = process.argv.slice(2);
+  // `run` passes everything after the tool name through untouched, so --lang only counts before `run`.
+  let i = 0, lead = null;
+  while (i < argv.length && (argv[i] === '--lang' || argv[i].startsWith('--lang='))) {
+    if (argv[i] === '--lang') { lead = argv[i + 1] ?? ''; i += 2; } else { lead = argv[i].slice(7); i++; }
+  }
+  if (argv[i] === 'run') {
+    if (lead != null) setLang(lead);
+    process.exitCode = await core.run(argv[i + 1], argv.slice(i + 2));
     return;
   }
+  const { lang, rest: args } = extractLang(argv);
+  if (lang != null) setLang(lang);
+  const [cmd, ...rest] = args;
   const f = flags(rest);
+  const help = () => console.log(t('cli.help', { version: VERSION }));
   switch (cmd) {
-    case undefined: case 'help': case '-h': case '--help': console.log(HELP); break;
+    case undefined: case 'help': case '-h': case '--help': help(); break;
     case '-v': case '--version': case 'version': console.log(VERSION); break;
-    case 'status': console.log(JSON.stringify(core.status(), null, 2)); break;
+    case 'status': {
+      const s = core.status();
+      if (f.json) console.log(JSON.stringify(s, null, 2)); else printStatus(s);
+      break;
+    }
     case 'providers':
-      for (const p of core.providers()) console.log(`${p.hasKey ? '●' : '○'} ${p.id.padEnd(14)} ${p.label}${p.codex ? (p.codexDirect ? '' : '  (Codex: yönlendirici ile)') : '  (Codex yok)'}${p.custom ? '  [özel]' : ''}`);
+      for (const p of core.providers()) {
+        const codex = p.codex ? (p.codexDirect ? '' : '  ' + t('cli.codexViaRouter')) : '  ' + t('cli.noCodex');
+        console.log(`${p.hasKey || p.noKey ? '●' : '○'} ${p.id.padEnd(14)} ${p.label}${p.desc ? ' — ' + p.desc : ''}${codex}${p.custom ? '  ' + t('cli.custom') : ''}`);
+      }
       break;
     case 'key': {
       const [sub, pid, val] = f._;
-      if (!pid && sub) throw new Error('Sağlayıcı belirtin: aswitch key ' + sub + ' <sağlayıcı>');
+      if (!pid && sub) throw new Error(t('cli.keyNeedProvider', { sub }));
       if (sub === 'set') {
-        const key = val || await askHidden(`${pid} anahtarı: `);
-        if (!key) throw new Error('Boş anahtar kaydedilmedi.');
-        core.setKey(pid, key); console.log('Kaydedildi.');
-      } else if (sub === 'rm') { core.setKey(pid, ''); console.log('Silindi.'); }
+        const key = val || await askHidden(t('cli.keyPrompt', { id: pid }));
+        if (!key) throw new Error(t('err.emptyKey'));
+        core.setKey(pid, key); console.log(t('cli.saved'));
+      } else if (sub === 'rm') { core.setKey(pid, ''); console.log(t('cli.removed')); }
       else if (sub === 'get') {
         const k = core.getProviderKey(pid);
-        if (!k) throw new Error(`${pid} için anahtar yok.`);
+        if (!k) throw new Error(t('cli.noKeyFor', { id: pid }));
         process.stdout.write(k + '\n');
-      } else { console.log(HELP); process.exitCode = 1; }
+      } else { help(); process.exitCode = 1; }
       break;
     }
     case 'login': {
-      if (f._[0] !== 'openrouter') throw new Error('Şu an resmî OAuth akışı yalnızca OpenRouter için var. Claude/Codex aboneliği için "aswitch official" kullanın.');
+      if (f._[0] !== 'openrouter') throw new Error(t('cli.loginOnlyOpenrouter'));
       const key = await openRouterLogin({ port: Number(f.port) || 3000 });
       core.setKey('openrouter', key);
-      console.log('OpenRouter anahtarı OAuth ile alındı ve kaydedildi.');
+      console.log(t('cli.loginDone'));
       break;
     }
     case 'models': {
-      if (!f._[0]) throw new Error('Sağlayıcı belirtin: aswitch models <sağlayıcı>');
+      if (!f._[0]) throw new Error(t('cli.modelsNeedProvider'));
       let list = await core.models(f._[0], { refresh: !!f.refresh });
       if (typeof f.filter === 'string') list = list.filter(m => m.id.toLowerCase().includes(f.filter.toLowerCase()));
       if (f.json) { console.log(JSON.stringify(list, null, 2)); break; }
-      for (const m of list.slice(0, Number(f.limit) || 50)) console.log(`${m.id}${m.created ? '  ' + new Date(m.created * 1000).toISOString().slice(0, 10) : ''}${m.context ? '  ' + m.context + ' bağlam' : ''}`);
+      for (const m of list.slice(0, Number(f.limit) || 50)) console.log(`${m.id}${m.created ? '  ' + new Date(m.created * 1000).toISOString().slice(0, 10) : ''}${m.context ? '  ' + t('cli.context', { n: m.context }) : ''}`);
       break;
     }
     case 'use': {
-      const str = v => (typeof v === 'string' ? v : undefined);
       const r = await core.useProvider({ provider: f._[0], model: str(f.model), fastModel: str(f.fast), tools: toolsOf(f), port: f.port && Number(f.port), codexKey: str(f['codex-key']) });
-      console.log(`${r.provider} uygulandı${r.model ? ` (model: ${r.model})` : ''}:`);
+      console.log(r.model ? t('cli.appliedModel', { provider: r.provider, model: r.model }) : t('cli.applied', { provider: r.provider }));
       for (const x of r.results) {
         console.log(`  ${x.tool.padEnd(9)} ${x.file}`);
-        if (x.viaRouter) console.log('            Bu araç yerel yönlendirici üzerinden bağlanır: "aswitch router" açık olmalı.');
-        if (x.keyEnv) console.log(`            Anahtar ${x.keyEnv} değişkeninden okunur: "aswitch run ${x.tool}" ile başlatın veya "aswitch env" çıktısını profilinize ekleyin.`);
+        if (x.viaRouter) console.log('            ' + t('cli.viaRouter'));
+        if (x.keyEnv) console.log('            ' + t('cli.keyEnvHint', { env: x.keyEnv, tool: x.tool }));
       }
       break;
     }
     case 'official':
-      for (const r of core.useOfficial(toolsOf(f))) console.log(`${r.tool}: ${r.note || 'resmî girişe dönüldü'}${r.file ? ` (${r.file})` : ''}`);
+      for (const r of core.useOfficial(toolsOf(f))) console.log(`${r.tool}: ${r.note || t('ui.restore.officialDone')}${r.file ? ` (${r.file})` : ''}`);
       break;
-    case 'restore': for (const r of core.restore(toolsOf(f))) console.log(`${r.target}: ${r.restored ? 'orijinal hale getirildi' : r.reason}`); break;
-    case 'backups': for (const b of core.listBackups()) console.log(`${b.id}  ${b.files.join(', ')}`); break;
+    case 'restore': for (const r of core.restore(toolsOf(f))) console.log(`${r.target}: ${r.restored ? t('restore.done') : r.reason}`); break;
+    case 'backups': {
+      if (f._[0] === 'restore') {
+        const r = core.restoreBackup(String(f._[1] || ''), String(f._[2] || ''));
+        console.log(t('ui.backups.restored', { tool: toolName(r.tool), file: r.file }));
+        break;
+      }
+      const list = core.listBackups();
+      if (!list.length) console.log(t('ui.backups.none'));
+      for (const b of list) console.log(`${b.id}  ${b.files.join(', ')}`);
+      break;
+    }
     case 'provider': {
       const [sub, id] = f._;
-      const str = v => (typeof v === 'string' ? v : undefined);
       if (sub === 'add') {
         const openaiBase = str(f['openai-base']);
         core.addProvider(id, { label: str(f.label), openaiBase, anthropicBase: str(f['anthropic-base']), modelsUrl: str(f['models-url']) || (openaiBase ? openaiBase.replace(/\/$/, '') + '/models' : undefined), codexWire: str(f.wire) || 'chat', keyEnv: str(f['key-env']) });
-        console.log(`${id} eklendi.`);
-      } else if (sub === 'rm') { core.removeProvider(id); console.log(`${id} silindi.`); }
-      else { console.log(HELP); process.exitCode = 1; }
+        console.log(t('ui.providers.added', { id }));
+      } else if (sub === 'rm') { core.removeProvider(id); console.log(t('ui.providers.removed', { id })); }
+      else { help(); process.exitCode = 1; }
       break;
     }
     case 'router': {
-      const t = core.routerTargets();
-      const port = Number(f.port) || t.port;
-      await startRouter({ port, targets: () => core.routerTargets() });
-      console.log(`Yönlendirici http://127.0.0.1:${port} çalışıyor. Durdurmak için Ctrl+C.`);
-      if (t.claude) {
-        for (const m of [...new Set([t.claude.model, t.claude.fastModel].filter(Boolean))]) {
-          const api = t.claude.apiFor ? t.claude.apiFor(m) : 'chat';
-          const where = api === 'messages' ? `${t.claude.anthropicBase}/v1/messages` : `${t.claude.baseUrl}/${api === 'responses' ? 'responses' : 'chat/completions'}`;
+      const tg = core.routerTargets();
+      const port = Number(f.port) || tg.port;
+      let server;
+      try { server = await startRouter({ port, targets: () => core.routerTargets() }); } catch (e) {
+        if (e.code === 'EADDRINUSE') throw new Error(t('router.portInUse', { port }));
+        throw e;
+      }
+      console.log(t('cli.routerRunning', { port }));
+      if (port !== tg.port) console.log('  ' + t('cli.routerPortMismatch', { port: tg.port }));
+      if (tg.claude) {
+        for (const m of [...new Set([tg.claude.model, tg.claude.fastModel].filter(Boolean))]) {
+          const api = tg.claude.apiFor ? tg.claude.apiFor(m) : 'chat';
+          const where = api === 'messages' ? `${tg.claude.anthropicBase}/v1/messages` : `${tg.claude.baseUrl}/${api === 'responses' ? 'responses' : 'chat/completions'}`;
           console.log(`  Claude Code → ${where} (${m})`);
         }
       }
-      if (t.codex) console.log(`  Codex       → ${t.codex.baseUrl} (${t.codex.model})`);
+      if (tg.codex) console.log(`  Codex       → ${tg.codex.baseUrl}/chat/completions (${tg.codex.model})`);
+      const shutdown = () => { server.close(); server.closeAllConnections?.(); console.log(t('ui.router.stopped')); process.exit(0); };
+      process.once('SIGINT', shutdown); process.once('SIGTERM', shutdown);
       break;
     }
     case 'env': {
       const env = core.toolEnv({ all: !!f.all });
       const shell = typeof f.shell === 'string' ? f.shell : defaultShell();
-      if (!['sh', 'bash', 'zsh', 'fish', 'powershell', 'pwsh', 'cmd'].includes(shell)) throw new Error('--shell sh | fish | powershell | cmd olmalı');
+      if (!['sh', 'bash', 'zsh', 'fish', 'powershell', 'pwsh', 'cmd'].includes(shell)) throw new Error(t('cli.badShell'));
       const sh = shell === 'pwsh' ? 'powershell' : ['bash', 'zsh'].includes(shell) ? 'sh' : shell;
       for (const [k, v] of Object.entries(env)) console.log(envLine(sh, k, v));
-      if (!Object.keys(env).length) console.error('(Aktif Codex/OpenCode sağlayıcısı için anahtar yok; tüm kayıtlı anahtarlar için --all)');
+      if (!Object.keys(env).length) console.error(t('cli.envEmpty'));
       break;
     }
-    case 'ui': { const { url } = await startUi({ port: Number(f.port) || 4567, open: !f['no-open'] }); console.log(`Arayüz: ${url}`); break; }
-    default: console.log(HELP); process.exitCode = 1;
+    case 'lang': {
+      const v = f._[0];
+      if (!v) { console.log(`${getLang()} (${LANG_NAMES[getLang()]}) — ${t('cli.langAvailable', { langs: LANGS.join(', ') })}`); break; }
+      const s = core.setSettings({ lang: v });
+      setLang(null);
+      console.log(t('cli.langSet', { lang: `${s.lang} (${LANG_NAMES[s.lang]})` }));
+      break;
+    }
+    case 'ui': {
+      const { url, stop } = await startUi({ port: Number(f.port) || 4567, open: !f['no-open'] });
+      console.log(t('cli.uiAt', { url }));
+      const shutdown = () => stop().then(() => process.exit(0));
+      process.once('SIGINT', shutdown); process.once('SIGTERM', shutdown);
+      break;
+    }
+    default: console.error(t('cli.unknownCommand', { cmd })); process.exitCode = 1;
   }
 }
 
-main().catch(e => { console.error('Hata:', e.message); process.exitCode = 1; });
+main().catch(e => { console.error(t('cli.error', { msg: e.message })); process.exitCode = 1; });

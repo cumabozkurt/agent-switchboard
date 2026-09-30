@@ -1,6 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { openUrl } from './open.js';
+import { t } from './i18n/index.js';
 
 // OpenRouter'ın resmî OAuth PKCE akışı: tarayıcıda giriş yapılır, kullanıcıya ait bir API anahtarı döner.
 // https://openrouter.ai/docs/use-cases/oauth-pkce
@@ -20,22 +21,23 @@ export async function openRouterLogin({ port = 3000, fetchImpl = fetch, log = co
       if (u.pathname !== '/callback') { res.writeHead(404).end(); return; }
       const c = u.searchParams.get('code');
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(c ? '<h2>Giriş tamam. Bu sekmeyi kapatabilirsiniz.</h2>' : '<h2>Kod alınamadı.</h2>');
+      res.end(`<!doctype html><meta charset="utf-8"><title>Agent Switchboard</title><h2 style="font-family:system-ui">${c ? t('oauth.done') : t('oauth.noCode')}</h2>`);
       server.close();
-      c ? resolve(c) : reject(new Error('OpenRouter kod döndürmedi.'));
+      c ? resolve(c) : reject(new Error(t('oauth.noCodeErr')));
     });
+    server.once('error', e => reject(new Error(e.code === 'EADDRINUSE' ? t('oauth.portInUse', { port }) : e.message)));
     server.listen(port, '127.0.0.1', () => {
-      log(`Tarayıcıda OpenRouter girişi açılıyor:\n${authUrl}`);
+      log(t('oauth.opening', { url: authUrl }));
       openUrl(authUrl);
     });
-    setTimeout(() => { server.close(); reject(new Error('Zaman aşımı (5 dk).')); }, 300000).unref();
+    setTimeout(() => { server.close(); reject(new Error(t('oauth.timeout'))); }, 300000).unref();
   });
   const res = await fetchImpl('https://openrouter.ai/api/v1/auth/keys', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: 'S256' })
   });
-  if (!res.ok) throw new Error(`Anahtar alınamadı: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(t('oauth.keyFailed', { status: res.status }));
   const { key } = await res.json();
   return key;
 }

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { t } from './i18n/index.js';
 
 export function exists(file) {
   try { fs.accessSync(file); return true; } catch { return false; }
@@ -24,9 +25,9 @@ export function readJsonStrict(file, fallback = {}, { jsonc = false } = {}) {
   if (!text.trim()) return fallback;
   try { return JSON.parse(text); } catch (e) {
     if (jsonc) {
-      try { return JSON.parse(stripJsonc(text)); } catch { /* aşağıdaki hata */ }
+      try { return JSON.parse(stripJsonc(text)); } catch { /* fall through to the error below */ }
     }
-    throw new Error(`${file} geçerli JSON değil (${e.message}). Dosyaya dokunulmadı; düzeltip tekrar deneyin.`);
+    throw Object.assign(new Error(t('err.badJson', { file, reason: e.message })), { code: 'err.badJson', file });
   }
 }
 
@@ -90,6 +91,12 @@ export function writeFileSafe(file, content, mode) {
     throw lastErr || e;
   }
   try { fs.rmSync(tmp, { force: true }); } catch { /* yok say */ }
+}
+
+// Directory for aswitch's own data (keys, backups): created owner-only (0700) on macOS/Linux.
+export function mkdirPrivate(dir) {
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  if (process.platform !== 'win32') { try { fs.chmodSync(dir, 0o700); } catch { /* not ours to change */ } }
 }
 
 export function writeJson(file, obj, mode) {

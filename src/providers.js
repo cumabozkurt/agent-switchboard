@@ -10,7 +10,7 @@
 // modelsUrl     : Güncel model listesinin çekildiği adres
 export const PRESETS = {
   anthropic: {
-    label: 'Anthropic (API anahtarı)',
+    label: 'Anthropic',
     anthropicBase: 'https://api.anthropic.com',
     openaiBase: 'https://api.anthropic.com/v1', // Anthropic'in OpenAI SDK uyumluluk katmanı (Codex için)
     codexWire: 'chat',
@@ -20,7 +20,7 @@ export const PRESETS = {
     keyUrl: 'https://console.anthropic.com/settings/keys'
   },
   openai: {
-    label: 'OpenAI (API anahtarı)',
+    label: 'OpenAI',
     openaiBase: 'https://api.openai.com/v1',
     codexWire: 'responses',
     modelsUrl: 'https://api.openai.com/v1/models',
@@ -28,7 +28,7 @@ export const PRESETS = {
     keyUrl: 'https://platform.openai.com/api-keys'
   },
   openrouter: {
-    label: 'OpenRouter (API anahtarı veya OAuth/PKCE)',
+    label: 'OpenRouter',
     anthropicBase: 'https://openrouter.ai/api',
     openaiBase: 'https://openrouter.ai/api/v1',
     codexWire: 'responses', // https://openrouter.ai/docs/api_reference/responses/overview (durumsuz)
@@ -98,14 +98,14 @@ export const PRESETS = {
     keyEnv: 'ZAI_API_KEY'
   },
   gemini: {
-    label: 'Google Gemini (OpenAI uyumlu uç nokta)',
+    label: 'Google Gemini',
     openaiBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
     codexWire: 'chat',
     modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
     keyEnv: 'GEMINI_API_KEY'
   },
   ollama: {
-    label: 'Ollama (yerel)',
+    label: 'Ollama',
     anthropicBase: 'http://localhost:11434',
     openaiBase: 'http://localhost:11434/v1',
     codexWire: 'responses', // Ollama ≥ 0.13.3: /v1/responses (https://docs.ollama.com/api/openai-compatibility)

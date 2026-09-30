@@ -64,7 +64,7 @@ test('Claude: özel adresli "anthropic" profili BASE_URL + AUTH_TOKEN kullanır'
 
 test('Claude: bozuk settings.json asla üzerine yazılmaz', async () => {
   fs.writeFileSync(f, '{ "theme": "dark", // yorum\n');
-  await assert.rejects(core.useProvider({ provider: 'openrouter', model: 'x', tools: ['claude'] }), /geçerli JSON değil/);
+  await assert.rejects(core.useProvider({ provider: 'openrouter', model: 'x', tools: ['claude'] }), /geçerli bir JSON değil/);
   assert.equal(fs.readFileSync(f, 'utf8'), '{ "theme": "dark", // yorum\n');
 });
 
@@ -89,7 +89,7 @@ test('Claude: Zen/Go üzerindeki yalnız-/responses modelleri yönlendirici üze
   assert.equal(r3.results[0].viaRouter, true);
   assert.equal(core.routerTargets().claude.apiFor('kimi-k3'), 'chat');
   // Google-native Gemini hâlâ desteklenmez
-  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'gemini-3-pro', tools: ['claude'] }), /Claude Code ile kullanılamaz/);
+  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'gemini-3-pro', tools: ['claude'] }), /Claude Code bu uç noktayı kullanamaz|Claude Code ile kullanılamaz/);
 });
 
 test('Claude: ana model /messages, hızlı model /responses ise ikisi de yönlendiriciden geçer', async () => {

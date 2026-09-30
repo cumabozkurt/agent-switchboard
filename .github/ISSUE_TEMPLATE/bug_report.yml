@@ -1,0 +1,43 @@
+name: Bug report / Hata bildirimi
+description: Something does not work as expected / Bir şey beklendiği gibi çalışmıyor
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste API keys.** / **API anahtarı yapıştırmayın.**
+        Security issues: see SECURITY.md / Güvenlik sorunları için SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version / Sürüm
+      description: "`aswitch --version` or the desktop app's Settings tab"
+    validations: { required: true }
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS / İşletim sistemi
+      options: [Windows, macOS (Apple Silicon), macOS (Intel), Linux]
+    validations: { required: true }
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where / Nerede
+      options: [Desktop app, CLI, "aswitch ui (browser)", Router]
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Yeniden üretme adımları
+      placeholder: "1. aswitch use … 2. …"
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual / Beklenen ve gerçekleşen
+    validations: { required: true }
+  - type: textarea
+    id: status
+    attributes:
+      label: "`aswitch status --json` output (keys are masked) / çıktısı (anahtarlar maskelidir)"
+      render: json

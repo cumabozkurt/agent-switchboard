@@ -22,3 +22,28 @@ test('çalışma zamanı bağımlılığı yok', () => {
   const root = JSON.parse(read('../package.json'));
   assert.equal(root.dependencies, undefined);
 });
+
+test('CLI giriş dosyası LF satır sonlu shebang ile başlar ve .gitattributes LF zorlar', () => {
+  assert.ok(read('../bin/aswitch.js').startsWith('#!/usr/bin/env node\n'));
+  assert.match(read('../.gitattributes'), /eol=lf/);
+});
+
+test('npm paketi çalışma zamanı dosyalarını ve iki dilli README dosyalarını içerir', () => {
+  const root = JSON.parse(read('../package.json'));
+  for (const f of ['bin', 'src', 'README.md', 'README.tr.md', 'CHANGELOG.md', 'LICENSE']) assert.ok(root.files.includes(f), f);
+  for (const f of ['../README.md', '../README.tr.md', '../CHANGELOG.md', '../src/i18n/en.js', '../src/i18n/tr.js', '../src/ui/index.html']) assert.ok(fs.existsSync(new URL(f, import.meta.url)), f);
+  assert.equal(root.bin.aswitch, 'bin/aswitch.js');
+});
+
+test('README dosyaları birbirine bağlantı verir ve yalnızca var olan ekran görüntülerini kullanır', () => {
+  for (const [f, other] of [['../README.md', 'README.tr.md'], ['../README.tr.md', 'README.md']]) {
+    const md = read(f);
+    assert.ok(md.includes(`](${other})`), `${f} -> ${other}`);
+    for (const m of md.matchAll(/\]\((docs\/images\/[^)]+)\)/g)) assert.ok(fs.existsSync(new URL('../' + m[1], import.meta.url)), m[1]);
+  }
+});
+
+test('CHANGELOG mevcut sürümü içerir', () => {
+  const root = JSON.parse(read('../package.json'));
+  assert.match(read('../CHANGELOG.md'), new RegExp(`## \\[?${root.version.replace(/\./g, '\\.')}`));
+});

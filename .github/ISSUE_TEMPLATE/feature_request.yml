@@ -1,0 +1,19 @@
+name: Feature request / Özellik isteği
+description: Suggest an idea, a provider or a language / Fikir, sağlayıcı veya dil önerin
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Sorun
+      description: What are you trying to do? / Ne yapmaya çalışıyorsunuz?
+    validations: { required: true }
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution / Önerilen çözüm
+  - type: textarea
+    id: docs
+    attributes:
+      label: Official documentation links / Resmî belge bağlantıları
+      description: For providers/tools, links to the official docs help a lot.

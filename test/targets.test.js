@@ -80,3 +80,29 @@ test('anahtar yoksa anlaşılır hata verir', async () => {
   delete process.env.MOONSHOT_API_KEY;
   await assert.rejects(core.useProvider({ provider: 'moonshot', tools: ['claude'] }), /anahtar yok/);
 });
+
+test('yönlendirici: özel port, yönlendirici gerekmeyen geçişlerden sonra da korunur', async () => {
+  core.setKey('openai', 'sk-test');
+  core.setKey('openrouter', 'sk-or-test');
+  await core.useProvider({ provider: 'openai', model: 'gpt-5', tools: ['claude'], port: 4567 });
+  assert.equal(core.status().router.port, 4567);
+  // Claude now goes direct: nothing needs the router, but the chosen port must stay.
+  await core.useProvider({ provider: 'openrouter', model: 'anthropic/claude-sonnet-4.5', tools: ['claude'] });
+  assert.equal(core.status().router.port, 4567);
+  assert.equal(core.routerNeeded(), false);
+  // Switching back without --port reuses it.
+  const r = await core.useProvider({ provider: 'openai', model: 'gpt-5', tools: ['claude'] });
+  assert.equal(r.results[0].viaRouter, true);
+  const s = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8'));
+  assert.equal(s.env.ANTHROPIC_BASE_URL, 'http://127.0.0.1:4567');
+  core.useOfficial(['claude']);
+  assert.equal(core.status().router.port, 4567);
+});
+
+test('güvenlik: aswitch veri klasörü ve yedekler yalnızca kullanıcıya açık (macOS/Linux)', { skip: process.platform === 'win32' }, () => {
+  const app = path.join(dir, '.agent-switchboard');
+  for (const d of [app, path.join(app, 'backups'), path.join(app, 'originals')]) {
+    assert.equal(fs.statSync(d).mode & 0o077, 0, d);
+  }
+  assert.equal(fs.statSync(path.join(app, 'config.json')).mode & 0o077, 0);
+});

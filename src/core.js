@@ -7,7 +7,12 @@ import { fetchModels, resolveModelAlias } from './models.js';
 import { applyClaude, clearClaude, statusClaude } from './targets/claude.js';
 import { applyCodex, clearCodex, statusCodex } from './targets/codex.js';
 import { applyOpencode, statusOpencode } from './targets/opencode.js';
-import { restoreOriginal, listBackups } from './backup.js';
+import fs from 'node:fs';
+import { restoreOriginal, listBackups, backupFile, ensureOriginal, snapshot } from './backup.js';
+import { claudeSettingsPath, codexConfigPath, appDir } from './paths.js';
+import { opencodeFile } from './targets/opencode.js';
+import { configPath } from './config.js';
+import { t, LANGS, normalizeLang, resetLangCache, getLang } from './i18n/index.js';
 
 export const TOOLS = ['claude', 'codex', 'opencode'];
 export const OFFICIAL_TOOLS = ['claude', 'codex'];
@@ -18,11 +23,11 @@ export function keyEnvName(provider) {
   return provider.keyEnv || `ASWITCH_${provider.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_KEY`;
 }
 
-function need(cond, msg) { if (!cond) throw new Error(msg); }
+function need(cond, key, vars) { if (!cond) throw Object.assign(new Error(t(key, vars)), { code: key }); }
 
 function checkTools(tools) {
-  need(Array.isArray(tools) && tools.length, 'En az bir araç seçin (claude | codex | opencode).');
-  for (const t of tools) need(TOOLS.includes(t), `Bilinmeyen araç: ${t} (claude | codex | opencode)`);
+  need(Array.isArray(tools) && tools.length, 'err.noTools');
+  for (const tool of tools) need(TOOLS.includes(tool), 'err.unknownTool', { tool });
 }
 
 // Codex'in anahtarı aswitch'ten istemesi için komut (yalnızca düz Node ile çalışırken; Electron'da env kullanılır).
@@ -42,13 +47,13 @@ function routerCfg(cfg) {
 
 export async function useProvider({ tools = TOOLS, provider: pid, model, fastModel, port, codexKey }) {
   const cfg = loadConfig();
-  need(pid, 'Sağlayıcı belirtin. "aswitch providers" ile listeyi görün.');
+  need(pid, 'err.noProvider');
   const provider = resolveProvider(cfg, pid);
-  need(provider, `Bilinmeyen sağlayıcı: ${pid}. "aswitch providers" ile listeyi görün.`);
+  need(provider, 'err.unknownProvider', { id: pid });
   checkTools(tools);
   const key = getKey(cfg, provider);
-  need(key, `${pid} için anahtar yok. "aswitch key set ${pid}"${provider.oauth ? ` veya "aswitch login ${pid}"` : ''} kullanın ya da ${provider.keyEnv || 'ortam değişkeni'} tanımlayın.`);
-  if (codexKey) need(CODEX_KEY_MODES.includes(codexKey), `--codex-key env | command olmalı`);
+  need(key, provider.oauth ? 'err.noKeyOauth' : 'err.noKey', { id: pid, env: provider.keyEnv || keyEnvName(provider) });
+  if (codexKey) need(CODEX_KEY_MODES.includes(codexKey), 'err.badCodexKey');
 
   if ((model && model.startsWith('latest')) || (fastModel && fastModel.startsWith('latest'))) {
     const models = await fetchModels(provider, key, { refresh: true });
@@ -66,23 +71,23 @@ export async function useProvider({ tools = TOOLS, provider: pid, model, fastMod
   for (const tool of tools) {
     if (tool === 'claude') {
       const mode = claudeMode(provider, model);
-      need(mode, api ? `${pid} üzerinde ${model} modeli ${api} uç noktasıyla sunuluyor; Claude Code ile kullanılamaz.` : `${pid} Claude Code ile kullanılamaz.`);
-      need(mode === 'direct' || model, `${pid} Claude Code'a yerel yönlendirici üzerinden bağlanır; --model belirtin (ör. --model latest).`);
+      need(mode, api ? 'err.modelApiUnsupported' : 'err.providerNoClaude', { id: pid, model, api, tool: 'Claude Code' });
+      need(mode === 'direct' || model, 'err.routerNeedsModel', { id: pid, tool: 'Claude Code' });
       plan.claude = mode;
       if (fastModel && fastModel !== model) {
         // Hızlı model başka bir uç noktadaysa (ör. ana model /messages, hızlı model /responses) her iki
         // modeli de yönlendirici taşır; yönlendirici /messages modellerini çevirmeden iletir.
         const fmode = claudeMode(provider, fastModel);
-        need(fmode, `${pid} üzerinde ${fastModel} modeli ${modelApi(provider, fastModel)} uç noktasıyla sunuluyor; Claude Code ile kullanılamaz.`);
+        need(fmode, 'err.modelApiUnsupported', { id: pid, model: fastModel, api: modelApi(provider, fastModel), tool: 'Claude Code' });
         if (fmode === 'router') plan.claude = 'router';
       }
     } else if (tool === 'codex') {
       const mode = codexMode(provider, model);
-      need(mode, provider.openaiBase ? `${pid} üzerinde ${model} modeli ${api} uç noktasıyla sunuluyor; Codex ile kullanılamaz.` : `${pid} OpenAI uyumlu uç nokta sunmuyor; Codex için kullanılamaz.`);
-      need(mode === 'direct' || model, `${pid} Codex'e yerel yönlendirici üzerinden bağlanır; --model belirtin.`);
+      need(mode, provider.openaiBase ? 'err.modelApiUnsupported' : 'err.providerNoOpenai', { id: pid, model, api, tool: 'Codex' });
+      need(mode === 'direct' || model, 'err.routerNeedsModel', { id: pid, tool: 'Codex' });
       plan.codex = mode;
     } else if (tool === 'opencode') {
-      need(provider.openaiBase, `${pid} OpenCode için OpenAI uyumlu uç nokta gerektirir.`);
+      need(provider.openaiBase, 'err.providerNoOpenai', { id: pid, tool: 'OpenCode' });
     }
   }
 
@@ -107,8 +112,9 @@ export async function useProvider({ tools = TOOLS, provider: pid, model, fastMod
     }
     cfg.active[tool] = { provider: pid, model: model || null, fastModel: fastModel || null, at: new Date().toISOString() };
   }
-  if (router.claude || router.codex) cfg.router = { port: routerPort, ...(router.claude ? { claude: router.claude } : {}), ...(router.codex ? { codex: router.codex } : {}) };
-  else delete cfg.router;
+  // The port is kept even when no tool needs the router, so a custom --port survives later switches.
+  cfg.router = { port: routerPort, ...(router.claude ? { claude: router.claude } : {}), ...(router.codex ? { codex: router.codex } : {}) };
+  if (!router.claude && !router.codex && routerPort === DEFAULT_ROUTER_PORT) delete cfg.router;
   saveConfig(cfg);
   return { provider: pid, model, fastModel, results };
 }
@@ -116,8 +122,8 @@ export async function useProvider({ tools = TOOLS, provider: pid, model, fastMod
 function dropRouter(cfg, tools) {
   const r = routerCfg(cfg);
   if (!r) return;
-  for (const t of tools) delete r[t];
-  if (r.claude || r.codex) cfg.router = r; else delete cfg.router;
+  for (const tool of tools) delete r[tool];
+  if (r.claude || r.codex || (r.port && r.port !== DEFAULT_ROUTER_PORT)) cfg.router = r; else delete cfg.router;
 }
 
 // Aracın kendi resmî girişine (Claude Pro/Max OAuth, ChatGPT girişi) döner; diğer ayarlar korunur.
@@ -126,11 +132,11 @@ export function useOfficial(tools = OFFICIAL_TOOLS) {
   checkTools(tools);
   const cfg = loadConfig();
   const out = [];
-  for (const t of tools) {
-    if (t === 'claude') out.push({ tool: t, file: clearClaude() });
-    else if (t === 'codex') out.push({ tool: t, file: clearCodex() });
-    else if (t === 'opencode') { const r = restoreOriginal('opencode'); out.push({ tool: t, file: r.file, note: r.restored ? 'orijinal dosya geri yüklendi' : r.reason }); }
-    cfg.active[t] = { provider: 'official', at: new Date().toISOString() };
+  for (const tool of tools) {
+    if (tool === 'claude') out.push({ tool: tool, file: clearClaude() });
+    else if (tool === 'codex') out.push({ tool: tool, file: clearCodex() });
+    else if (tool === 'opencode') { const r = restoreOriginal('opencode'); out.push({ tool: tool, file: r.file, note: r.restored ? t('restore.done') : r.reason }); }
+    cfg.active[tool] = { provider: 'official', at: new Date().toISOString() };
   }
   dropRouter(cfg, tools);
   saveConfig(cfg);
@@ -140,7 +146,7 @@ export function useOfficial(tools = OFFICIAL_TOOLS) {
 export function restore(tools = TOOLS) {
   checkTools(tools);
   const cfg = loadConfig();
-  const out = tools.map(t => { delete cfg.active[t]; return restoreOriginal(t); });
+  const out = tools.map(tool => { delete cfg.active[tool]; return restoreOriginal(tool); });
   dropRouter(cfg, tools);
   saveConfig(cfg);
   return out;
@@ -156,7 +162,7 @@ export function status() {
     opencode: statusOpencode(),
     keys: Object.fromEntries(listProviderIds(cfg).map(id => {
       const p = resolveProvider(cfg, id);
-      return [id, !p ? '(geçersiz)' : p.noKey && !cfg.keys?.[id] ? '(gerekmez)' : mask(getKey(cfg, p))];
+      return [id, !p ? t('key.invalid') : p.noKey && !cfg.keys?.[id] ? t('key.notNeeded') : mask(getKey(cfg, p))];
     }))
   };
 }
@@ -165,13 +171,22 @@ export function providers() {
   const cfg = loadConfig();
   return listProviderIds(cfg).map(id => {
     const p = resolveProvider(cfg, id);
-    return { id, label: p?.label || id, claude: !!p?.anthropicBase || !!p?.openaiBase, codex: !!p?.openaiBase, codexDirect: p?.codexWire === 'responses', custom: !PRESETS[id], hasKey: !!(p && getKey(cfg, p)) };
+    const custom = !PRESETS[id];
+    const key = p ? getKey(cfg, p) : '';
+    return {
+      id, label: p?.label || id, desc: custom ? '' : t(`provider.${id}`), custom,
+      claude: !!p?.anthropicBase || !!p?.openaiBase, codex: !!p?.openaiBase, codexDirect: p?.codexWire === 'responses',
+      hasKey: !!(p && !p.noKey && key), noKey: !!p?.noKey, keyMasked: p?.noKey ? '' : mask(key),
+      keySource: p?.noKey ? null : cfg.keys?.[id] ? 'saved' : key ? 'env' : null,
+      keyEnv: p ? keyEnvName(p) : null, keyUrl: p?.keyUrl || null, oauth: !!p?.oauth,
+      ...(custom && p ? { spec: { openaiBase: p.openaiBase || '', anthropicBase: p.anthropicBase || '', modelsUrl: p.modelsUrl || '', codexWire: p.codexWire || 'chat', keyEnv: p.keyEnv || '' } } : {})
+    };
   });
 }
 
 export function setKey(pid, key) {
   const cfg = loadConfig();
-  need(resolveProvider(cfg, pid), `Bilinmeyen sağlayıcı: ${pid}`);
+  need(resolveProvider(cfg, pid), 'err.unknownProvider', { id: pid });
   if (key) cfg.keys[pid] = key; else delete cfg.keys[pid];
   saveConfig(cfg);
 }
@@ -179,7 +194,7 @@ export function setKey(pid, key) {
 export function getProviderKey(pid) {
   const cfg = loadConfig();
   const p = resolveProvider(cfg, pid);
-  need(p, `Bilinmeyen sağlayıcı: ${pid}`);
+  need(p, 'err.unknownProvider', { id: pid });
   return getKey(cfg, p);
 }
 
@@ -187,11 +202,12 @@ const ID_RE = /^[a-z0-9][a-z0-9._-]{0,39}$/;
 const URL_RE = /^https?:\/\/\S+$/i;
 
 export function addProvider(id, spec = {}) {
-  need(id && ID_RE.test(id), 'Sağlayıcı kimliği küçük harf, rakam, "-", "_" veya "." içermeli (ör. my-proxy).');
-  need(spec.anthropicBase || spec.openaiBase, 'En az --anthropic-base veya --openai-base gerekli.');
-  for (const k of ['anthropicBase', 'openaiBase', 'modelsUrl']) if (spec[k]) need(URL_RE.test(spec[k]), `${k} geçerli bir http(s) adresi değil: ${spec[k]}`);
-  if (spec.codexWire) need(['responses', 'chat'].includes(spec.codexWire), '--wire responses | chat olmalı');
-  if (spec.keyEnv) need(/^[A-Za-z_][A-Za-z0-9_]*$/.test(spec.keyEnv), '--key-env geçerli bir ortam değişkeni adı değil');
+  need(id && ID_RE.test(id), 'err.badProviderId');
+  need(!PRESETS[id], 'err.presetId', { id });
+  need(spec.anthropicBase || spec.openaiBase, 'err.needBase');
+  for (const k of ['anthropicBase', 'openaiBase', 'modelsUrl']) if (spec[k]) need(URL_RE.test(spec[k]), 'err.badUrl', { field: k, url: spec[k] });
+  if (spec.codexWire) need(['responses', 'chat'].includes(spec.codexWire), 'err.badWire');
+  if (spec.keyEnv) need(/^[A-Za-z_][A-Za-z0-9_]*$/.test(spec.keyEnv), 'err.badKeyEnv');
   const allowed = ['label', 'anthropicBase', 'openaiBase', 'modelsUrl', 'codexWire', 'keyEnv'];
   const clean = Object.fromEntries(allowed.filter(k => spec[k] != null && spec[k] !== '').map(k => [k, String(spec[k])]));
   const cfg = loadConfig();
@@ -201,7 +217,7 @@ export function addProvider(id, spec = {}) {
 
 export function removeProvider(id) {
   const cfg = loadConfig();
-  need(cfg.providers[id], `${id} özel bir sağlayıcı değil.`);
+  need(cfg.providers[id], 'err.notCustom', { id });
   delete cfg.providers[id]; delete cfg.keys[id];
   saveConfig(cfg);
 }
@@ -209,7 +225,7 @@ export function removeProvider(id) {
 export async function models(pid, { refresh } = {}) {
   const cfg = loadConfig();
   const p = resolveProvider(cfg, pid);
-  need(p, `Bilinmeyen sağlayıcı: ${pid}`);
+  need(p, 'err.unknownProvider', { id: pid });
   return fetchModels(p, getKey(cfg, p), { refresh });
 }
 
@@ -226,10 +242,10 @@ export function toolEnv({ all = false, tools = ['codex', 'opencode'] } = {}) {
   };
   if (all) for (const id of listProviderIds(cfg)) add(id);
   const viaRouter = routerCfg(cfg) || {};
-  for (const t of tools) {
-    const a = cfg.active?.[t];
+  for (const tool of tools) {
+    const a = cfg.active?.[tool];
     // Claude Code anahtarı settings.json'dan okur; yönlendiriciden geçen Codex'in anahtara ihtiyacı yoktur.
-    if (!a || a.provider === 'official' || t === 'claude' || (t === 'codex' && viaRouter.codex)) continue;
+    if (!a || a.provider === 'official' || tool === 'claude' || (tool === 'codex' && viaRouter.codex)) continue;
     add(a.provider);
   }
   return env;
@@ -243,14 +259,14 @@ export function winQuote(a) {
 }
 
 export function run(tool, args = []) {
-  need(tool, 'Çalıştırılacak aracı belirtin: aswitch run <claude|codex|opencode> [argümanlar]');
+  need(tool, 'err.runNoTool');
   const bin = { claude: 'claude', codex: 'codex', opencode: 'opencode' }[tool] || tool;
   const env = { ...process.env, ...toolEnv({ tools: TOOLS.includes(tool) ? [tool] : ['codex', 'opencode'] }) };
   const child = process.platform === 'win32'
     ? spawn([bin, ...args].map(winQuote).join(' '), { stdio: 'inherit', env, shell: true })
     : spawn(bin, args, { stdio: 'inherit', env });
   return new Promise((resolve, reject) => {
-    child.on('error', e => reject(e.code === 'ENOENT' ? new Error(`"${bin}" bulunamadı; kurulu ve PATH'te olduğundan emin olun.`) : e));
+    child.on('error', e => reject(e.code === 'ENOENT' ? new Error(t('err.binNotFound', { bin })) : e));
     child.on('exit', code => resolve(code ?? 0));
   });
 }
@@ -258,11 +274,11 @@ export function run(tool, args = []) {
 export function routerTargets() {
   const cfg = loadConfig();
   const r = routerCfg(cfg);
-  need(r && (r.claude || r.codex), 'Yönlendirici gerekmiyor: aktif sağlayıcılar araçlara doğrudan bağlı.');
+  need(r && (r.claude || r.codex), 'err.routerNotNeeded');
   const mk = x => {
     if (!x) return undefined;
     const p = resolveProvider(cfg, x.provider);
-    need(p, `Yönlendirici sağlayıcısı bulunamadı: ${x.provider}`);
+    need(p, 'err.routerProviderMissing', { id: x.provider });
     return { provider: x.provider, baseUrl: p.openaiBase, anthropicBase: p.anthropicBase, key: p.noKey ? '' : getKey(cfg, p), model: x.model, fastModel: x.fastModel, apiFor: m => claudeRouterApi(p, m) };
   };
   return { port: r.port || DEFAULT_ROUTER_PORT, claude: mk(r.claude), codex: mk(r.codex) };
@@ -276,3 +292,54 @@ export function routerTarget() {
 }
 
 export { listBackups };
+
+// Current file for each tool (used by backup restore and the UI's "files" view).
+export function toolFile(tool) {
+  return { claude: claudeSettingsPath, codex: codexConfigPath, opencode: opencodeFile }[tool]?.();
+}
+
+// Restores one timestamped backup file over the tool's current config. The current file is
+// snapshotted first, so this is itself undoable. Only names returned by listBackups() are accepted.
+export function restoreBackup(id, name) {
+  const b = listBackups().find(x => x.id === id);
+  need(b && b.files.includes(name), 'err.backupNotFound', { id, name });
+  const tool = String(name).replace(/(-\d+)?\.[^.]+$/, '');
+  need(TOOLS.includes(tool), 'err.backupNotFound', { id, name });
+  const dest = toolFile(tool);
+  ensureOriginal(tool, dest);
+  snapshot(tool, dest);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(backupFile(id, name), dest);
+  const cfg = loadConfig();
+  cfg.active[tool] = { provider: 'backup', backup: id, at: new Date().toISOString() };
+  saveConfig(cfg);
+  return { tool, file: dest };
+}
+
+// App settings shown in the UI / `aswitch lang`.
+export function getSettings() {
+  const cfg = loadConfig();
+  return { lang: getLang(), langSaved: normalizeLang(cfg.lang), routerAutoStart: !!cfg.routerAutoStart, routerPort: routerCfg(cfg)?.port || DEFAULT_ROUTER_PORT };
+}
+
+export function setSettings({ lang, routerAutoStart } = {}) {
+  const cfg = loadConfig();
+  if (lang !== undefined) {
+    if (lang === null || lang === '' || lang === 'auto') delete cfg.lang;
+    else { need(normalizeLang(lang), 'err.badLang', { lang, langs: LANGS.join(' | ') }); cfg.lang = normalizeLang(lang); }
+  }
+  if (routerAutoStart !== undefined) cfg.routerAutoStart = !!routerAutoStart;
+  saveConfig(cfg);
+  resetLangCache();
+  return getSettings();
+}
+
+export function paths() {
+  return { config: configPath(), appDir: appDir(), claude: toolFile('claude'), codex: toolFile('codex'), opencode: toolFile('opencode') };
+}
+
+// Is the router needed by the current configuration?
+export function routerNeeded() {
+  const r = routerCfg(loadConfig());
+  return !!(r && (r.claude || r.codex));
+}

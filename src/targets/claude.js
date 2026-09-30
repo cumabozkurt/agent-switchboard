@@ -81,10 +81,9 @@ export function clearClaude() {
 
 export function statusClaude() {
   let s = {};
-  try { s = readJsonStrict(claudeSettingsPath(), {}); } catch (e) { return { file: claudeSettingsPath(), error: e.message, baseUrl: '?', model: '?' }; }
-  return {
-    file: claudeSettingsPath(),
-    baseUrl: s.env?.ANTHROPIC_BASE_URL || (s.env?.ANTHROPIC_API_KEY ? 'https://api.anthropic.com (API anahtarı)' : '(resmî Anthropic)'),
-    model: s.env?.ANTHROPIC_MODEL || s.model || '(varsayılan)'
-  };
+  try { s = readJsonStrict(claudeSettingsPath(), {}); } catch (e) { return { file: claudeSettingsPath(), error: e.message, mode: 'error', baseUrl: null, model: null }; }
+  const base = s.env?.ANTHROPIC_BASE_URL || null;
+  // mode: official (subscription login) | apikey (Anthropic API key) | custom (other endpoint) | router (local router)
+  const mode = base ? (/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(base) ? 'router' : 'custom') : s.env?.ANTHROPIC_API_KEY ? 'apikey' : 'official';
+  return { file: claudeSettingsPath(), mode, baseUrl: base || (mode === 'apikey' ? 'https://api.anthropic.com' : null), model: s.env?.ANTHROPIC_MODEL || s.model || null };
 }

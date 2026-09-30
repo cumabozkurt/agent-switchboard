@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { appDir } from './paths.js';
-import { readJsonStrict, writeJson } from './fsutil.js';
+import { readJsonStrict, writeJson, mkdirPrivate } from './fsutil.js';
+import { t } from './i18n/index.js';
 
 export function configPath() { return path.join(appDir(), 'config.json'); }
 
@@ -13,6 +14,7 @@ export function loadConfig() {
 
 export function saveConfig(cfg) {
   cfg.keys ||= {}; cfg.providers ||= {}; cfg.active ||= {};
+  mkdirPrivate(appDir());
   writeJson(configPath(), cfg, 0o600);
 }
 
@@ -23,6 +25,6 @@ export function getKey(cfg, provider) {
 }
 
 export function mask(key) {
-  if (!key) return '(yok)';
+  if (!key) return t('key.none');
   return key.length <= 10 ? '****' : key.slice(0, 6) + '…' + key.slice(-4);
 }

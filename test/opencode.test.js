@@ -37,6 +37,6 @@ test('OpenCode: yorumlu opencode.jsonc okunur ve ayarlar korunur', async () => {
 test('OpenCode: ayrıştırılamayan dosyaya dokunulmaz', async () => {
   const file = path.join(ocDir, 'opencode.json');
   fs.writeFileSync(file, '{ bozuk');
-  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'x', tools: ['opencode'] }), /geçerli JSON değil/);
+  await assert.rejects(core.useProvider({ provider: 'opencode-zen', model: 'x', tools: ['opencode'] }), /geçerli bir JSON değil/);
   assert.equal(fs.readFileSync(file, 'utf8'), '{ bozuk');
 });

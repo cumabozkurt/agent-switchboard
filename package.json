@@ -1,7 +1,7 @@
 {
   "name": "agent-switchboard",
-  "version": "0.1.3",
-  "description": "Claude Code, Codex ve OpenCode için API/model yöneticisi: sağlayıcı değiştir, modelleri güncel çek, orijinal ayarlara geri dön. Mac, Windows, Linux.",
+  "version": "0.2.0",
+  "description": "API/model switcher for Claude Code, Codex and OpenCode: switch providers, fetch live model lists, translate protocols with a local router, restore originals. CLI + desktop app, English and Turkish. macOS, Windows, Linux.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -18,6 +18,8 @@
     "bin",
     "src",
     "README.md",
+    "README.tr.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "keywords": [
@@ -28,7 +30,10 @@
     "llm",
     "proxy",
     "router",
-    "cli"
+    "cli",
+    "anthropic",
+    "openai",
+    "i18n"
   ],
   "author": "Cuma Bozkurt",
   "homepage": "https://github.com/cumabozkurt/agent-switchboard",

@@ -1,96 +1,546 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Agent Switchboard</title>
 <style>
-  :root { color-scheme: light dark; --b:#8883; --acc:#6d5efc; }
-  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 24px; max-width: 980px; margin-inline: auto; }
-  h1 { font-size: 20px; margin: 0 0 16px; } h2 { font-size: 15px; margin: 0 0 10px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-  .card { border: 1px solid var(--b); border-radius: 12px; padding: 14px; }
-  label { display: block; font-size: 12px; opacity: .75; margin-top: 8px; }
-  select, input { width: 100%; box-sizing: border-box; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--b); background: transparent; color: inherit; }
-  button { margin-top: 10px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--b); background: transparent; color: inherit; cursor: pointer; }
-  button.p { background: var(--acc); color: #fff; border-color: var(--acc); }
-  .tools label { display: inline-flex; gap: 6px; margin-right: 12px; opacity: 1; font-size: 14px; }
-  .tools input { width: auto; }
-  code { font-size: 12px; } #log { white-space: pre-wrap; font: 12px ui-monospace, monospace; opacity: .85; }
-  .row { display: flex; justify-content: space-between; border-bottom: 1px solid var(--b); padding: 4px 0; gap: 8px; }
+  :root { color-scheme: light dark; --bg:#f7f7fb; --fg:#1b1b24; --muted:#5b5b6b; --card:#fff; --b:#d9d9e3; --acc:#4f46e5; --acc-fg:#fff; --ok:#0f7b3f; --warn:#8a5a00; --err:#b42318; --chip:#eef0ff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12121a; --fg:#ececf3; --muted:#a3a3b5; --card:#1b1b26; --b:#33334a; --acc:#8b85ff; --acc-fg:#10101a; --ok:#4ade80; --warn:#fbbf24; --err:#f87171; --chip:#262640; } }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--fg); }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--b); background: var(--card); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 17px; margin: 0; } header .ver { color: var(--muted); font-size: 12px; }
+  header .spacer { flex: 1; }
+  .layout { display: grid; grid-template-columns: 210px 1fr; min-height: calc(100vh - 57px); }
+  nav[role=tablist] { border-right: 1px solid var(--b); padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; background: var(--card); }
+  nav button { text-align: left; border: 0; background: transparent; color: var(--fg); padding: 8px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; margin: 0; }
+  nav button[aria-selected=true] { background: var(--chip); color: var(--acc); font-weight: 600; }
+  main { padding: 20px; max-width: 1100px; width: 100%; }
+  section[role=tabpanel] > h2 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .card { border: 1px solid var(--b); border-radius: 12px; padding: 14px 16px; background: var(--card); margin-bottom: 14px; }
+  .card h3 { font-size: 15px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  select, input[type=text], input[type=password], input[type=search], input:not([type]) { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--b); background: var(--bg); color: inherit; font: inherit; }
+  button { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--b); background: var(--card); color: inherit; cursor: pointer; font: inherit; margin: 8px 6px 0 0; }
+  button.primary { background: var(--acc); color: var(--acc-fg); border-color: var(--acc); font-weight: 600; }
+  button.danger { color: var(--err); border-color: currentColor; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+  .checks label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; color: var(--fg); font-size: 14px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+  code, pre, .mono { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  pre { background: var(--bg); border: 1px solid var(--b); border-radius: 8px; padding: 10px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); } .muted { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--b); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 600; }
+  td button { margin: 0 4px 0 0; padding: 4px 9px; }
+  .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; } .row > * { flex: 1; min-width: 160px; }
+  .row > button { flex: 0 0 auto; min-width: 0; }
+  #log { max-height: 180px; overflow: auto; margin: 0; }
+  .steps { margin: 0; padding-left: 20px; } .steps li { margin: 6px 0; }
+  .hidden { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } nav[role=tablist] { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--b); } }
 </style>
 </head>
 <body>
-<h1>Agent Switchboard</h1>
-<div class="grid">
-  <div class="card">
-    <h2>Sağlayıcı ve model</h2>
-    <label>Sağlayıcı</label><select id="prov"></select>
-    <label>Model</label><input id="model" list="modelList" placeholder="latest, latest:opus veya tam model adı">
-    <datalist id="modelList"></datalist>
-    <label>Hızlı/arka plan modeli (isteğe bağlı)</label><input id="fast" list="modelList">
-    <button id="refresh">Güncel modelleri çek</button>
-    <div class="tools" style="margin-top:10px">
-      <label><input type="checkbox" value="claude" checked> Claude Code</label>
-      <label><input type="checkbox" value="codex" checked> Codex</label>
-      <label><input type="checkbox" value="opencode"> OpenCode</label>
-    </div>
-    <button class="p" id="apply">Uygula</button>
-  </div>
-  <div class="card">
-    <h2>Anahtarlar</h2>
-    <label>API anahtarı (seçili sağlayıcı)</label><input id="key" type="password" autocomplete="off">
-    <button id="saveKey">Kaydet</button> <button id="orLogin">OpenRouter ile giriş (OAuth)</button>
-    <h2 style="margin-top:16px">Geri dönüş</h2>
-    <button id="official">Resmî girişe dön (Pro/Max, ChatGPT)</button>
-    <button id="restore">Orijinal dosyaları geri yükle</button>
-    <h2 style="margin-top:16px">Yerel yönlendirici</h2>
-    <button id="rStart">Başlat</button> <button id="rStop">Durdur</button>
-  </div>
-  <div class="card"><h2>Durum</h2><div id="status"></div></div>
+<header>
+  <h1>Agent Switchboard</h1><span class="ver" id="ver"></span>
+  <span class="spacer"></span>
+  <span id="routerBadge" class="badge muted" role="status" aria-live="polite"></span>
+  <label for="langQuick" class="sr-only" data-i18n="ui.language"></label>
+  <select id="langQuick" style="width:auto"></select>
+</header>
+<div class="layout">
+  <nav role="tablist" aria-orientation="vertical" id="tabs" data-i18n-aria-label="ui.nav">
+    <button role="tab" id="tab-overview" aria-controls="p-overview" data-i18n="ui.tab.overview"></button>
+    <button role="tab" id="tab-switch" aria-controls="p-switch" data-i18n="ui.tab.switch"></button>
+    <button role="tab" id="tab-keys" aria-controls="p-keys" data-i18n="ui.tab.keys"></button>
+    <button role="tab" id="tab-models" aria-controls="p-models" data-i18n="ui.tab.models"></button>
+    <button role="tab" id="tab-router" aria-controls="p-router" data-i18n="ui.tab.router"></button>
+    <button role="tab" id="tab-providers" aria-controls="p-providers" data-i18n="ui.tab.providers"></button>
+    <button role="tab" id="tab-restore" aria-controls="p-restore" data-i18n="ui.tab.restore"></button>
+    <button role="tab" id="tab-env" aria-controls="p-env" data-i18n="ui.tab.env"></button>
+    <button role="tab" id="tab-settings" aria-controls="p-settings" data-i18n="ui.tab.settings"></button>
+  </nav>
+  <main>
+    <section role="tabpanel" id="p-overview" aria-labelledby="tab-overview">
+      <h2 data-i18n="ui.overview.title"></h2><p class="lead" data-i18n="ui.overview.lead"></p>
+      <div class="card hidden" id="welcome">
+        <h3 data-i18n="ui.welcome.title"></h3>
+        <ol class="steps">
+          <li><span data-i18n="ui.welcome.step1"></span> <button data-goto="keys" data-i18n="ui.welcome.step1btn"></button></li>
+          <li><span data-i18n="ui.welcome.step2"></span> <button data-goto="switch" data-i18n="ui.welcome.step2btn"></button></li>
+          <li><span data-i18n="ui.welcome.step3"></span></li>
+        </ol>
+      </div>
+      <div class="grid" id="toolCards"></div>
+    </section>
+
+    <section role="tabpanel" id="p-switch" aria-labelledby="tab-switch" hidden>
+      <h2 data-i18n="ui.switch.title"></h2><p class="lead" data-i18n="ui.switch.lead"></p>
+      <div class="card">
+        <label for="prov" data-i18n="ui.switch.provider"></label><select id="prov"></select>
+        <p id="provHint" class="muted" aria-live="polite"></p>
+        <div class="row">
+          <div><label for="model" data-i18n="ui.switch.model"></label><input id="model" list="modelList" autocomplete="off" data-i18n-placeholder="ui.switch.modelPh" aria-describedby="modelHelp"></div>
+          <button id="loadModels" data-i18n="ui.switch.loadModels"></button>
+        </div>
+        <datalist id="modelList"></datalist>
+        <p id="modelHelp" class="muted" data-i18n="ui.switch.modelHelp"></p>
+        <label for="fast" data-i18n="ui.switch.fast"></label><input id="fast" list="modelList" autocomplete="off" data-i18n-placeholder="ui.switch.fastPh">
+        <fieldset class="checks" style="border:0;padding:0;margin:12px 0 0">
+          <legend class="muted" style="font-size:13px" data-i18n="ui.switch.tools"></legend>
+          <label><input type="checkbox" name="swTool" value="claude" checked> Claude Code</label>
+          <label><input type="checkbox" name="swTool" value="codex" checked> Codex</label>
+          <label><input type="checkbox" name="swTool" value="opencode"> OpenCode</label>
+        </fieldset>
+        <div id="codexKeyWrap"><label for="codexKey" data-i18n="ui.switch.codexKey"></label>
+          <select id="codexKey"><option value="env" data-i18n="ui.switch.codexKeyEnv"></option><option value="command" data-i18n="ui.switch.codexKeyCmd"></option></select></div>
+        <button class="primary" id="apply" data-i18n="ui.switch.apply"></button>
+      </div>
+      <div class="card hidden" id="applyResult" role="status" aria-live="polite"></div>
+    </section>
+
+    <section role="tabpanel" id="p-keys" aria-labelledby="tab-keys" hidden>
+      <h2 data-i18n="ui.keys.title"></h2><p class="lead" data-i18n="ui.keys.lead"></p>
+      <div class="card">
+        <h3 data-i18n="ui.keys.oauthTitle"></h3>
+        <p class="muted" data-i18n="ui.keys.oauthText"></p>
+        <button id="orLogin" class="primary" data-i18n="ui.keys.oauthBtn"></button>
+      </div>
+      <div class="card"><table><caption class="sr-only" data-i18n="ui.keys.title"></caption>
+        <thead><tr><th data-i18n="ui.col.provider"></th><th data-i18n="ui.col.key"></th><th data-i18n="ui.col.newKey"></th><th data-i18n="ui.col.actions"></th></tr></thead>
+        <tbody id="keyRows"></tbody></table></div>
+    </section>
+
+    <section role="tabpanel" id="p-models" aria-labelledby="tab-models" hidden>
+      <h2 data-i18n="ui.models.title"></h2><p class="lead" data-i18n="ui.models.lead"></p>
+      <div class="card">
+        <div class="row">
+          <div><label for="mProv" data-i18n="ui.switch.provider"></label><select id="mProv"></select></div>
+          <div><label for="mSearch" data-i18n="ui.models.search"></label><input id="mSearch" type="search" data-i18n-placeholder="ui.models.searchPh"></div>
+          <button id="mRefresh" data-i18n="ui.models.refresh"></button>
+        </div>
+        <p id="mCount" class="muted" role="status" aria-live="polite"></p>
+        <table><thead><tr><th data-i18n="ui.col.model"></th><th data-i18n="ui.col.date"></th><th data-i18n="ui.col.context"></th><th data-i18n="ui.col.actions"></th></tr></thead><tbody id="mRows"></tbody></table>
+      </div>
+    </section>
+
+    <section role="tabpanel" id="p-router" aria-labelledby="tab-router" hidden>
+      <h2 data-i18n="ui.router.title"></h2><p class="lead" data-i18n="ui.router.lead"></p>
+      <div class="card">
+        <dl class="kv" id="routerInfo"></dl>
+        <button id="rStart" class="primary" data-i18n="ui.router.start"></button>
+        <button id="rStop" data-i18n="ui.router.stop"></button>
+        <button id="rRestart" data-i18n="ui.router.restart"></button>
+        <div class="checks" style="margin-top:12px"><label><input type="checkbox" id="rAuto"> <span data-i18n="ui.router.auto"></span></label></div>
+        <p class="muted" data-i18n="ui.router.note"></p>
+      </div>
+      <div class="card"><h3 data-i18n="ui.router.targets"></h3><dl class="kv" id="routerTargets"></dl></div>
+    </section>
+
+    <section role="tabpanel" id="p-providers" aria-labelledby="tab-providers" hidden>
+      <h2 data-i18n="ui.providers.title"></h2><p class="lead" data-i18n="ui.providers.lead"></p>
+      <div class="card">
+        <h3 data-i18n="ui.providers.add"></h3>
+        <div class="row">
+          <div><label for="cpId" data-i18n="ui.providers.id"></label><input id="cpId" placeholder="my-proxy" autocomplete="off"></div>
+          <div><label for="cpLabel" data-i18n="ui.providers.label"></label><input id="cpLabel" placeholder="My proxy" autocomplete="off"></div>
+        </div>
+        <label for="cpOpenai" data-i18n="ui.providers.openaiBase"></label><input id="cpOpenai" placeholder="https://example.com/v1" autocomplete="off">
+        <label for="cpAnthropic" data-i18n="ui.providers.anthropicBase"></label><input id="cpAnthropic" placeholder="https://example.com/anthropic" autocomplete="off">
+        <div class="row">
+          <div><label for="cpModels" data-i18n="ui.providers.modelsUrl"></label><input id="cpModels" data-i18n-placeholder="ui.providers.modelsUrlPh" autocomplete="off"></div>
+          <div><label for="cpWire" data-i18n="ui.providers.wire"></label><select id="cpWire"><option value="chat">chat/completions</option><option value="responses">responses</option></select></div>
+          <div><label for="cpKeyEnv" data-i18n="ui.providers.keyEnv"></label><input id="cpKeyEnv" placeholder="MY_PROXY_KEY" autocomplete="off"></div>
+        </div>
+        <button id="cpAdd" class="primary" data-i18n="ui.providers.addBtn"></button>
+      </div>
+      <div class="card"><h3 data-i18n="ui.providers.list"></h3><table><thead><tr><th data-i18n="ui.col.provider"></th><th data-i18n="ui.col.endpoints"></th><th data-i18n="ui.col.actions"></th></tr></thead><tbody id="cpRows"></tbody></table></div>
+    </section>
+
+    <section role="tabpanel" id="p-restore" aria-labelledby="tab-restore" hidden>
+      <h2 data-i18n="ui.restore.title"></h2><p class="lead" data-i18n="ui.restore.lead"></p>
+      <div class="card">
+        <fieldset class="checks" style="border:0;padding:0;margin:0">
+          <legend class="muted" style="font-size:13px" data-i18n="ui.switch.tools"></legend>
+          <label><input type="checkbox" name="rsTool" value="claude" checked> Claude Code</label>
+          <label><input type="checkbox" name="rsTool" value="codex" checked> Codex</label>
+          <label><input type="checkbox" name="rsTool" value="opencode"> OpenCode</label>
+        </fieldset>
+        <h3 style="margin-top:14px" data-i18n="ui.restore.officialTitle"></h3>
+        <p class="muted" data-i18n="ui.restore.officialText"></p>
+        <button id="official" class="primary" data-i18n="ui.restore.officialBtn"></button>
+        <h3 style="margin-top:14px" data-i18n="ui.restore.originalTitle"></h3>
+        <p class="muted" data-i18n="ui.restore.originalText"></p>
+        <button id="restore" class="danger" data-i18n="ui.restore.originalBtn"></button>
+      </div>
+      <div class="card"><h3 data-i18n="ui.backups.title"></h3><p class="muted" data-i18n="ui.backups.lead"></p>
+        <table><thead><tr><th data-i18n="ui.col.time"></th><th data-i18n="ui.col.files"></th></tr></thead><tbody id="bRows"></tbody></table></div>
+    </section>
+
+    <section role="tabpanel" id="p-env" aria-labelledby="tab-env" hidden>
+      <h2 data-i18n="ui.env.title"></h2><p class="lead" data-i18n="ui.env.lead"></p>
+      <div class="card">
+        <div class="row">
+          <div><label for="envShell" data-i18n="ui.env.shell"></label><select id="envShell"><option value="sh">bash / zsh (sh)</option><option value="fish">fish</option><option value="powershell">PowerShell</option><option value="cmd">cmd.exe</option></select></div>
+        </div>
+        <div class="checks" style="margin-top:10px">
+          <label><input type="checkbox" id="envAll"> <span data-i18n="ui.env.all"></span></label>
+          <label><input type="checkbox" id="envReveal"> <span data-i18n="ui.env.reveal"></span></label>
+        </div>
+        <pre id="envOut" aria-live="polite"></pre>
+        <button id="envCopy" data-i18n="ui.env.copy"></button>
+        <p class="muted" id="envWhere"></p>
+        <p class="muted" data-i18n="ui.env.run"></p>
+      </div>
+    </section>
+
+    <section role="tabpanel" id="p-settings" aria-labelledby="tab-settings" hidden>
+      <h2 data-i18n="ui.settings.title"></h2>
+      <div class="card">
+        <label for="lang" data-i18n="ui.language"></label>
+        <select id="lang"></select>
+        <div class="checks" style="margin-top:12px"><label><input type="checkbox" id="sAuto"> <span data-i18n="ui.router.auto"></span></label></div>
+      </div>
+      <div class="card"><h3 data-i18n="ui.settings.files"></h3><dl class="kv" id="pathsInfo"></dl></div>
+      <div class="card"><h3 data-i18n="ui.settings.about"></h3><p id="about" class="muted"></p>
+        <p><a href="https://github.com/cumabozkurt/agent-switchboard" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://github.com/cumabozkurt/agent-switchboard/issues" target="_blank" rel="noopener noreferrer" data-i18n="ui.settings.issues"></a></p></div>
+    </section>
+
+    <div class="card"><h3 data-i18n="ui.log"></h3><pre id="log" role="log" aria-live="polite"></pre></div>
+  </main>
 </div>
-<div class="card" style="margin-top:14px"><h2>Kayıt</h2><div id="log"></div></div>
 <script>
+const BOOT = /*__BOOT__*/null;
 const token = location.hash.slice(1);
 const $ = id => document.getElementById(id);
-// Sağlayıcı adları ve uzak /models listelerinden gelen model kimlikleri HTML'e kaçışlanarak yazılır.
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const log = m => { $('log').textContent = new Date().toLocaleTimeString() + '  ' + m + '\n' + $('log').textContent; };
+let LANG = BOOT.lang;
+function t(key, vars) {
+  const s = (BOOT.catalogs[LANG] && BOOT.catalogs[LANG][key]) ?? BOOT.catalogs.en[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => vars[k] == null ? m : String(vars[k])) : s;
+}
+// DOM builder: all dynamic text goes through text nodes/attributes (no HTML parsing), so provider labels
+// and remote model ids cannot inject markup.
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'class') el.className = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return el;
+}
+const state = { info: null, providers: [], status: null, models: {}, lastApply: null };
+// replaceChildren() would print "null" for skipped optional parts; drop them first.
+const fill = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
+const log = (m, cls) => { const line = h('div', { class: cls || '' }, new Date().toLocaleTimeString(LANG) + '  ' + m); $('log').prepend(line); };
 async function api(path, body) {
   const r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-aswitch-token': token }, body: JSON.stringify(body || {}) });
-  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
+  let j = {}; try { j = await r.json(); } catch {}
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
 }
-const tools = () => [...document.querySelectorAll('.tools input:checked')].map(i => i.value);
-const act = fn => async () => { try { await fn(); await load(); } catch (e) { log('Hata: ' + e.message); } };
-async function load() {
-  const ps = await api('providers');
-  const cur = $('prov').value;
-  $('prov').innerHTML = ps.map(p => `<option value="${esc(p.id)}">${p.hasKey ? '● ' : '○ '}${esc(p.label)}</option>`).join('');
-  if (cur) $('prov').value = cur;
-  const s = await api('status');
-  const rows = [['Claude Code', s.claude.baseUrl + ' · ' + s.claude.model], ['Codex', s.codex.baseUrl + ' · ' + s.codex.model], ['OpenCode', s.opencode.model],
-    ['Yönlendirici', s.routerRunning ? 'çalışıyor' : (s.router ? 'gerekli, kapalı' : 'gerekmiyor')]];
-  $('status').innerHTML = rows.map(([a, b]) => `<div class="row"><b>${esc(a)}</b><code>${esc(b)}</code></div>`).join('');
+const busy = new Set();
+const act = (btn, fn) => async (ev) => {
+  if (btn && busy.has(btn)) return;
+  if (btn) { busy.add(btn); btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+  try { await fn(ev); } catch (e) { log(t('ui.error', { msg: e.message }), 'err'); }
+  finally { if (btn) { busy.delete(btn); btn.disabled = false; btn.removeAttribute('aria-busy'); } }
+};
+const checked = name => [...document.querySelectorAll(`input[name=${name}]:checked`)].map(i => i.value);
+const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' }[id] || id);
+
+// ---------------------------------------------------------------- i18n
+function applyI18n() {
+  document.documentElement.lang = LANG;
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-placeholder]')) el.placeholder = t(el.dataset.i18nPlaceholder);
+  for (const el of document.querySelectorAll('[data-i18n-aria-label]')) el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+  document.title = 'Agent Switchboard — ' + t('ui.tagline');
+  const opts = (sel, withAuto) => {
+    const cur = sel.value;
+    fill(sel, ...(withAuto ? [h('option', { value: 'auto' }, t('ui.langAuto'))] : []), ...Object.entries(BOOT.langNames).map(([k, n]) => h('option', { value: k }, n)));
+    sel.value = cur || (withAuto ? 'auto' : LANG);
+  };
+  opts($('langQuick'), false); $('langQuick').value = LANG;
+  opts($('lang'), true);
 }
-$('refresh').onclick = act(async () => {
-  const ms = await api('models', { provider: $('prov').value, refresh: true });
-  $('modelList').innerHTML = '<option value="latest"></option>' + ms.map(m => `<option value="${esc(m.id)}"></option>`).join('');
-  log(ms.length + ' model alındı. En yeni: ' + (ms[0]?.id || '-'));
+async function setLang(lang) {
+  const s = await api('settings', { lang });
+  LANG = s.lang; state.info.settings = s;
+  $('lang').value = s.langSaved || 'auto';
+  applyI18n(); await refresh();
+  log(t('ui.langChanged', { lang: BOOT.langNames[LANG] }));
+}
+
+// ---------------------------------------------------------------- tabs (WAI-ARIA tabs pattern)
+const tabs = [...document.querySelectorAll('[role=tab]')];
+function selectTab(name, focus) {
+  for (const tab of tabs) {
+    const on = tab.id === 'tab-' + name;
+    tab.setAttribute('aria-selected', on); tab.tabIndex = on ? 0 : -1;
+    $(tab.getAttribute('aria-controls')).hidden = !on;
+    if (on && focus) tab.focus();
+  }
+  if (name === 'restore') loadBackups().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
+  if (name === 'env') loadEnv().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
+  if (name === 'models' && !$('mRows').children.length && $('mProv').value) loadModelTable(false);
+}
+for (const tab of tabs) {
+  tab.addEventListener('click', () => selectTab(tab.id.slice(4)));
+  tab.addEventListener('keydown', e => {
+    const i = tabs.indexOf(tab);
+    const next = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault(); selectTab(tabs[(next + tabs.length) % tabs.length].id.slice(4), true);
+  });
+}
+document.addEventListener('click', e => { const g = e.target.closest('[data-goto]'); if (g) selectTab(g.dataset.goto, true); });
+
+// ---------------------------------------------------------------- rendering
+function modeBadge(tool, st) {
+  const m = st.mode;
+  const cls = m === 'error' ? 'err' : m === 'router' ? 'warn' : m === 'official' || m === 'default' ? 'muted' : 'ok';
+  return h('span', { class: 'badge ' + cls }, t('ui.mode.' + m));
+}
+function renderRouterBadge(r) {
+  const b = $('routerBadge');
+  const txt = r.state === 'running' ? t('ui.router.badgeRunning', { port: r.port }) : r.state === 'external' ? t('ui.router.badgeExternal', { port: r.port }) : r.needed ? t('ui.router.badgeNeeded') : t('ui.router.badgeOff');
+  b.textContent = txt;
+  b.className = 'badge ' + (r.state !== 'stopped' ? 'ok' : r.needed ? 'err' : 'muted');
+}
+function renderOverview() {
+  const s = state.status;
+  const noKeys = !state.providers.some(p => p.hasKey && !p.noKey);
+  const noActive = !Object.values(s.active || {}).some(a => a && a.provider && a.provider !== 'official');
+  $('welcome').classList.toggle('hidden', !(noKeys && noActive));
+  const cards = ['claude', 'codex', 'opencode'].map(tool => {
+    const st = s[tool]; const a = (s.active || {})[tool];
+    const dl = h('dl', { class: 'kv' },
+      h('dt', {}, t('ui.col.provider')), h('dd', {}, a ? (a.provider === 'official' ? t('ui.mode.official') : a.provider === 'backup' ? t('ui.fromBackup') : a.provider) : t('ui.none')),
+      h('dt', {}, t('ui.col.model')), h('dd', { class: 'mono' }, st.model || t('ui.defaultModel')),
+      h('dt', {}, t('ui.col.endpoint')), h('dd', { class: 'mono' }, st.baseUrl || (tool === 'opencode' ? '—' : t('ui.officialEndpoint'))),
+      h('dt', {}, t('ui.col.file')), h('dd', { class: 'mono' }, st.file));
+    return h('div', { class: 'card' }, h('h3', {}, toolName(tool), modeBadge(tool, st)), st.error ? h('p', { class: 'err' }, st.error) : null, dl);
+  });
+  const r = s.router;
+  const rc = h('div', { class: 'card' }, h('h3', {}, t('ui.tab.router'), h('span', { class: 'badge ' + (r.state !== 'stopped' ? 'ok' : r.needed ? 'err' : 'muted') }, t('ui.router.state.' + r.state))),
+    h('p', { class: 'muted' }, r.needed ? (r.state === 'stopped' ? t('ui.router.neededStopped') : t('ui.router.neededOk')) : t('ui.router.notNeeded')),
+    r.needed && r.state === 'stopped' ? h('button', { class: 'primary', onclick: act(null, routerStart) }, t('ui.router.start')) : null,
+    h('button', { 'data-goto': 'router' }, t('ui.router.details')));
+  fill($('toolCards'), ...cards, rc);
+}
+function renderRouter() {
+  const r = state.status.router, rc = state.status.routerConfig || {};
+  fill($('routerInfo'), 
+    h('dt', {}, t('ui.router.status')), h('dd', {}, h('span', { class: 'badge ' + (r.state !== 'stopped' ? 'ok' : r.needed ? 'err' : 'muted') }, t('ui.router.state.' + r.state))),
+    h('dt', {}, t('ui.router.address')), h('dd', { class: 'mono' }, 'http://127.0.0.1:' + r.port),
+    h('dt', {}, t('ui.router.needed')), h('dd', {}, r.needed ? t('ui.yes') : t('ui.no')),
+    r.error ? h('dt', {}, t('ui.router.lastError')) : null, r.error ? h('dd', { class: 'err' }, r.error) : null);
+  $('rStart').disabled = r.state !== 'stopped' || !r.needed;
+  $('rStop').disabled = r.state !== 'running';
+  $('rRestart').disabled = r.state !== 'running';
+  $('rAuto').checked = $('sAuto').checked = !!r.autoStart;
+  const rows = [];
+  if (rc.claude) rows.push(h('dt', {}, 'Claude Code'), h('dd', { class: 'mono' }, `${rc.claude.provider} · ${rc.claude.model}${rc.claude.fastModel ? ' / ' + rc.claude.fastModel : ''}`));
+  if (rc.codex) rows.push(h('dt', {}, 'Codex'), h('dd', { class: 'mono' }, `${rc.codex.provider} · ${rc.codex.model}`));
+  if (!rows.length) rows.push(h('dt', {}, '—'), h('dd', { class: 'muted' }, t('ui.router.notNeeded')));
+  fill($('routerTargets'), ...rows);
+  renderRouterBadge(r);
+}
+function providerOption(p) { return h('option', { value: p.id }, `${p.hasKey || p.noKey ? '● ' : '○ '}${p.label}${p.custom ? ' ★' : ''}`); }
+function renderProviders() {
+  for (const sel of [$('prov'), $('mProv')]) {
+    const cur = sel.value;
+    fill(sel, ...state.providers.map(providerOption));
+    if (cur && state.providers.some(p => p.id === cur)) sel.value = cur;
+  }
+  renderProvHint();
+  fill($('keyRows'), ...state.providers.map(p => {
+    const input = h('input', { type: 'password', autocomplete: 'off', 'aria-label': t('ui.keys.inputFor', { name: p.label }), disabled: p.noKey || null, placeholder: p.noKey ? t('ui.keys.notNeeded') : (p.keyEnv || '') });
+    const status = p.noKey ? h('span', { class: 'muted' }, t('ui.keys.notNeeded'))
+      : p.keySource === 'saved' ? h('span', { class: 'ok' }, '● ' + t('ui.keys.saved') + ' ', h('code', {}, p.keyMasked))
+      : p.keySource === 'env' ? h('span', { class: 'ok' }, '● ' + t('ui.keys.fromEnv', { env: p.keyEnv }))
+      : h('span', { class: 'warn' }, '○ ' + t('ui.keys.missing'));
+    const save = h('button', { class: 'primary', disabled: p.noKey || null }, t('ui.save'));
+    save.onclick = act(save, async () => {
+      if (!input.value.trim()) throw new Error(t('err.emptyKey'));
+      await api('key', { provider: p.id, key: input.value }); input.value = ''; log(t('ui.keys.savedFor', { name: p.label }), 'ok'); await refresh();
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
+    const rm = p.keySource === 'saved' ? h('button', { class: 'danger' }, t('ui.remove')) : null;
+    if (rm) rm.onclick = act(rm, async () => { if (!confirm(t('ui.keys.confirmRemove', { name: p.label }))) return; await api('key/remove', { provider: p.id }); log(t('ui.keys.removed', { name: p.label })); await refresh(); });
+    const link = p.keyUrl ? h('a', { href: p.keyUrl, target: '_blank', rel: 'noopener noreferrer' }, t('ui.keys.getKey')) : null;
+    return h('tr', {}, h('td', {}, h('b', {}, p.label), p.custom ? ' ★' : '', h('div', { class: 'muted' }, p.desc || '')), h('td', {}, status), h('td', {}, input), h('td', {}, save, rm, link));
+  }));
+  const customs = state.providers.filter(p => p.custom);
+  fill($('cpRows'), ...(customs.length ? customs.map(p => {
+    const rm = h('button', { class: 'danger' }, t('ui.remove'));
+    rm.onclick = act(rm, async () => { if (!confirm(t('ui.providers.confirmRemove', { id: p.id }))) return; await api('provider/remove', { id: p.id }); log(t('ui.providers.removed', { id: p.id })); await refresh(); });
+    const sp = p.spec || {};
+    return h('tr', {}, h('td', {}, h('b', {}, p.label), h('div', { class: 'muted mono' }, p.id)), h('td', { class: 'mono' }, sp.openaiBase ? 'OpenAI: ' + sp.openaiBase + ' (' + sp.codexWire + ')' : '', sp.openaiBase && sp.anthropicBase ? h('br') : null, sp.anthropicBase ? 'Anthropic: ' + sp.anthropicBase : ''), h('td', {}, rm));
+  }) : [h('tr', {}, h('td', { colspan: 3, class: 'muted' }, t('ui.providers.none')))]));
+}
+function renderProvHint() {
+  const p = state.providers.find(x => x.id === $('prov').value);
+  if (!p) return;
+  const parts = [p.desc || p.label];
+  if (!p.noKey && !p.hasKey) parts.push(t('ui.switch.noKey'));
+  fill($('provHint'), parts.join(' — '), !p.noKey && !p.hasKey ? h('button', { 'data-goto': 'keys' }, t('ui.switch.addKey')) : '');
+}
+function renderPaths() {
+  const pth = state.info.paths;
+  fill($('pathsInfo'), ...[['ui.settings.config', pth.config], ['Claude Code', pth.claude], ['Codex', pth.codex], ['OpenCode', pth.opencode], ['ui.settings.backups', pth.appDir]]
+    .flatMap(([k, v]) => [h('dt', {}, k.startsWith('ui.') ? t(k) : k), h('dd', { class: 'mono' }, v)]));
+  $('about').textContent = t('ui.settings.aboutText', { version: state.info.version, platform: state.info.platform });
+  $('envWhere').textContent = t('ui.env.where.' + ($('envShell').value || 'sh'));
+}
+async function refresh() {
+  const [providers, status] = await Promise.all([api('providers'), api('status')]);
+  state.providers = providers; state.status = status;
+  renderProviders(); renderOverview(); renderRouter(); renderPaths(); renderApply();
+}
+
+// ---------------------------------------------------------------- actions
+async function fetchModels(provider, refreshList) {
+  const ms = await api('models', { provider, refresh: refreshList });
+  state.models[provider] = ms; return ms;
+}
+$('prov').addEventListener('change', () => { renderProvHint(); fill($('modelList'), ); });
+$('loadModels').onclick = act($('loadModels'), async () => {
+  const pid = $('prov').value;
+  const ms = await fetchModels(pid, true);
+  fill($('modelList'), h('option', { value: 'latest' }), ...ms.slice(0, 1000).map(m => h('option', { value: m.id })));
+  log(t('ui.models.loaded', { n: ms.length, newest: ms[0]?.id || '—' }), 'ok');
 });
-$('apply').onclick = act(async () => {
-  const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.');
-  const r = await api('use', { provider: $('prov').value, model: $('model').value.trim() || undefined, fastModel: $('fast').value.trim() || undefined, tools: t });
-  log(r.provider + ' uygulandı (' + (r.model || 'varsayılan model') + ') → ' + r.results.map(x => x.tool + (x.viaRouter ? ' [yönlendirici]' : '')).join(', '));
-  if (r.results.some(x => x.viaRouter)) log('Bu araç(lar) yerel yönlendirici üzerinden bağlanır: aswitch router açık olmalı (aşağıdaki "Yönlendirici" düğmesiyle başlatabilirsiniz).');
+$('apply').onclick = act($('apply'), async () => {
+  const tools = checked('swTool'); if (!tools.length) throw new Error(t('err.noTools'));
+  const body = { provider: $('prov').value, model: $('model').value.trim() || undefined, fastModel: $('fast').value.trim() || undefined, tools };
+  if (!$('codexKeyWrap').classList.contains('hidden')) body.codexKey = $('codexKey').value;
+  const r = await api('use', body);
+  state.lastApply = r;
+  log(t('ui.apply.done', { provider: r.provider, model: r.model || t('ui.defaultModel') }), 'ok');
+  await refresh();
 });
-$('saveKey').onclick = act(async () => { await api('key', { provider: $('prov').value, key: $('key').value.trim() }); $('key').value = ''; log('Anahtar kaydedildi.'); });
-$('orLogin').onclick = act(async () => { log('Tarayıcıda OpenRouter girişi açılıyor…'); await api('login/openrouter'); log('OpenRouter anahtarı alındı.'); });
-// Claude Code ve Codex resmî girişe döner; OpenCode seçiliyse onun dosyası orijinal haline getirilir.
-$('official').onclick = act(async () => { const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.'); const r = await api('official', { tools: t }); log(r.map(x => x.tool + ': ' + (x.note || 'resmî girişe dönüldü')).join('\n')); });
-$('restore').onclick = act(async () => { const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.'); if (!confirm('Seçili araçların dosyaları ilk haline dönsün mü?')) return; const r = await api('restore', { tools: t }); log(r.map(x => x.target + ': ' + (x.restored ? 'geri yüklendi' : x.reason)).join('\n')); });
-$('rStart').onclick = act(async () => { await api('router/start'); log('Yönlendirici başladı.'); });
-$('rStop').onclick = act(async () => { await api('router/stop'); log('Yönlendirici durdu.'); });
-load().catch(e => log('Hata: ' + e.message));
+// The result box is re-rendered on every refresh so its router hint and language stay current.
+function renderApply() {
+  const r = state.lastApply, box = $('applyResult');
+  if (!r) { box.classList.add('hidden'); return; }
+  const router = state.status.router;
+  box.classList.remove('hidden');
+  const items = r.results.map(x => h('li', {}, h('b', {}, toolName(x.tool)), ' → ', h('code', {}, x.file),
+    x.viaRouter ? h('div', { class: router.state === 'stopped' ? 'warn' : 'ok' }, router.state === 'stopped' ? t('ui.apply.viaRouterStopped') : t('ui.apply.viaRouterOk', { port: router.port })) : null,
+    x.keyEnv ? h('div', { class: 'muted' }, t('ui.apply.keyEnv', { env: x.keyEnv, tool: x.tool }), ' ', h('button', { 'data-goto': 'env' }, t('ui.tab.env'))) : null));
+  const needStart = r.results.some(x => x.viaRouter) && router.state === 'stopped';
+  fill(box, h('h3', {}, t('ui.apply.done', { provider: r.provider, model: r.model || t('ui.defaultModel') })), h('ul', {}, items),
+    r.routerAutoStarted ? h('p', { class: 'ok' }, t('ui.apply.autoStarted', { port: r.router.port })) : null,
+    needStart ? h('button', { class: 'primary', onclick: act(null, routerStart) }, t('ui.router.start')) : null,
+    h('p', { class: 'muted' }, t('ui.apply.restartTools')));
+}
+$('orLogin').onclick = act($('orLogin'), async () => { log(t('ui.keys.oauthOpening')); await api('login/openrouter'); log(t('ui.keys.oauthDone'), 'ok'); await refresh(); });
+
+async function loadModelTable(refreshList) {
+  const pid = $('mProv').value;
+  $('mCount').textContent = t('ui.loading');
+  let ms;
+  try { ms = await fetchModels(pid, refreshList); } catch (e) { $('mCount').textContent = ''; fill($('mRows'), ); throw e; }
+  renderModelTable();
+  return ms;
+}
+function renderModelTable() {
+  const pid = $('mProv').value, all = state.models[pid] || [];
+  const q = $('mSearch').value.trim().toLowerCase();
+  const list = q ? all.filter(m => m.id.toLowerCase().includes(q) || String(m.name || '').toLowerCase().includes(q)) : all;
+  const shown = list.slice(0, 300);
+  $('mCount').textContent = t('ui.models.count', { shown: shown.length, total: list.length, all: all.length });
+  fill($('mRows'), ...shown.map(m => {
+    const useMain = h('button', {}, t('ui.models.useMain'));
+    useMain.onclick = () => { $('prov').value = pid; renderProvHint(); $('model').value = m.id; selectTab('switch', true); log(t('ui.models.picked', { id: m.id })); };
+    const useFast = h('button', {}, t('ui.models.useFast'));
+    useFast.onclick = () => { $('prov').value = pid; renderProvHint(); $('fast').value = m.id; selectTab('switch', true); log(t('ui.models.picked', { id: m.id })); };
+    return h('tr', {}, h('td', { class: 'mono' }, m.id), h('td', {}, m.created ? new Date(m.created * 1000).toLocaleDateString(LANG) : '—'), h('td', {}, m.context ? Number(m.context).toLocaleString(LANG) : '—'), h('td', {}, useMain, useFast));
+  }));
+}
+$('mRefresh').onclick = act($('mRefresh'), async () => { const ms = await loadModelTable(true); log(t('ui.models.loaded', { n: ms.length, newest: ms[0]?.id || '—' }), 'ok'); });
+$('mProv').addEventListener('change', act(null, () => loadModelTable(false)));
+$('mSearch').addEventListener('input', renderModelTable);
+
+async function routerStart() { const r = await api('router/start'); log(t('ui.router.started', { port: r.router.port }), 'ok'); await refresh(); }
+$('rStart').onclick = act($('rStart'), routerStart);
+$('rStop').onclick = act($('rStop'), async () => { await api('router/stop'); log(t('ui.router.stopped')); await refresh(); });
+$('rRestart').onclick = act($('rRestart'), async () => { const r = await api('router/restart'); log(t('ui.router.restarted', { port: r.router.port }), 'ok'); await refresh(); });
+const setAuto = el => act(null, async () => { await api('settings', { routerAutoStart: el.checked }); log(el.checked ? t('ui.router.autoOn') : t('ui.router.autoOff')); await refresh(); });
+$('rAuto').addEventListener('change', setAuto($('rAuto')));
+$('sAuto').addEventListener('change', setAuto($('sAuto')));
+
+$('cpAdd').onclick = act($('cpAdd'), async () => {
+  const id = $('cpId').value.trim();
+  await api('provider', { id, label: $('cpLabel').value, openaiBase: $('cpOpenai').value, anthropicBase: $('cpAnthropic').value, modelsUrl: $('cpModels').value, codexWire: $('cpWire').value, keyEnv: $('cpKeyEnv').value });
+  for (const f of ['cpId', 'cpLabel', 'cpOpenai', 'cpAnthropic', 'cpModels', 'cpKeyEnv']) $(f).value = '';
+  log(t('ui.providers.added', { id }), 'ok'); await refresh();
+});
+
+$('official').onclick = act($('official'), async () => {
+  const tools = checked('rsTool'); if (!tools.length) throw new Error(t('err.noTools'));
+  const r = await api('official', { tools });
+  for (const x of r) log(toolName(x.tool) + ': ' + (x.note || t('ui.restore.officialDone')), 'ok');
+  await refresh();
+});
+$('restore').onclick = act($('restore'), async () => {
+  const tools = checked('rsTool'); if (!tools.length) throw new Error(t('err.noTools'));
+  if (!confirm(t('ui.restore.confirm', { tools: tools.map(toolName).join(', ') }))) return;
+  const r = await api('restore', { tools });
+  for (const x of r) log(toolName(x.target) + ': ' + (x.restored ? t('restore.done') : x.reason), x.restored ? 'ok' : '');
+  await refresh(); await loadBackups();
+});
+const backupTime = id => { const d = new Date(id.replace(/T(\d\d)-(\d\d)-(\d\d)-(\d+)Z$/, 'T$1:$2:$3.$4Z')); return isNaN(d) ? id : d.toLocaleString(LANG); };
+async function loadBackups() {
+  const bs = await api('backups');
+  fill($('bRows'), ...(bs.length ? bs.map(b => h('tr', {}, h('td', {}, backupTime(b.id)), h('td', {}, ...b.files.map(f => {
+    const btn = h('button', { 'aria-label': t('ui.backups.restoreAria', { file: f, time: backupTime(b.id) }) }, t('ui.backups.restore', { file: f }));
+    btn.onclick = act(btn, async () => { if (!confirm(t('ui.backups.confirm', { file: f, time: backupTime(b.id) }))) return; const r = await api('backups/restore', { id: b.id, name: f }); log(t('ui.backups.restored', { tool: toolName(r.tool), file: r.file }), 'ok'); await refresh(); await loadBackups(); });
+    return btn;
+  })))) : [h('tr', {}, h('td', { colspan: 2, class: 'muted' }, t('ui.backups.none')))]));
+}
+async function loadEnv() {
+  const r = await api('env', { shell: $('envShell').value, all: $('envAll').checked, reveal: $('envReveal').checked });
+  $('envOut').textContent = r.lines.length ? r.lines.join('\n') : t('ui.env.empty');
+  $('envWhere').textContent = t('ui.env.where.' + r.shell);
+}
+for (const id of ['envShell', 'envAll', 'envReveal']) $(id).addEventListener('change', act(null, loadEnv));
+$('envCopy').onclick = act($('envCopy'), async () => {
+  const r = await api('env', { shell: $('envShell').value, all: $('envAll').checked, reveal: true });
+  await navigator.clipboard.writeText(r.lines.join('\n'));
+  log(t('ui.env.copied'), 'ok');
+});
+$('lang').addEventListener('change', act(null, () => setLang($('lang').value)));
+$('langQuick').addEventListener('change', act(null, () => setLang($('langQuick').value)));
+
+// ---------------------------------------------------------------- boot
+(async () => {
+  $('ver').textContent = 'v' + BOOT.version;
+  applyI18n();
+  selectTab('overview');
+  try {
+    state.info = await api('info');
+    $('lang').value = state.info.settings.langSaved || 'auto';
+    $('codexKeyWrap').classList.toggle('hidden', state.info.codexKeyModes.length < 2);
+    $('envShell').value = state.info.defaultShell === 'powershell' ? 'powershell' : state.info.defaultShell;
+    await refresh();
+  } catch (e) { log(t('ui.error', { msg: e.message }), 'err'); }
+  // Poll so the router state stays accurate (e.g. an external `aswitch router` was started); re-render only on change.
+  setInterval(() => { if (!document.hidden) api('status').then(s => { const sig = JSON.stringify(s); if (sig === state.sig) return; state.sig = sig; state.status = s; renderRouter(); renderOverview(); renderApply(); }).catch(() => {}); }, 5000);
+})();
 </script>
 </body>
 </html>
