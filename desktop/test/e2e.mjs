@@ -68,8 +68,11 @@ await shot(page, 'keys-en.png');
 // models (live, public list)
 await tab(page, 'models');
 await page.selectOption('#mProv', 'openrouter');
-await page.click('#mRefresh');
-await page.waitForFunction(() => document.querySelectorAll('#mRows tr').length > 10, null, { timeout: 30000 }).catch(() => {});
+for (let i = 0; i < 2; i++) {
+  await page.click('#mRefresh');
+  const ok = await page.waitForFunction(() => document.querySelectorAll('#mRows tr').length > 10, null, { timeout: 30000 }).then(() => true).catch(() => false);
+  if (ok) break;
+}
 const modelRows = await page.locator('#mRows tr').count();
 check('live model list loads (OpenRouter)', modelRows > 10, `${modelRows} rows`);
 await page.fill('#mSearch', 'claude-sonnet');
@@ -230,9 +233,14 @@ await tab(page, 'switch'); await shot(page, 'switch-tr.png');
 await tab(page, 'router'); await shot(page, 'router-tr.png');
 await tab(page, 'keys'); await shot(page, 'keys-tr.png');
 await tab(page, 'models');
-await page.selectOption('#mProv', 'opencode-zen'); await page.click('#mRefresh');
-await page.waitForFunction(() => document.querySelectorAll('#mRows tr').length > 5, null, { timeout: 30000 }).catch(() => {});
-check('live model list loads (OpenCode Zen)', (await page.locator('#mRows tr').count()) > 5);
+await page.selectOption('#mProv', 'opencode-zen');
+// Live network list: retry once on a transient failure (CI runners occasionally drop a request).
+for (let i = 0; i < 2; i++) {
+  await page.click('#mRefresh');
+  const ok = await page.waitForFunction(() => document.querySelectorAll('#mRows tr').length > 5, null, { timeout: 30000 }).then(() => true).catch(() => false);
+  if (ok) break;
+}
+check('live model list loads (OpenCode Zen)', (await page.locator('#mRows tr').count()) > 5, `${await page.locator('#mRows tr').count()} rows`);
 await shot(page, 'models-tr.png');
 await tab(page, 'profiles'); await page.waitForFunction(() => document.querySelector('#pfRows').textContent.includes('work')); await shot(page, 'profiles-tr.png');
 await tab(page, 'usage'); await sleep(300); await shot(page, 'usage-tr.png');

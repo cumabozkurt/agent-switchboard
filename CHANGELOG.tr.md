@@ -4,7 +4,7 @@ Bu projedeki önemli değişiklikler burada yazılıdır. Biçim [Keep a Changel
 
 ## [0.3.0] - 2026-10-01
 
-Benzer 33 açık kaynak projenin incelenmesine dayanır (bkz. `docs/COMPETITIVE-ANALYSIS.md`).
+Benzer 32 açık kaynak projenin incelenmesine dayanır (bkz. `docs/COMPETITIVE-ANALYSIS.md`).
 
 ### Eklenenler
 - **Gemini CLI desteği**: dördüncü hedef araç. aswitch `~/.gemini/.env` içine işaretli bir blok yazar (`GOOGLE_GEMINI_BASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, izin 0600) ve `~/.gemini/settings.json` içinde API anahtarı ile girişi ve modeli ayarlar. Önceki değerler saklanır; `aswitch official --tools gemini` ve `aswitch restore` bunları geri koyar. Google AI Studio anahtarları doğrudan bağlanır; diğer tüm sağlayıcılar yönlendiriciden geçer. Yönlendirici artık Gemini API'sini (`generateContent`, SSE ile `streamGenerateContent`, `countTokens`) konuşuyor ve bunu Anthropic Messages, Chat Completions ya da Responses biçimine çeviriyor. `aswitch run gemini` desteklenir.

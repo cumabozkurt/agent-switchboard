@@ -10,7 +10,8 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export function extractSection(md, version) {
   const v = version.replace(/^v/, '');
   const lines = md.split(/\r?\n/);
-  const start = lines.findIndex(l => new RegExp(`^## \\[${v.replace(/\./g, '\\.')}\\]`).test(l));
+  const head = `## [${v}]`;
+  const start = lines.findIndex(l => l.startsWith(head));
   if (start < 0) return null;
   let end = lines.findIndex((l, i) => i > start && /^## \[/.test(l));
   if (end < 0) end = lines.length;

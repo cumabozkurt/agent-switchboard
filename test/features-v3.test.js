@@ -176,7 +176,7 @@ test('güncelleme denetimi: sürüm karşılaştırma, önbellek, devre dışı 
   await core.checkForUpdate('0.3.0', { fetchImpl });
   assert.equal(calls, 1, '12 saatlik önbellek');
   // API hız sınırı (403) → github.com releases/latest yönlendirmesine düşülür
-  const limited = async (url) => url.includes('api.github.com') ? new Response('{}', { status: 403 })
+  const limited = async (url) => new URL(url).host === 'api.github.com' ? new Response('{}', { status: 403 })
     : new Response(null, { status: 302, headers: { location: 'https://github.com/cumabozkurt/agent-switchboard/releases/tag/v1.2.3' } });
   const r = await core.checkForUpdate('0.3.0', { force: true, fetchImpl: limited });
   assert.equal(r.latest, '1.2.3');

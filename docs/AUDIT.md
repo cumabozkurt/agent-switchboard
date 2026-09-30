@@ -10,7 +10,7 @@ Method:
   - an MCP sync from a fake `~/.claude.json`;
   - the tray icon.
   The same test now runs in CI on every push.
-- A review of 33 similar projects (`docs/COMPETITIVE-ANALYSIS.md`) to pick features and to compare behaviour.
+- A review of 32 similar projects (33 cloned, 1 excluded) (`docs/COMPETITIVE-ANALYSIS.md`) to pick features and to compare behaviour.
 
 | Area | Finding | Status |
 |---|---|---|

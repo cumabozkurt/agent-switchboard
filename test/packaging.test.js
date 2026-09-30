@@ -45,5 +45,5 @@ test('README dosyaları birbirine bağlantı verir ve yalnızca var olan ekran g
 
 test('CHANGELOG mevcut sürümü içerir', () => {
   const root = JSON.parse(read('../package.json'));
-  assert.match(read('../CHANGELOG.md'), new RegExp(`## \\[?${root.version.replace(/\./g, '\\.')}`));
+  assert.ok(read('../CHANGELOG.md').includes(`## [${root.version}]`));
 });
