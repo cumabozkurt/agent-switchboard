@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { startUi } from './app-src/ui/server.js';
 import { t, getLang } from './app-src/i18n/index.js';
 
+// The e2e test's Windows launcher (see test/e2e.mjs → launchCdp) reads these through the Node inspector.
+if (process.env.ASWITCH_E2E_HOOKS === '1') globalThis.__aswitchE2E = { app, BrowserWindow, Menu };
+
 const REPO = 'https://github.com/cumabozkurt/agent-switchboard';
 let ui = null;
 let win = null;

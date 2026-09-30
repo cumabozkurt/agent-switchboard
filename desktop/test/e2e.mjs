@@ -13,7 +13,8 @@ import path from 'node:path';
 import net from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { _electron } from 'playwright-core';
+import { spawn } from 'node:child_process';
+import { _electron, chromium } from 'playwright-core';
 
 const require = createRequire(import.meta.url);
 const desktop = fileURLToPath(new URL('..', import.meta.url));
@@ -68,8 +69,51 @@ const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail
 const probe = async () => { try { return (await (await fetch(`http://127.0.0.1:${routerPort}/health`, { signal: AbortSignal.timeout(800) })).json()).ok === true; } catch { return false; } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Playwright's _electron.launch hangs on Windows with Electron 42+ (it attaches to the Node inspector and the app
+// never reaches "ready"; the same binary starts fine on its own). There we start Electron ourselves, drive the
+// window over CDP (chromium.connectOverCDP) and evaluate main-process code through the Node inspector.
+// E2E_CDP=1 forces this path on any OS (used to test it on Linux).
+const useCdp = process.platform === 'win32' || process.env.E2E_CDP === '1';
+async function launchCdp() {
+  const proc = spawn(require('electron'), ['--inspect=0', '--remote-debugging-port=0', desktop, '--no-sandbox', '--disable-gpu'],
+    { cwd: desktop, env: { ...env, ASWITCH_E2E_HOOKS: '1' }, stdio: ['ignore', 'ignore', 'pipe'] });
+  const exited = new Promise(r => proc.once('exit', r));
+  const urls = await new Promise((resolve, reject) => {
+    let buf = '', node, dev;
+    const timer = setTimeout(() => reject(new Error('Electron did not print its debugger URLs')), 120000);
+    proc.stderr.on('data', d => {
+      buf += d;
+      node ||= buf.match(/Debugger listening on (ws:\/\/\S+)/)?.[1];
+      dev ||= buf.match(/DevTools listening on (ws:\/\/\S+)/)?.[1];
+      if (node && dev) { clearTimeout(timer); resolve({ node, dev }); }
+    });
+    proc.once('exit', c => { clearTimeout(timer); reject(new Error('Electron exited early: ' + c)); });
+  });
+  const ws = new WebSocket(urls.node);
+  await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+  let seq = 0; const pending = new Map();
+  ws.onmessage = m => { const d = JSON.parse(m.data); pending.get(d.id)?.(d); pending.delete(d.id); };
+  const call = (method, params) => new Promise(r => { const id = ++seq; pending.set(id, r); ws.send(JSON.stringify({ id, method, params })); });
+  const evaluate = async fn => {
+    const d = await call('Runtime.evaluate', { expression: `(${fn})(globalThis.__aswitchE2E)`, returnByValue: true, awaitPromise: true });
+    if (d.result?.exceptionDetails) throw new Error('main-process evaluate failed: ' + JSON.stringify(d.result.exceptionDetails).slice(0, 300));
+    return d.result?.result?.value;
+  };
+  const browser = await chromium.connectOverCDP(urls.dev);
+  const ctx = browser.contexts()[0];
+  const firstWindow = async () => ctx.pages().find(p => !p.url().startsWith('devtools:')) || ctx.waitForEvent('page');
+  const close = async () => {
+    await evaluate(({ app }) => { setTimeout(() => app.quit(), 0); return true; }).catch(() => {});
+    const done = await Promise.race([exited.then(() => true), sleep(20000).then(() => false)]);
+    if (!done) proc.kill();
+    try { ws.close(); } catch {}
+    await browser.close().catch(() => {});
+  };
+  return { evaluate, firstWindow, close };
+}
 async function launch() {
-  const app = await _electron.launch({ executablePath: require('electron'), args: [desktop, '--no-sandbox', '--disable-gpu'], cwd: desktop, env });
+  const app = useCdp ? await launchCdp()
+    : await _electron.launch({ executablePath: require('electron'), args: [desktop, '--no-sandbox', '--disable-gpu'], cwd: desktop, env });
   const page = await app.firstWindow();
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.waitForSelector('#toolCards .card');
@@ -378,7 +422,6 @@ check('relaunch auto-starts the needed router', await probe());
 // app shows the confirmation dialog; the provider is added only after "Import", and never with the key.
 const link = 'aswitch://provider?id=shared-gw&label=Shared&openaiBase=https%3A%2F%2Fshared.example.com%2Fv1&apikey=sk-nope';
 // Plain child process (not Playwright): the second instance quits right away, which a debugger attach would race.
-const { spawn } = await import('node:child_process');
 const second = spawn(require('electron'), [desktop, '--no-sandbox', '--disable-gpu', link], { cwd: desktop, env, stdio: 'ignore' });
 const secondExit = await Promise.race([new Promise(r => second.on('exit', c => r(c ?? 0))), sleep(15000).then(() => 'timeout')]);
 if (secondExit === 'timeout') second.kill();
