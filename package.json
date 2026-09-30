@@ -1,7 +1,7 @@
 {
   "name": "agent-switchboard",
-  "version": "0.1.1",
-  "description": "Claude Code, Codex, OpenCode ve Claude Desktop için API/model yöneticisi: sağlayıcı değiştir, modelleri güncel çek, orijinal ayarlara geri dön. Mac, Windows, Linux.",
+  "version": "0.1.2",
+  "description": "Claude Code, Codex ve OpenCode için API/model yöneticisi: sağlayıcı değiştir, modelleri güncel çek, orijinal ayarlara geri dön. Mac, Windows, Linux.",
   "license": "MIT",
   "type": "module",
   "bin": {

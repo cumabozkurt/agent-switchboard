@@ -24,11 +24,3 @@ export function opencodeConfigPath() {
   const base = process.env.XDG_CONFIG_HOME || path.join(home(), '.config');
   return path.join(base, 'opencode', 'opencode.json');
 }
-
-// Claude Desktop, MCP ve uzantı ayarlarını bu dosyada tutar.
-export function claudeDesktopConfigPath() {
-  const h = home();
-  if (process.platform === 'darwin') return path.join(h, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
-  if (process.platform === 'win32') return path.join(process.env.APPDATA || path.join(h, 'AppData', 'Roaming'), 'Claude', 'claude_desktop_config.json');
-  return path.join(h, '.config', 'Claude', 'claude_desktop_config.json');
-}

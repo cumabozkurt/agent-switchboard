@@ -43,17 +43,18 @@ test('Codex: config.toml içine yönetilen blok yazılır, kullanıcı tablolar�
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, 'model = "gpt-5-codex"\napproval_policy = "on-request"\n\n[mcp_servers.docs]\ncommand = "npx"\n');
   core.setKey('opencode-zen', 'zen-key');
-  await core.useProvider({ provider: 'opencode-zen', model: 'claude-opus-4-8', tools: ['codex'] });
+  await core.useProvider({ provider: 'opencode-zen', model: 'gpt-5.5', tools: ['codex'] });
   const t = fs.readFileSync(f, 'utf8');
   assert.match(t, /model_provider = "aswitch"/);
-  assert.match(t, /model = "claude-opus-4-8"/);
-  assert.doesNotMatch(t, /gpt-5-codex/);
+  assert.match(t, /^model = "gpt-5.5"/m);
+  assert.match(t, /wire_api = "responses"/);
+  assert.doesNotMatch(t, /^model = "gpt-5-codex"/m); // yalnızca yorum olarak saklanır
   assert.match(t, /approval_policy = "on-request"/);
   assert.match(t, /\[mcp_servers\.docs\]/);
   assert.match(t, /base_url = "https:\/\/opencode.ai\/zen\/v1"/);
   assert.match(t, /env_key = "OPENCODE_API_KEY"/);
   // ikinci uygulama bloğu çoğaltmamalı
-  await core.useProvider({ provider: 'opencode-zen', model: 'gpt-5', tools: ['codex'] });
+  await core.useProvider({ provider: 'opencode-zen', model: 'gpt-5.4', tools: ['codex'] });
   const t2 = fs.readFileSync(f, 'utf8');
   assert.equal(t2.match(/\[model_providers\.aswitch\]/g).length, 1);
   assert.equal(t2.match(/^model = /gm).length, 1);

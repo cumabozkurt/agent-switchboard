@@ -3,8 +3,11 @@ import path from 'node:path';
 import { appDir } from './paths.js';
 import { exists, readJson, writeJson } from './fsutil.js';
 
+const KEEP_BACKUPS = 50;
+
 // İlk dokunuşta dosyanın ORİJİNAL hali saklanır; her değişiklikten önce ayrıca zaman damgalı yedek alınır.
 function manifestPath() { return path.join(appDir(), 'originals', 'manifest.json'); }
+function statePath() { return path.join(appDir(), 'state.json'); }
 
 export function ensureOriginal(target, file) {
   const mf = readJson(manifestPath(), {});
@@ -26,15 +29,26 @@ export function snapshot(target, file) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const dir = path.join(appDir(), 'backups', stamp);
   fs.mkdirSync(dir, { recursive: true });
-  const dest = path.join(dir, target + path.extname(file));
+  let dest = path.join(dir, target + path.extname(file));
+  for (let i = 2; exists(dest); i++) dest = path.join(dir, `${target}-${i}${path.extname(file)}`);
   fs.copyFileSync(file, dest);
+  pruneBackups();
   return dest;
+}
+
+function pruneBackups() {
+  const dir = path.join(appDir(), 'backups');
+  try {
+    const all = fs.readdirSync(dir).sort();
+    for (const d of all.slice(0, Math.max(0, all.length - KEEP_BACKUPS))) fs.rmSync(path.join(dir, d), { recursive: true, force: true });
+  } catch { /* yedek klasörü yoksa sorun değil */ }
 }
 
 export function restoreOriginal(target) {
   const mf = readJson(manifestPath(), {});
   const rec = mf[target];
   if (!rec) return { target, restored: false, reason: 'Bu araç için değişiklik yapılmamış.' };
+  if (rec.existed && !exists(rec.copy)) return { target, restored: false, reason: `Orijinal kopya bulunamadı: ${rec.copy}` };
   snapshot(target, rec.file);
   if (rec.existed) {
     fs.mkdirSync(path.dirname(rec.file), { recursive: true });
@@ -44,7 +58,16 @@ export function restoreOriginal(target) {
   }
   delete mf[target];
   writeJson(manifestPath(), mf);
+  setState(target, undefined);
   return { target, restored: true, file: rec.file };
+}
+
+// Hedeflerin, resmî moda dönerken geri koyulacak küçük durum bilgileri (ör. Claude'un önceki "model" değeri).
+export function getState(target) { return readJson(statePath(), {})[target]; }
+export function setState(target, value) {
+  const s = readJson(statePath(), {});
+  if (value === undefined) { if (!(target in s)) return; delete s[target]; } else s[target] = value;
+  writeJson(statePath(), s);
 }
 
 export function listBackups() {

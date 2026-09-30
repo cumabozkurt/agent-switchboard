@@ -53,6 +53,8 @@
 <script>
 const token = location.hash.slice(1);
 const $ = id => document.getElementById(id);
+// Sağlayıcı adları ve uzak /models listelerinden gelen model kimlikleri HTML'e kaçışlanarak yazılır.
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const log = m => { $('log').textContent = new Date().toLocaleTimeString() + '  ' + m + '\n' + $('log').textContent; };
 async function api(path, body) {
   const r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-aswitch-token': token }, body: JSON.stringify(body || {}) });
@@ -63,25 +65,28 @@ const act = fn => async () => { try { await fn(); await load(); } catch (e) { lo
 async function load() {
   const ps = await api('providers');
   const cur = $('prov').value;
-  $('prov').innerHTML = ps.map(p => `<option value="${p.id}">${p.hasKey ? '● ' : '○ '}${p.label}</option>`).join('');
+  $('prov').innerHTML = ps.map(p => `<option value="${esc(p.id)}">${p.hasKey ? '● ' : '○ '}${esc(p.label)}</option>`).join('');
   if (cur) $('prov').value = cur;
   const s = await api('status');
-  const rows = [['Claude Code', s.claude.baseUrl + ' · ' + s.claude.model], ['Codex', s.codex.baseUrl + ' · ' + s.codex.model], ['OpenCode', s.opencode.model], ['Yönlendirici', s.routerRunning ? 'çalışıyor' : (s.router ? 'gerekli, kapalı' : 'gerekmiyor')]];
-  $('status').innerHTML = rows.map(([a, b]) => `<div class="row"><b>${a}</b><code>${b}</code></div>`).join('');
+  const rows = [['Claude Code', s.claude.baseUrl + ' · ' + s.claude.model], ['Codex', s.codex.baseUrl + ' · ' + s.codex.model], ['OpenCode', s.opencode.model],
+    ['Yönlendirici', s.routerRunning ? 'çalışıyor' : (s.router ? 'gerekli, kapalı' : 'gerekmiyor')]];
+  $('status').innerHTML = rows.map(([a, b]) => `<div class="row"><b>${esc(a)}</b><code>${esc(b)}</code></div>`).join('');
 }
 $('refresh').onclick = act(async () => {
   const ms = await api('models', { provider: $('prov').value, refresh: true });
-  $('modelList').innerHTML = '<option value="latest">' + ms.map(m => `<option value="${m.id}">`).join('');
+  $('modelList').innerHTML = '<option value="latest"></option>' + ms.map(m => `<option value="${esc(m.id)}"></option>`).join('');
   log(ms.length + ' model alındı. En yeni: ' + (ms[0]?.id || '-'));
 });
 $('apply').onclick = act(async () => {
-  const r = await api('use', { provider: $('prov').value, model: $('model').value || undefined, fastModel: $('fast').value || undefined, tools: tools() });
+  const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.');
+  const r = await api('use', { provider: $('prov').value, model: $('model').value.trim() || undefined, fastModel: $('fast').value.trim() || undefined, tools: t });
   log(r.provider + ' uygulandı (' + (r.model || 'varsayılan model') + ') → ' + r.results.map(x => x.tool + (x.viaRouter ? ' [yönlendirici]' : '')).join(', '));
 });
-$('saveKey').onclick = act(async () => { await api('key', { provider: $('prov').value, key: $('key').value }); $('key').value = ''; log('Anahtar kaydedildi.'); });
+$('saveKey').onclick = act(async () => { await api('key', { provider: $('prov').value, key: $('key').value.trim() }); $('key').value = ''; log('Anahtar kaydedildi.'); });
 $('orLogin').onclick = act(async () => { log('Tarayıcıda OpenRouter girişi açılıyor…'); await api('login/openrouter'); log('OpenRouter anahtarı alındı.'); });
-$('official').onclick = act(async () => { await api('official', { tools: tools().filter(t => t !== 'opencode') }); log('Resmî girişe dönüldü.'); });
-$('restore').onclick = act(async () => { if (!confirm('Seçili araçların dosyaları ilk haline dönsün mü?')) return; const r = await api('restore', { tools: tools() }); log(r.map(x => x.target + ': ' + (x.restored ? 'geri yüklendi' : x.reason)).join('\n')); });
+// Claude Code ve Codex resmî girişe döner; OpenCode seçiliyse onun dosyası orijinal haline getirilir.
+$('official').onclick = act(async () => { const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.'); const r = await api('official', { tools: t }); log(r.map(x => x.tool + ': ' + (x.note || 'resmî girişe dönüldü')).join('\n')); });
+$('restore').onclick = act(async () => { const t = tools(); if (!t.length) throw new Error('En az bir araç seçin.'); if (!confirm('Seçili araçların dosyaları ilk haline dönsün mü?')) return; const r = await api('restore', { tools: t }); log(r.map(x => x.target + ': ' + (x.restored ? 'geri yüklendi' : x.reason)).join('\n')); });
 $('rStart').onclick = act(async () => { await api('router/start'); log('Yönlendirici başladı.'); });
 $('rStop').onclick = act(async () => { await api('router/stop'); log('Yönlendirici durdu.'); });
 load().catch(e => log('Hata: ' + e.message));

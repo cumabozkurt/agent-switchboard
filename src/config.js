@@ -1,11 +1,14 @@
 import path from 'node:path';
 import { appDir } from './paths.js';
-import { readJson, writeJson } from './fsutil.js';
+import { readJsonStrict, writeJson } from './fsutil.js';
 
 export function configPath() { return path.join(appDir(), 'config.json'); }
 
+// Katı okuma: config.json bozuksa kayıtlı anahtarlar sessizce silinmesin diye hata verilir.
 export function loadConfig() {
-  return readJson(configPath(), { version: 1, keys: {}, providers: {}, active: {} });
+  const cfg = readJsonStrict(configPath(), {});
+  cfg.version ||= 1; cfg.keys ||= {}; cfg.providers ||= {}; cfg.active ||= {};
+  return cfg;
 }
 
 export function saveConfig(cfg) {

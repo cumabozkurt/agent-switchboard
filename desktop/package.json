@@ -1,6 +1,6 @@
 {
   "name": "agent-switchboard-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Agent Switchboard masaüstü uygulaması (Electron)",
   "license": "MIT",
   "type": "module",
@@ -19,19 +19,43 @@
     "productName": "Agent Switchboard",
     "files": [
       "main.js",
-      "app-src/**"
+      "app-src/**",
+      "package.json"
     ],
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "linux": {
@@ -40,7 +64,14 @@
         "deb"
       ],
       "category": "Development",
-      "maintainer": "Cuma Bozkurt <cumabozkurt@users.noreply.github.com>"
+      "maintainer": "Cuma Bozkurt <cumabozkurt@users.noreply.github.com>",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}-win-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}-win-${arch}.${ext}"
     }
   },
   "author": {

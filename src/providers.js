@@ -3,7 +3,10 @@
 //
 // anthropicBase : Claude Code'un ANTHROPIC_BASE_URL'i (Claude Code sonuna /v1/messages ekler)
 // openaiBase    : OpenAI uyumlu taban adres (/chat/completions, /responses, /models)
-// codexWire     : Codex için "responses" veya "chat"
+// codexWire     : Sağlayıcının OpenAI tarafında sunduğu API: "responses" (Codex doğrudan bağlanır)
+//                 veya "chat" (yalnız /chat/completions; Codex yerel yönlendirici üzerinden bağlanır,
+//                 çünkü güncel Codex yalnızca wire_api = "responses" destekler)
+// modelApis     : Model başına farklı uç nokta kullanan sağlayıcılar için [düzenli ifade, api] listesi
 // modelsUrl     : Güncel model listesinin çekildiği adres
 export const PRESETS = {
   anthropic: {
@@ -28,7 +31,7 @@ export const PRESETS = {
     label: 'OpenRouter (API anahtarı veya OAuth/PKCE)',
     anthropicBase: 'https://openrouter.ai/api',
     openaiBase: 'https://openrouter.ai/api/v1',
-    codexWire: 'chat',
+    codexWire: 'responses', // https://openrouter.ai/docs/api_reference/responses/overview (durumsuz)
     modelsUrl: 'https://openrouter.ai/api/v1/models',
     modelsPublic: true,
     keyEnv: 'OPENROUTER_API_KEY',
@@ -40,6 +43,16 @@ export const PRESETS = {
     anthropicBase: 'https://opencode.ai/zen',
     openaiBase: 'https://opencode.ai/zen/v1',
     codexWire: 'responses',
+    // https://opencode.ai/docs/zen/#endpoints — her model kendi uç noktasını kullanır
+    modelApis: [
+      [/^(gpt-|grok-|muse-)/i, 'responses'],
+      [/^claude-/i, 'messages'],
+      [/^qwen3\.8-max/i, 'chat'],
+      [/^qwen/i, 'messages'],
+      [/^gemini-/i, 'google'],
+      [/^jev-/i, 'none'],
+      [/.*/, 'chat']
+    ],
     modelsUrl: 'https://opencode.ai/zen/v1/models',
     modelsPublic: true,
     keyEnv: 'OPENCODE_API_KEY',
@@ -49,8 +62,15 @@ export const PRESETS = {
     label: 'OpenCode Go',
     anthropicBase: 'https://opencode.ai/zen/go',
     openaiBase: 'https://opencode.ai/zen/go/v1',
-    codexWire: 'responses',
+    codexWire: 'chat',
+    // https://opencode.ai/docs/go/#endpoints
+    modelApis: [
+      [/^(gpt-|grok-|muse-)/i, 'responses'],
+      [/^(minimax-|qwen)/i, 'messages'],
+      [/.*/, 'chat']
+    ],
     modelsUrl: 'https://opencode.ai/zen/go/v1/models',
+    modelsPublic: true,
     keyEnv: 'OPENCODE_API_KEY',
     keyUrl: 'https://opencode.ai/auth'
   },
@@ -88,7 +108,7 @@ export const PRESETS = {
     label: 'Ollama (yerel)',
     anthropicBase: 'http://localhost:11434',
     openaiBase: 'http://localhost:11434/v1',
-    codexWire: 'chat',
+    codexWire: 'responses', // Ollama ≥ 0.13.3: /v1/responses (https://docs.ollama.com/api/openai-compatibility)
     modelsUrl: 'http://localhost:11434/v1/models',
     modelsPublic: true,
     noKey: true
@@ -96,11 +116,40 @@ export const PRESETS = {
 };
 
 export function resolveProvider(cfg, id) {
+  if (!id) return null;
   const custom = cfg.providers?.[id] || {};
+  if (!PRESETS[custom.preset || id] && !cfg.providers?.[id]) return null;
   const preset = PRESETS[custom.preset || id] || {};
-  const p = { id, ...preset, ...custom };
+  const clean = Object.fromEntries(Object.entries(custom).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+  const p = { id, ...preset, ...clean };
   if (!p.anthropicBase && !p.openaiBase) return null;
   return p;
+}
+
+// Bir modelin sağlayıcıda hangi API ile sunulduğu: 'messages' | 'responses' | 'chat' | 'google' | 'none' | null
+export function modelApi(provider, model) {
+  if (!model || !provider.modelApis) return null;
+  for (const [re, api] of provider.modelApis) if (re.test(model)) return api;
+  return null;
+}
+
+// Claude Code için bağlantı biçimi: 'direct' (Anthropic uyumlu uç nokta), 'router' (yerel çevirici → /chat/completions)
+// veya null (desteklenmiyor).
+export function claudeMode(provider, model) {
+  const api = modelApi(provider, model);
+  if (api === 'messages' || (api === null && provider.anthropicBase)) return provider.anthropicBase ? 'direct' : null;
+  if ((api === 'chat' || api === null) && provider.openaiBase) return 'router';
+  return null;
+}
+
+// Codex için bağlantı biçimi: 'direct' (sağlayıcının /responses uç noktası), 'router' (yerel çevirici
+// Responses → Chat Completions) veya null.
+export function codexMode(provider, model) {
+  if (!provider.openaiBase) return null;
+  const api = modelApi(provider, model);
+  if (api === 'responses' || (api === null && provider.codexWire === 'responses')) return 'direct';
+  if (api === 'chat' || api === null) return 'router';
+  return null;
 }
 
 export function listProviderIds(cfg) {

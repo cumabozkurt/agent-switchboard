@@ -18,8 +18,16 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
     headers.authorization = `Bearer ${key}`;
   }
   const url = provider.modelsAuth === 'anthropic' ? `${provider.modelsUrl}?limit=1000` : provider.modelsUrl;
-  const res = await fetchImpl(url, { headers });
-  if (!res.ok) throw new Error(`${provider.id} model listesi alınamadı: HTTP ${res.status}`);
+  let res;
+  try {
+    res = await fetchImpl(url, { headers, signal: AbortSignal.timeout(20000) });
+  } catch (e) {
+    throw new Error(`${provider.id} model listesine ulaşılamadı (${url}): ${e.cause?.code || e.message}`);
+  }
+  if (!res.ok) {
+    const hint = (res.status === 401 || res.status === 403) && !key ? ` — anahtar gerekli: "aswitch key set ${provider.id}"` : '';
+    throw new Error(`${provider.id} model listesi alınamadı: HTTP ${res.status}${hint}`);
+  }
   const body = await res.json();
   const models = normalizeModels(body);
   cache[provider.id] = { at: Date.now(), models };
@@ -28,13 +36,23 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
 }
 
 export function normalizeModels(body) {
-  const arr = Array.isArray(body) ? body : body.data || body.models || [];
-  return arr.map(m => ({
+  const arr = Array.isArray(body) ? body : body?.data || body?.models || [];
+  const list = arr.filter(m => m && typeof m === 'object').map(m => ({
     id: m.id || m.name,
     name: m.display_name || m.name || m.id,
     created: toEpoch(m.created ?? m.created_at),
     context: m.context_length || m.context_window || null
-  })).filter(m => m.id).sort((a, b) => (b.created || 0) - (a.created || 0));
+  })).filter(m => typeof m.id === 'string' && m.id);
+  // Bazı uç noktalar (ör. OpenCode Zen/Go) her modelin "created" alanına isteğin anını yazar;
+  // bu durumda tarih bilgi taşımaz ve sıralama/"latest" sürüm numarasına göre yapılır.
+  if (list.length > 1 && list.every(m => m.created === list[0].created)) for (const m of list) m.created = 0;
+  return list.sort(newestFirst);
+}
+
+const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+// Önce oluşturulma tarihi, eşitse sürüm numarası (claude-opus-5-5 > claude-opus-5 > claude-opus-4-8).
+function newestFirst(a, b) {
+  return (b.created || 0) - (a.created || 0) || collator.compare(b.id, a.id);
 }
 
 function toEpoch(v) {
@@ -50,5 +68,8 @@ export function resolveModelAlias(spec, models) {
   const filter = spec.split(':').slice(1).join(':').toLowerCase();
   const pool = filter ? models.filter(m => m.id.toLowerCase().includes(filter)) : models;
   if (!pool.length) throw new Error(`"${spec}" ile eşleşen model bulunamadı.`);
-  return [...pool].sort((a, b) => (b.created || 0) - (a.created || 0))[0].id;
+  // OpenRouter'ın ":free", ":batch", ":extended" gibi varyantları ve "~" takma adları yalnızca
+  // filtre açıkça istediğinde seçilir; aksi hâlde asıl model tercih edilir.
+  const plain = filter.includes(':') || filter.startsWith('~') ? pool : pool.filter(m => !m.id.includes(':') && !m.id.startsWith('~'));
+  return [...(plain.length ? plain : pool)].sort(newestFirst)[0].id;
 }
