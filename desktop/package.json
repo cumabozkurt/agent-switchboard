@@ -1,6 +1,6 @@
 {
   "name": "agent-switchboard-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent Switchboard masaüstü uygulaması (Electron)",
   "license": "MIT",
   "type": "module",
@@ -17,9 +17,35 @@
   "build": {
     "appId": "io.github.cumabozkurt.agentswitchboard",
     "productName": "Agent Switchboard",
-    "files": ["main.js", "app-src/**"],
-    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.developer-tools" },
-    "win": { "target": ["nsis", "portable"] },
-    "linux": { "target": ["AppImage", "deb"], "category": "Development" }
-  }
+    "files": [
+      "main.js",
+      "app-src/**"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
+      "maintainer": "Cuma Bozkurt <cumabozkurt@users.noreply.github.com>"
+    }
+  },
+  "author": {
+    "name": "Cuma Bozkurt",
+    "email": "cumabozkurt@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/cumabozkurt/agent-switchboard"
 }

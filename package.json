@@ -1,15 +1,39 @@
 {
   "name": "agent-switchboard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Claude Code, Codex, OpenCode ve Claude Desktop için API/model yöneticisi: sağlayıcı değiştir, modelleri güncel çek, orijinal ayarlara geri dön. Mac, Windows, Linux.",
   "license": "MIT",
   "type": "module",
-  "bin": { "aswitch": "bin/aswitch.js" },
-  "engines": { "node": ">=18" },
+  "bin": {
+    "aswitch": "bin/aswitch.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "node scripts/run-tests.js",
     "ui": "node bin/aswitch.js ui"
   },
-  "files": ["bin", "src", "README.md", "LICENSE"],
-  "keywords": ["claude-code", "codex", "opencode", "openrouter", "llm", "proxy", "router", "cli"]
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "codex",
+    "opencode",
+    "openrouter",
+    "llm",
+    "proxy",
+    "router",
+    "cli"
+  ],
+  "author": "Cuma Bozkurt",
+  "homepage": "https://github.com/cumabozkurt/agent-switchboard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cumabozkurt/agent-switchboard.git"
+  }
 }
