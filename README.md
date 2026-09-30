@@ -42,7 +42,7 @@ It comes as a **desktop app** (macOS, Windows, Linux) and as a **zero-dependency
 - [OAuth and terms of service](#oauth-and-terms-of-service)
 - [Troubleshooting / FAQ](#troubleshooting--faq)
 - [Limitations](#limitations)
-- [Comparison with similar projects](#comparison-with-similar-projects) · [Competitive analysis (33 projects)](docs/COMPETITIVE-ANALYSIS.md)
+- [Comparison with similar projects](#comparison-with-similar-projects) · [Competitive analysis (32 projects)](docs/COMPETITIVE-ANALYSIS.md)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing) · [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) · [Audit report](docs/AUDIT.md) · [Automation](docs/AUTOMATION.md) · [License](#license)
 
@@ -589,7 +589,7 @@ They read the same user config files, so changes apply to them too, as far as ea
 
 ## Comparison with similar projects
 
-We cloned and read 33 active projects for 0.3.0 — the full table and notes are in [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md). The three best known, compared on points we checked in their READMEs and code (September 2026):
+We cloned and read 33 candidate projects (32 met the criteria) for 0.3.0 — the full table and notes are in [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md). The three best known, compared on points we checked in their READMEs and code (September 2026):
 
 | | **Agent Switchboard** | [cc-switch](https://github.com/farion1231/cc-switch) | [cc-switch-cli](https://github.com/SaladDay/cc-switch-cli) | [claude-code-router](https://github.com/musistudio/claude-code-router) |
 |---|---|---|---|---|

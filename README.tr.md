@@ -42,7 +42,7 @@ Hem **masaüstü uygulaması** (macOS, Windows, Linux) hem de **bağımlılıks�
 - [OAuth ve kullanım koşulları](#oauth-ve-kullanım-koşulları)
 - [Sorun giderme / SSS](#sorun-giderme--sss)
 - [Sınırlamalar](#sınırlamalar)
-- [Benzer projelerle karşılaştırma](#benzer-projelerle-karşılaştırma) · [Rakip analizi (33 proje, İngilizce)](docs/COMPETITIVE-ANALYSIS.md)
+- [Benzer projelerle karşılaştırma](#benzer-projelerle-karşılaştırma) · [Rakip analizi (32 proje, İngilizce)](docs/COMPETITIVE-ANALYSIS.md)
 - [Yol haritası](#yol-haritası)
 - [Katkı](#katkı) · [Güvenlik politikası](SECURITY.md) · [Değişiklik günlüğü](CHANGELOG.tr.md) · [Denetim raporu](docs/AUDIT.md) · [Otomasyon](docs/AUTOMATION.md) · [Lisans](#lisans)
 
@@ -533,7 +533,7 @@ Aynı kullanıcı ayar dosyalarını okurlar; bu yüzden değişiklikler, her ü
 
 ## Benzer projelerle karşılaştırma
 
-0.3.0 için 33 etkin projeyi klonlayıp okuduk — tam tablo ve notlar [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md) dosyasında (İngilizce). En bilinen üçüyle, README ve kodlarında denetlediğimiz noktalarda karşılaştırma (Eylül 2026):
+0.3.0 için 33 aday projeyi klonlayıp okuduk (32si ölçütlere uydu) — tam tablo ve notlar [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md) dosyasında (İngilizce). En bilinen üçüyle, README ve kodlarında denetlediğimiz noktalarda karşılaştırma (Eylül 2026):
 
 | | **Agent Switchboard** | [cc-switch](https://github.com/farion1231/cc-switch) | [cc-switch-cli](https://github.com/SaladDay/cc-switch-cli) | [claude-code-router](https://github.com/musistudio/claude-code-router) |
 |---|---|---|---|---|

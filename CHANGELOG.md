@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [0.3.0] - 2026-10-01
 
-Based on a review of 33 similar open-source projects (see `docs/COMPETITIVE-ANALYSIS.md`).
+Based on a review of 32 similar open-source projects (see `docs/COMPETITIVE-ANALYSIS.md`).
 
 ### Added
 - **Gemini CLI support**: fourth target tool. aswitch writes a marked block in `~/.gemini/.env` (`GOOGLE_GEMINI_BASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, mode 0600) and sets API-key auth and the model in `~/.gemini/settings.json`. Previous values are saved and put back by `aswitch official --tools gemini` and `aswitch restore`. Google AI Studio keys connect directly; every other provider goes through the router, which now speaks the Gemini API (`generateContent`, `streamGenerateContent` with SSE, `countTokens`) and translates to Anthropic Messages, Chat Completions or Responses. `aswitch run gemini` is supported.

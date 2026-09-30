@@ -6,7 +6,10 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
 
 - Candidates came from GitHub search (topics and keywords: *claude code switch*, *codex provider*, *anthropic openai proxy*, *claude code router*, *cc-switch*, *coding agent gateway* …) and from the "similar projects" sections of the repos we found.
 - **Selection rule:** the repo does provider/model/config switching or Anthropic⇄OpenAI/Gemini routing for coding agents, and `pushed_at` (checked with `gh api repos/<owner>/<repo>`) is after **2026-04-01**.
-- **Review:** all 33 repos were shallow-cloned (`git clone --depth 1`) into `/workspace/research/` on 2026-09-30. For each one we read the README and the relevant source: config writers, protocol converters, routing and fallback logic, and the UI.
+- **Review:** all 33 candidate repos were shallow-cloned (`git clone --depth 1`) into `/workspace/research/` on 2026-09-30. For each one we read the README and the relevant source: config writers, protocol converters, routing and fallback logic, and the UI.
+- **Verification (2026-10-01):** `gh api repos/<owner>/<repo>` was re-run for all 33 cloned candidates (`created_at`, `pushed_at`, `archived`). All 33 were pushed after 2026-04-01. **32 are included** below. One is excluded:
+  - **tbphp/gpt-load** (7,020 ★, pushed 2026-09-30, MIT): a general-purpose API key-pool and load-balancing proxy for OpenAI, Gemini and Anthropic. It is not specific to coding agents, so it falls outside "same purpose". We still noted one idea from it: a cooldown before a rate-limited key is retried.
+  - Note: kxn/claude-code-companion is **archived**. It was last pushed on 2026-07-31, so it still meets the date rule.
 - **Data:** stars, last push, language and license are from the GitHub API on 2026-09-30. "Tools" means the agent CLIs the project configures or serves. Model vendors such as Kimi or Qwen are counted as providers, not tools.
 - **Licensing:** no code was copied. Four repos have no license (all rights reserved) and three are NOASSERTION; for those we only noted ideas at the level of a feature list. Every adopted idea was reimplemented from scratch in our own zero-dependency style. Most of the others are MIT.
 
@@ -24,29 +27,28 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
 | 8 | [1rgs/claude-code-proxy](https://github.com/1rgs/claude-code-proxy) | 3,753 | 2026-06-23 | Python | Claude Code | haiku/sonnet → SMALL/BIG model mapping via LiteLLM | none |
 | 9 | [starbaser/ccproxy](https://github.com/starbaser/ccproxy) | 347 | 2026-08-10 | Python | Claude Code | LiteLLM-based hooks/rules routing, MCP bridging | NOASSERTION |
 | 10 | [lich0821/ccNexus](https://github.com/lich0821/ccNexus) | 972 | 2026-08-31 | Go | Claude Code, Codex | Endpoint rotation & failover, Claude/OpenAI/Gemini conversion, desktop UI, WebDAV backup, stats | MIT |
-| 11 | [tbphp/gpt-load](https://github.com/tbphp/gpt-load) | 7,020 | 2026-09-30 | Go | any OpenAI/Anthropic/Gemini client | Key pools with weights and cooldown, request logs, dashboard | MIT |
-| 12 | [kxn/claude-code-companion](https://github.com/kxn/claude-code-companion) | 303 | 2026-07-31 | Go | Claude Code | Priority failover, response validation, tag routing, request log UI | none |
-| 13 | [CaddyGlow/ccproxy-api](https://github.com/CaddyGlow/ccproxy-api) | 275 | 2026-05-02 | Python | Claude Code, Codex | Plugin system (access log, analytics, pricing), OpenAI-compatible endpoint | MIT |
-| 14 | [BigStrongSun/ccswitchmulti](https://github.com/BigStrongSun/ccswitchmulti) | 119 | 2026-09-30 | Rust | Codex | Multi-model router for Codex, per-model upstream | MIT |
-| 15 | [SailingLoong/LoongPort](https://github.com/SailingLoong/LoongPort) | 139 | 2026-09-30 | Rust | Claude Code, Codex, OpenCode, Gemini CLI | Auto-pick upstream by price/TTFT, session stickiness, tray, auto-update | MIT |
-| 16 | [glidea/claude-worker-proxy](https://github.com/glidea/claude-worker-proxy) | 275 | 2026-07-10 | TypeScript | Claude Code | Cloudflare Worker converting Claude API → Gemini/OpenAI | MIT |
-| 17 | [Able-rip/cc-VisionRouter](https://github.com/Able-rip/cc-VisionRouter) | 78 | 2026-06-07 | JavaScript | Claude Code | Routes requests with images to a vision model | MIT |
-| 18 | [codejunkie99/claude-model-switch](https://github.com/codejunkie99/claude-model-switch) | 12 | 2026-07-12 | Rust | Claude Code | opus/sonnet/haiku tier mapping, Claude Code plugin commands | MIT |
-| 19 | [hishamkaram/claude-code-router](https://github.com/hishamkaram/claude-code-router) | 10 | 2026-09-30 | Go | Claude Code | Fallback, load balancing, team profiles | MIT |
-| 20 | [zuoliangyu/cc-switch-web](https://github.com/zuoliangyu/cc-switch-web) | 18 | 2026-09-24 | Rust | Claude Code, Codex, OpenCode, OpenClaw | Web version of cc-switch, deep links, env-variable conflict detection | MIT |
-| 21 | [gstranded/codex-switch](https://github.com/gstranded/codex-switch) | 5 | 2026-09-30 | Rust | Codex | Profile export/import for migration, SHA256SUMS on releases | MIT |
-| 22 | [grey0758/codex-provider-switcher](https://github.com/grey0758/codex-provider-switcher) | 4 | 2026-09-24 | Rust | Codex | Keys in OS keychain, atomic writes, tray | MIT |
-| 23 | [superheroYu/deepseek-v4-opencode-claude-code-bridge](https://github.com/superheroYu/deepseek-v4-opencode-claude-code-bridge) | 42 | 2026-08-25 | JavaScript | Claude Code, OpenCode, Codex | DeepSeek bridge with reasoning_content mapping, health check, usage | MIT |
-| 24 | [Apale7/opencode-provider-switch](https://github.com/Apale7/opencode-provider-switch) | 3 | 2026-07-31 | Go | OpenCode | Alias proxy, Health and Log tabs, tray | none |
-| 25 | [2hmad/ccswitch](https://github.com/2hmad/ccswitch) | 9 | 2026-09-09 | Shell | Claude Code | Multi-account vault (swaps subscription logins — ToS-sensitive) | MIT |
-| 26 | [becomeless/cc-x](https://github.com/becomeless/cc-x) | 1 | 2026-08-28 | Go | Claude Code | Env-only switching, session vs default scope, self-update | MIT |
-| 27 | [christerjohansson/loki-gateway](https://github.com/christerjohansson/loki-gateway) | 2 | 2026-05-02 | JavaScript | Claude Code, OpenCode | Switches provider when rate-limited | none |
-| 28 | [asiflow/hyper-claude-code](https://github.com/asiflow/hyper-claude-code) | 5 | 2026-09-24 | Python | Claude Code | Cost tracking, mid-stream recovery | NOASSERTION |
-| 29 | [Mukller/claude-code-gateway](https://github.com/Mukller/claude-code-gateway) | 0 | 2026-09-11 | Go | Claude Code, OpenCode | Fallback chains, circuit breaker, latency-based LB, scenario routing, CSV export | MIT |
-| 30 | [xiaoliu10/claude-code-router-next](https://github.com/xiaoliu10/claude-code-router-next) | 11 | 2026-09-20 | TypeScript | Claude Code, Codex, OpenCode, Gemini CLI | Fork of CCR with Codex Responses support, usage stats (TTFT, cache hits) | MIT |
-| 31 | [wangxiajun68/ClaudeBar](https://github.com/wangxiajun68/ClaudeBar) | 1 | 2026-09-30 | Swift | Claude Code | macOS menu-bar switcher | MIT |
-| 32 | [punisher1/claude-code-tool](https://github.com/punisher1/claude-code-tool) | 7 | 2026-06-18 | Rust | Claude Code | CLI provider switcher | MIT |
-| 33 | [sarukas/claude-code-agent-sdk-router](https://github.com/sarukas/claude-code-agent-sdk-router) | 5 | 2026-09-09 | TypeScript | Claude Code | Setup wizard, named route sets | NOASSERTION |
+| 11 | [kxn/claude-code-companion](https://github.com/kxn/claude-code-companion) (archived) | 303 | 2026-07-31 | Go | Claude Code | Priority failover, response validation, tag routing, request log UI | none |
+| 12 | [CaddyGlow/ccproxy-api](https://github.com/CaddyGlow/ccproxy-api) | 275 | 2026-05-02 | Python | Claude Code, Codex | Plugin system (access log, analytics, pricing), OpenAI-compatible endpoint | MIT |
+| 13 | [BigStrongSun/ccswitchmulti](https://github.com/BigStrongSun/ccswitchmulti) | 119 | 2026-09-30 | Rust | Codex | Multi-model router for Codex, per-model upstream | MIT |
+| 14 | [SailingLoong/LoongPort](https://github.com/SailingLoong/LoongPort) | 139 | 2026-09-30 | Rust | Claude Code, Codex, OpenCode, Gemini CLI | Auto-pick upstream by price/TTFT, session stickiness, tray, auto-update | MIT |
+| 15 | [glidea/claude-worker-proxy](https://github.com/glidea/claude-worker-proxy) | 275 | 2026-07-10 | TypeScript | Claude Code | Cloudflare Worker converting Claude API → Gemini/OpenAI | MIT |
+| 16 | [Able-rip/cc-VisionRouter](https://github.com/Able-rip/cc-VisionRouter) | 78 | 2026-06-07 | JavaScript | Claude Code | Routes requests with images to a vision model | MIT |
+| 17 | [codejunkie99/claude-model-switch](https://github.com/codejunkie99/claude-model-switch) | 12 | 2026-07-12 | Rust | Claude Code | opus/sonnet/haiku tier mapping, Claude Code plugin commands | MIT |
+| 18 | [hishamkaram/claude-code-router](https://github.com/hishamkaram/claude-code-router) | 10 | 2026-09-30 | Go | Claude Code | Fallback, load balancing, team profiles | MIT |
+| 19 | [zuoliangyu/cc-switch-web](https://github.com/zuoliangyu/cc-switch-web) | 18 | 2026-09-24 | Rust | Claude Code, Codex, OpenCode, OpenClaw | Web version of cc-switch, deep links, env-variable conflict detection | MIT |
+| 20 | [gstranded/codex-switch](https://github.com/gstranded/codex-switch) | 5 | 2026-09-30 | Rust | Codex | Profile export/import for migration, SHA256SUMS on releases | MIT |
+| 21 | [grey0758/codex-provider-switcher](https://github.com/grey0758/codex-provider-switcher) | 4 | 2026-09-24 | Rust | Codex | Keys in OS keychain, atomic writes, tray | MIT |
+| 22 | [superheroYu/deepseek-v4-opencode-claude-code-bridge](https://github.com/superheroYu/deepseek-v4-opencode-claude-code-bridge) | 42 | 2026-08-25 | JavaScript | Claude Code, OpenCode, Codex | DeepSeek bridge with reasoning_content mapping, health check, usage | MIT |
+| 23 | [Apale7/opencode-provider-switch](https://github.com/Apale7/opencode-provider-switch) | 3 | 2026-07-31 | Go | OpenCode | Alias proxy, Health and Log tabs, tray | none |
+| 24 | [2hmad/ccswitch](https://github.com/2hmad/ccswitch) | 9 | 2026-09-09 | Shell | Claude Code | Multi-account vault (swaps subscription logins — ToS-sensitive) | MIT |
+| 25 | [becomeless/cc-x](https://github.com/becomeless/cc-x) | 1 | 2026-08-28 | Go | Claude Code | Env-only switching, session vs default scope, self-update | MIT |
+| 26 | [christerjohansson/loki-gateway](https://github.com/christerjohansson/loki-gateway) | 2 | 2026-05-02 | JavaScript | Claude Code, OpenCode | Switches provider when rate-limited | none |
+| 27 | [asiflow/hyper-claude-code](https://github.com/asiflow/hyper-claude-code) | 5 | 2026-09-24 | Python | Claude Code | Cost tracking, mid-stream recovery | NOASSERTION |
+| 28 | [Mukller/claude-code-gateway](https://github.com/Mukller/claude-code-gateway) | 0 | 2026-09-11 | Go | Claude Code, OpenCode | Fallback chains, circuit breaker, latency-based LB, scenario routing, CSV export | MIT |
+| 29 | [xiaoliu10/claude-code-router-next](https://github.com/xiaoliu10/claude-code-router-next) | 11 | 2026-09-20 | TypeScript | Claude Code, Codex, OpenCode, Gemini CLI | Fork of CCR with Codex Responses support, usage stats (TTFT, cache hits) | MIT |
+| 30 | [wangxiajun68/ClaudeBar](https://github.com/wangxiajun68/ClaudeBar) | 1 | 2026-09-30 | Swift | Claude Code | macOS menu-bar switcher | MIT |
+| 31 | [punisher1/claude-code-tool](https://github.com/punisher1/claude-code-tool) | 7 | 2026-06-18 | Rust | Claude Code | CLI provider switcher | MIT |
+| 32 | [sarukas/claude-code-agent-sdk-router](https://github.com/sarukas/claude-code-agent-sdk-router) | 5 | 2026-09-09 | TypeScript | Claude Code | Setup wizard, named route sets | NOASSERTION |
 
 ## Feature frequency → what we built
 
@@ -55,8 +57,8 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
 | Gemini CLI as a target (cc-switch, cc-switch-cli, LoongPort, CLIProxyAPI, relay-service, claude-code-hub, ccr-next) | **Added in 0.3.0** (config + Gemini-API router endpoints) |
 | Large preset catalogue (cc-switch 90+, CCR) | 18 built-in presets now (+8); custom providers for the rest |
 | Fallback / failover (CCR, ccNexus, companion, claude-code-hub, gateway, loki, hishamkaram) | **Added**: per-tool fallback chain in the router |
-| Load balancing / circuit breaker (claude-code-hub, gpt-load, gateway) | Not added — targets a multi-user gateway; a fallback chain covers the single-user case |
-| Usage / cost / request log (cc-switch, CCR, relay-service, hub, gpt-load, ccproxy-api, ccr-next, hyper) | **Added**: metadata-only JSONL log, TTFT, tokens, estimated cost |
+| Load balancing / circuit breaker (claude-code-hub, gateway; also the excluded gpt-load) | Not added — targets a multi-user gateway; a fallback chain covers the single-user case |
+| Usage / cost / request log (cc-switch, CCR, relay-service, hub, ccproxy-api, ccr-next, hyper) | **Added**: metadata-only JSONL log, TTFT, tokens, estimated cost |
 | Speed test / health (cc-switch, bridge, opencode-provider-switch, LoongPort) | **Added**: `aswitch ping` + Keys tab button |
 | MCP sync (cc-switch, cc-switch-cli, ccproxy) | **Added**: list + sync across 4 tools |
 | Profiles / import-export / migration (cc-switch-cli, codex-switch, hishamkaram) | **Added**: profiles, per-project `.aswitch.json`, export/import |
@@ -96,55 +98,53 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
    - *Noted:* pluggable request rules (e.g. token-count-based routing).
 10. **ccNexus.**
     - *Adopted:* Gemini conversion in the same proxy and endpoint rotation (as a fallback chain).
-11. **gpt-load.** Key pools with cooldown.
-    - *Noted:* a cooldown after a 429 before retrying the same key.
-12. **claude-code-companion (no license).**
+11. **claude-code-companion (no license).**
     - *Idea:* response validation (reject malformed upstream JSON early) and a request log UI. We built our own usage tab.
-13. **ccproxy-api.** Its access-log/analytics/pricing plugins confirmed the "metadata only" log design.
-14. **ccswitchmulti.**
+12. **ccproxy-api.** Its access-log/analytics/pricing plugins confirmed the "metadata only" log design.
+13. **ccswitchmulti.**
     - *Noted:* per-model upstreams for Codex (we route per tool; per model is a candidate).
-15. **LoongPort.** Picks the upstream by price/TTFT and sticks to it for a session.
+14. **LoongPort.** Picks the upstream by price/TTFT and sticks to it for a session.
     - *Adopted:* recording TTFT, which is what makes such a choice possible later.
     - *Also adopted:* tray and update notice.
-16. **claude-worker-proxy.**
+15. **claude-worker-proxy.**
     - *Noted:* running the translator on a serverless edge. Out of scope for a local tool.
-17. **cc-VisionRouter.**
+16. **cc-VisionRouter.**
     - *Noted:* route image-bearing requests to a vision model. Candidate for scenario routing.
-18. **claude-model-switch.**
+17. **claude-model-switch.**
     - *Noted:* a Claude Code plugin/slash command to switch from inside a session.
-19. **hishamkaram/claude-code-router.**
+18. **hishamkaram/claude-code-router.**
     - *Adopted:* team/named profiles (as profiles plus export/import).
-20. **cc-switch-web.**
+19. **cc-switch-web.**
     - *Noted:* env-variable conflict detection. **Adopted** in 0.3.0: `aswitch status` / Overview warn when `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, `GEMINI_API_KEY` … override the config; we also document the project-`.env` shadowing for Gemini CLI.
-21. **codex-switch.**
+20. **codex-switch.**
     - *Adopted:* SHA256SUMS on releases and a migration file (export/import).
-22. **codex-provider-switcher.**
+21. **codex-provider-switcher.**
     - *Adopted:* atomic writes (we already had these).
     - *Noted:* OS keychain, left out to keep zero dependencies.
-23. **deepseek-v4-opencode-claude-code-bridge.**
+22. **deepseek-v4-opencode-claude-code-bridge.**
     - *Adopted:* the mapping of `reasoning_content` to thinking and a health endpoint showing the provider and fallbacks.
-24. **opencode-provider-switch (no license).**
+23. **opencode-provider-switch (no license).**
     - *Idea:* Health and Log tabs. We built Usage & logs plus the endpoint test.
-25. **2hmad/ccswitch.** Multi-account vault for subscription logins.
+24. **2hmad/ccswitch.** Multi-account vault for subscription logins.
     - *Not adopted* (ToS).
-26. **cc-x.** Session vs default scope.
+25. **cc-x.** Session vs default scope.
     - *Adopted:* `aswitch run` with per-project profiles, which gives the session-scoped switch.
     - *Also adopted:* the update check.
-27. **loki-gateway (no license).**
+26. **loki-gateway (no license).**
     - *Idea:* switch provider on rate limit. This is our fallback chain on 429.
-28. **hyper-claude-code (NOASSERTION).**
+27. **hyper-claude-code (NOASSERTION).**
     - *Idea:* cost tracking.
     - *Noted:* mid-stream recovery. We only fall back before any bytes are sent, because replaying a half-sent stream would duplicate output.
-29. **claude-code-gateway.**
+28. **claude-code-gateway.**
     - *Adopted:* the fallback chains.
     - *Noted:* CSV export of usage (our `--json` output is the building block) and latency-based load balancing.
-30. **claude-code-router-next.**
+29. **claude-code-router-next.**
     - *Adopted:* usage stats with TTFT and cached tokens.
     - *Also:* Codex Responses support, which we already had.
-31. **ClaudeBar.**
+30. **ClaudeBar.**
     - *Adopted:* the menu-bar quick switch, as the tray.
-32. **claude-code-tool.** A simple CLI switcher; confirms that profiles are the core UX.
-33. **claude-code-agent-sdk-router (NOASSERTION).**
+31. **claude-code-tool.** A simple CLI switcher; confirms that profiles are the core UX.
+32. **claude-code-agent-sdk-router (NOASSERTION).**
     - *Idea:* a first-run wizard. We have a welcome guide.
     - *Noted:* named route sets, which map to our profiles.
 
