@@ -86,7 +86,7 @@ test('CLI: aswitch link onaysız uygulamaz, --yes ile uygular; link make', () =>
   const url = 'aswitch://provider?id=cli-gw&openaiBase=https%3A%2F%2Fcli.example.com%2Fv1';
   const r1 = cli(['link', url]);
   assert.equal(r1.status, 1, r1.stdout + r1.stderr);
-  assert.match(r1.stdout, /cli\.example\.com/);
+  assert.ok(r1.stdout.includes('https://cli.example.com/v1'), r1.stdout);
   assert.match(r1.stdout, /--yes/);
   assert.ok(!cfgFile().providers['cli-gw']);
   const r2 = cli(['link', url, '--yes']);

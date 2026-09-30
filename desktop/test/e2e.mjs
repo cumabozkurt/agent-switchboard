@@ -62,7 +62,9 @@ if (process.platform !== 'win32') {
 env.ASWITCH_NO_PROTOCOL = '1';
 
 const results = [];
-const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
+// Details can contain page text: keep each result on one line (no control characters in the log).
+const oneLine = v => String(v).replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
+const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + oneLine(detail) : ''}`); };
 const probe = async () => { try { return (await (await fetch(`http://127.0.0.1:${routerPort}/health`, { signal: AbortSignal.timeout(800) })).json()).ok === true; } catch { return false; } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -304,7 +306,7 @@ await page.fill('#lkIn', 'aswitch://provider?id=team-gw&label=Team%20gateway&ope
 await page.click('#lkPreview');
 await page.waitForSelector('#linkDialog[open]', { timeout: 10000 }).catch(async () => console.log('LOG:', await page.textContent('#log')));
 const dlgText = await page.textContent('#linkDialog');
-check('opening a link shows a confirmation dialog with the endpoint and a key warning', dlgText.includes('gw.example.com') && /removed/.test(dlgText), dlgText.slice(0, 160));
+check('opening a link shows a confirmation dialog with the endpoint and a key warning', dlgText.includes('https://gw.example.com/v1') && /removed/.test(dlgText), dlgText.slice(0, 160));
 await shot(page, 'link-dialog-en.png');
 await page.click('#ldCancel');
 check('cancelled link changes nothing', !JSON.parse(fs.readFileSync(path.join(env.ASWITCH_DIR, 'config.json'), 'utf8')).providers['team-gw']);
@@ -376,10 +378,10 @@ check('relaunch auto-starts the needed router', await probe());
 // app shows the confirmation dialog; the provider is added only after "Import", and never with the key.
 const link = 'aswitch://provider?id=shared-gw&label=Shared&openaiBase=https%3A%2F%2Fshared.example.com%2Fv1&apikey=sk-nope';
 const second = await _electron.launch({ executablePath: require('electron'), args: [desktop, '--no-sandbox', '--disable-gpu', link], cwd: desktop, env }).catch(e => e);
-if (!(second instanceof Error)) { await sleep(1500); const wins = await second.windows(); check('second instance does not open a second window', wins.length === 0); await second.close().catch(() => {}); }
+if (!(second instanceof Error)) { await sleep(1500); let wins = []; try { wins = second.windows(); } catch { /* already gone */ } check('second instance does not open a second window', wins.length === 0); await second.close().catch(() => {}); }
 else check('second instance does not open a second window', true, 'exited immediately');
 const gotDlg = await page.waitForSelector('#linkDialog[open]', { timeout: 10000 }).then(() => true).catch(() => false);
-check('aswitch:// link from the OS opens the confirmation dialog', gotDlg && (await page.textContent('#linkDialog')).includes('shared.example.com'));
+check('aswitch:// link from the OS opens the confirmation dialog', gotDlg && (await page.textContent('#linkDialog')).includes('https://shared.example.com/v1'));
 await shot(page, 'link-dialog-tr.png');
 if (gotDlg) await page.click('#ldApply');
 await page.waitForFunction(() => !document.querySelector('#linkDialog').open).catch(() => {});

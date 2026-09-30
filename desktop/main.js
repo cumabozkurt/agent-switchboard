@@ -26,7 +26,9 @@ app.on('open-url', (e, url) => { e.preventDefault(); deliverLink(url); });
 if (app.isPackaged && !process.env.ASWITCH_NO_PROTOCOL) app.setAsDefaultProtocolClient('aswitch');
 
 // One instance only: a second launch focuses the existing window (two apps would fight over the router port).
-if (!app.requestSingleInstanceLock()) app.quit();
+// The second process must not start its own panel server/window while it quits.
+const primary = app.requestSingleInstanceLock();
+if (!primary) app.quit();
 app.on('second-instance', (e, argv) => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } deliverLink(linkIn(argv)); });
 
 function buildMenu() {
@@ -122,7 +124,7 @@ async function create() {
   if (pendingLink) { const u = pendingLink; pendingLink = null; deliverLink(u); }
 }
 
-app.whenReady().then(create);
+if (primary) app.whenReady().then(create);
 app.on('window-all-closed', () => app.quit());
 // Stop the router and the local server cleanly before exiting, so the port is released immediately.
 app.on('before-quit', e => {
