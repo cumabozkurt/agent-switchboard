@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Switchboard</title>
+<style>
+  :root { color-scheme: light dark; --b:#8883; --acc:#6d5efc; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 24px; max-width: 980px; margin-inline: auto; }
+  h1 { font-size: 20px; margin: 0 0 16px; } h2 { font-size: 15px; margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .card { border: 1px solid var(--b); border-radius: 12px; padding: 14px; }
+  label { display: block; font-size: 12px; opacity: .75; margin-top: 8px; }
+  select, input { width: 100%; box-sizing: border-box; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--b); background: transparent; color: inherit; }
+  button { margin-top: 10px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--b); background: transparent; color: inherit; cursor: pointer; }
+  button.p { background: var(--acc); color: #fff; border-color: var(--acc); }
+  .tools label { display: inline-flex; gap: 6px; margin-right: 12px; opacity: 1; font-size: 14px; }
+  .tools input { width: auto; }
+  code { font-size: 12px; } #log { white-space: pre-wrap; font: 12px ui-monospace, monospace; opacity: .85; }
+  .row { display: flex; justify-content: space-between; border-bottom: 1px solid var(--b); padding: 4px 0; gap: 8px; }
+</style>
+</head>
+<body>
+<h1>Agent Switchboard</h1>
+<div class="grid">
+  <div class="card">
+    <h2>Sağlayıcı ve model</h2>
+    <label>Sağlayıcı</label><select id="prov"></select>
+    <label>Model</label><input id="model" list="modelList" placeholder="latest, latest:opus veya tam model adı">
+    <datalist id="modelList"></datalist>
+    <label>Hızlı/arka plan modeli (isteğe bağlı)</label><input id="fast" list="modelList">
+    <button id="refresh">Güncel modelleri çek</button>
+    <div class="tools" style="margin-top:10px">
+      <label><input type="checkbox" value="claude" checked> Claude Code</label>
+      <label><input type="checkbox" value="codex" checked> Codex</label>
+      <label><input type="checkbox" value="opencode"> OpenCode</label>
+    </div>
+    <button class="p" id="apply">Uygula</button>
+  </div>
+  <div class="card">
+    <h2>Anahtarlar</h2>
+    <label>API anahtarı (seçili sağlayıcı)</label><input id="key" type="password" autocomplete="off">
+    <button id="saveKey">Kaydet</button> <button id="orLogin">OpenRouter ile giriş (OAuth)</button>
+    <h2 style="margin-top:16px">Geri dönüş</h2>
+    <button id="official">Resmî girişe dön (Pro/Max, ChatGPT)</button>
+    <button id="restore">Orijinal dosyaları geri yükle</button>
+    <h2 style="margin-top:16px">Yerel yönlendirici</h2>
+    <button id="rStart">Başlat</button> <button id="rStop">Durdur</button>
+  </div>
+  <div class="card"><h2>Durum</h2><div id="status"></div></div>
+</div>
+<div class="card" style="margin-top:14px"><h2>Kayıt</h2><div id="log"></div></div>
+<script>
+const token = location.hash.slice(1);
+const $ = id => document.getElementById(id);
+const log = m => { $('log').textContent = new Date().toLocaleTimeString() + '  ' + m + '\n' + $('log').textContent; };
+async function api(path, body) {
+  const r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-aswitch-token': token }, body: JSON.stringify(body || {}) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
+}
+const tools = () => [...document.querySelectorAll('.tools input:checked')].map(i => i.value);
+const act = fn => async () => { try { await fn(); await load(); } catch (e) { log('Hata: ' + e.message); } };
+async function load() {
+  const ps = await api('providers');
+  const cur = $('prov').value;
+  $('prov').innerHTML = ps.map(p => `<option value="${p.id}">${p.hasKey ? '● ' : '○ '}${p.label}</option>`).join('');
+  if (cur) $('prov').value = cur;
+  const s = await api('status');
+  const rows = [['Claude Code', s.claude.baseUrl + ' · ' + s.claude.model], ['Codex', s.codex.baseUrl + ' · ' + s.codex.model], ['OpenCode', s.opencode.model], ['Yönlendirici', s.routerRunning ? 'çalışıyor' : (s.router ? 'gerekli, kapalı' : 'gerekmiyor')]];
+  $('status').innerHTML = rows.map(([a, b]) => `<div class="row"><b>${a}</b><code>${b}</code></div>`).join('');
+}
+$('refresh').onclick = act(async () => {
+  const ms = await api('models', { provider: $('prov').value, refresh: true });
+  $('modelList').innerHTML = '<option value="latest">' + ms.map(m => `<option value="${m.id}">`).join('');
+  log(ms.length + ' model alındı. En yeni: ' + (ms[0]?.id || '-'));
+});
+$('apply').onclick = act(async () => {
+  const r = await api('use', { provider: $('prov').value, model: $('model').value || undefined, fastModel: $('fast').value || undefined, tools: tools() });
+  log(r.provider + ' uygulandı (' + (r.model || 'varsayılan model') + ') → ' + r.results.map(x => x.tool + (x.viaRouter ? ' [yönlendirici]' : '')).join(', '));
+});
+$('saveKey').onclick = act(async () => { await api('key', { provider: $('prov').value, key: $('key').value }); $('key').value = ''; log('Anahtar kaydedildi.'); });
+$('orLogin').onclick = act(async () => { log('Tarayıcıda OpenRouter girişi açılıyor…'); await api('login/openrouter'); log('OpenRouter anahtarı alındı.'); });
+$('official').onclick = act(async () => { await api('official', { tools: tools().filter(t => t !== 'opencode') }); log('Resmî girişe dönüldü.'); });
+$('restore').onclick = act(async () => { if (!confirm('Seçili araçların dosyaları ilk haline dönsün mü?')) return; const r = await api('restore', { tools: tools() }); log(r.map(x => x.target + ': ' + (x.restored ? 'geri yüklendi' : x.reason)).join('\n')); });
+$('rStart').onclick = act(async () => { await api('router/start'); log('Yönlendirici başladı.'); });
+$('rStop').onclick = act(async () => { await api('router/stop'); log('Yönlendirici durdu.'); });
+load().catch(e => log('Hata: ' + e.message));
+</script>
+</body>
+</html>

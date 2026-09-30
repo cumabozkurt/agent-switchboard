@@ -1,0 +1,15 @@
+{
+  "name": "agent-switchboard",
+  "version": "0.1.0",
+  "description": "Claude Code, Codex, OpenCode ve Claude Desktop için API/model yöneticisi: sağlayıcı değiştir, modelleri güncel çek, orijinal ayarlara geri dön. Mac, Windows, Linux.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "aswitch": "bin/aswitch.js" },
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node --test test/",
+    "ui": "node bin/aswitch.js ui"
+  },
+  "files": ["bin", "src", "README.md", "LICENSE"],
+  "keywords": ["claude-code", "codex", "opencode", "openrouter", "llm", "proxy", "router", "cli"]
+}
