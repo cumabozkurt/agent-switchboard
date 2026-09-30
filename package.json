@@ -7,7 +7,7 @@
   "bin": { "aswitch": "bin/aswitch.js" },
   "engines": { "node": ">=18" },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node scripts/run-tests.js",
     "ui": "node bin/aswitch.js ui"
   },
   "files": ["bin", "src", "README.md", "LICENSE"],
