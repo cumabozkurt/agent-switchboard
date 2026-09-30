@@ -20,7 +20,7 @@ const home = path.join(tmp, 'home'), work = path.join(tmp, 'work'), inst = path.
 for (const d of [home, work, inst, path.join(home, '.gemini')]) fs.mkdirSync(d, { recursive: true });
 fs.writeFileSync(path.join(work, 'a.txt'), 'hello\n');
 const results = [];
-const oneLine = v => String(v).replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
+const oneLine = v => String(v).replace(/\n|\r/g, ' ').replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, 300);
 const check = (name, ok, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + oneLine(detail) : ''}`); };
 const free = () => new Promise(r => { const s = http.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
 

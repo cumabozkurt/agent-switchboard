@@ -57,7 +57,7 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
 | Gemini CLI as a target (cc-switch, cc-switch-cli, LoongPort, CLIProxyAPI, relay-service, claude-code-hub, ccr-next) | **Added in 0.3.0** (config + Gemini-API router endpoints) |
 | Large preset catalogue (cc-switch 90+, CCR) | 18 built-in presets now (+8); custom providers for the rest |
 | Fallback / failover (CCR, ccNexus, companion, claude-code-hub, gateway, loki, hishamkaram) | **Added**: per-tool fallback chain in the router |
-| Load balancing / circuit breaker (claude-code-hub, gateway; also the excluded gpt-load) | Not added — targets a multi-user gateway; a fallback chain covers the single-user case |
+| Load balancing / circuit breaker (claude-code-hub, gateway; also the excluded gpt-load) | **Added in 0.4.0**: weighted / round-robin groups per tool, and a per-provider breaker (N failures → cooldown → one half-open trial), in CLI + desktop |
 | Usage / cost / request log (cc-switch, CCR, relay-service, hub, ccproxy-api, ccr-next, hyper) | **Added**: metadata-only JSONL log, TTFT, tokens, estimated cost |
 | Speed test / health (cc-switch, bridge, opencode-provider-switch, LoongPort) | **Added**: `aswitch ping` + Keys tab button |
 | MCP sync (cc-switch, cc-switch-cli, ccproxy) | **Added**: list + sync across 4 tools |
@@ -66,10 +66,10 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
 | Thinking / reasoning translation (raine proxy, CCR transformers, DeepSeek bridge) | **Added** |
 | Auto-update (cc-switch, LoongPort, cc-x) | **Notify-only** (unsigned builds; see AUTOMATION.md) |
 | SHA256SUMS on releases (codex-switch) | **Added** (release verify job) |
-| Deep links (cc-switch, cc-switch-web) | Not yet — needs protocol registration per OS; planned |
+| Deep links (cc-switch, cc-switch-web) | **Added in 0.4.0**: `aswitch://provider`, `profile`, `import`. There is always a confirmation step and keys are never imported. The scheme is registered by the installed desktop app (electron-builder `protocols`); links also work with `aswitch link` |
 | WebDAV / cloud sync (cc-switch, cc-switch-cli, ccNexus) | Not added; export/import covers manual migration |
-| OS keychain for keys (codex-provider-switcher) | Not added (zero-dependency core); keys stay in a 0600 file |
-| Scenario routing (long-context / background / image → model) (CCR, gateway, VisionRouter) | Partially: fast model for haiku/flash; full scenario routing planned |
+| OS keychain for keys (codex-provider-switcher) | **Added in 0.4.0, optional**, still with zero dependencies: macOS `security`, Windows Credential Manager via PowerShell, Linux `secret-tool`. The secret is passed over stdin |
+| Scenario routing (long-context / background / image → model) (CCR, gateway, VisionRouter) | **Added in 0.4.0**: image, longContext (configurable threshold), webSearch, think, background, per tool |
 | Multi-account subscription pooling (CLIProxyAPI, relay-service, ccswitch) | **Deliberately not done** — sharing or pooling subscription OAuth tokens conflicts with provider terms |
 
 ## Per-repo notes (ideas worth adopting)
@@ -148,8 +148,9 @@ Agent Switchboard switches the API provider and model of coding agents (Claude C
     - *Idea:* a first-run wizard. We have a welcome guide.
     - *Noted:* named route sets, which map to our profiles.
 
-## Where Agent Switchboard stands after 0.3.0
+## Where Agent Switchboard stands after 0.4.0
 
 - **Unique combination**: one zero-dependency Node package (CLI + web panel + Electron app) that configures Claude Code, Codex, OpenCode *and* Gemini CLI, with a built-in router for all four wire formats (Anthropic Messages, Chat Completions, Responses, Gemini). Most switchers only edit configs, and most routers only serve Claude Code.
 - **Safety**: every write is backed up; managed blocks leave user settings intact; full restore to the pre-aswitch state; official logins are never copied between tools.
-- **Gaps that remain** (see README → Roadmap): deep links, cloud sync, scenario routing, load balancing/circuit breaker, OS keychain, a TUI.
+- **Closed in 0.4.0:** load balancing and circuit breaker, scenario routing, deep links, the optional OS keychain, Linux arm64 builds, and e2e on all three desktop OSes plus a real Gemini CLI run in CI.
+- **Gaps that remain** (see README → Roadmap): cloud sync (export/import and share links cover manual moves), a TUI, signed builds with silent auto-update, Codex with `/messages`-only models, and mid-stream replay (left out on purpose, see README → Limitations).

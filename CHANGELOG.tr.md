@@ -2,6 +2,32 @@
 
 Bu projedeki önemli değişiklikler burada yazılıdır. Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) kurallarına uyar, proje [Anlamsal Sürümleme](https://semver.org/lang/tr/) kullanır. İngilizce sürüm: [CHANGELOG.md](CHANGELOG.md).
 
+## [0.4.0] - 2026-10-01
+
+### Eklenenler
+- Yönlendiricide **yük dengeleme**: `aswitch balance set claude openrouter:anthropic/claude-sonnet-4.5*3 deepseek:deepseek-chat*1 [--strategy weighted|round-robin]` bir aracın isteklerini iki ya da daha çok sağlayıcı/modele dağıtır (ağırlıkla ya da sırayla). Seçilen hata verirse önce grubun diğer üyeleri, sonra yedek zinciri denenir. Masaüstü: Yönlendirici → Yük dengeleme.
+- **Devre kesici**: art arda N hatadan sonra (429, 408, 5xx ya da ağ hatası; varsayılan 3) sağlayıcı bir bekleme süresi boyunca (varsayılan 30 sn) atlanır, sonra tek bir deneme isteğine izin verilir (yarı açık). Başarılı olursa devre yeniden kapanır. Diğer 4xx hataları hiç sayılmaz. Tüm adayların devresi açıksa yönlendirici hiç denemeden hata vermek yerine yine de dener. `aswitch breaker [on|off|set --failures N --cooldown S|status]` canlı durumu gösterir; `/health` ve Yönlendirici sekmesi de gösterir.
+- **Senaryoya göre yönlendirme** (claude-code-router'daki gibi): `image`, `longContext` (tahmini token sayısı eşiği geçerse; varsayılan 60.000), `webSearch`, `think` (düşünme/akıl yürütme istenmiş) ya da `background` (Claude'un haiku/hızlı modeli, Gemini flash-lite) isteklerini başka bir modele gönderin: `aswitch scenario set claude longContext openrouter:google/gemini-2.5-pro`, `aswitch scenario threshold 100000`. Kullanım kaydı senaryoyu da yazar.
+- `aswitch use … --via-router` doğrudan bağlantı mümkün olsa bile her zaman yönlendiriciden geçer. Doğrudan bağlı bir araca yedek zinciri, dengeleme grubu ya da senaryo tanımlanınca araç kendiliğinden yönlendiriciye alınır.
+- **Paylaşım bağlantıları (`aswitch://`)**: `aswitch://provider?…`, `aswitch://profile?…` ve `aswitch://import?data=…` özel bir sağlayıcıyı, bir profili ya da tüm kurulumu içe aktarır. **Bağlantılar asla API anahtarı taşımaz**: anahtara benzeyen parametreler ve `keys` blokları atılır (uyarı gösterilir). Onay olmadan hiçbir şey uygulanmaz: masaüstü uygulaması `aswitch:` şemasını kaydeder (kurulu sürümlerde; macOS `open-url`, Windows/Linux ikinci örnek argümanı) ve her uç noktayı gösteren bir onay penceresi açar; CLI önizleme yazdırıp sorar (betiklerde onay için `--yes`). URL'ler özel sağlayıcılarla aynı kurallara uyar. Var olan kayıtlar, üzerine yazmayı seçmedikçe korunur. Bağlantı oluşturmak için `aswitch link make provider|profile|all` ve Ayarlar → Paylaşım bağlantıları.
+- Kayıtlı anahtarlar için **isteğe bağlı işletim sistemi anahtar zinciri** (yerel modül gerekmez): macOS Anahtar Zinciri (`security`, sır stdin ile), Windows Kimlik Bilgisi Yöneticisi (PowerShell + `CredWrite`/`CredRead`, sır stdin ile), Linux Secret Service (`secret-tool`). `aswitch keychain on|off|status` ve Ayarlar → İşletim sistemi anahtar zinciri tüm anahtarları taşır; dosyadaki kopyayı silmeden önce her birini geri okuyup doğrular. Bundan sonra `config.json` yalnızca `@keychain` işaretleri tutar. Anahtar zinciri okunamazsa sağlayıcının ortam değişkeni kullanılır.
+- **Dışa giden URL kuralı** (`src/netguard.js`): anahtar gönderilen her URL (özel sağlayıcılar, model listeleri, uç nokta testi, yönlendiricinin hedefleri) `http(s)` olmalı ve `kullanıcı:parola@` içermemeli. Düz `http` yalnızca yerel, özel ağ, `.local`/`.lan`/`.internal` ya da tek parçalı adlı sunuculara izinli. Panelin yönlendirici yoklama portu doğrulanır.
+- **Gerçek Gemini CLI uçtan uca testi** (`scripts/gemini-cli-e2e.mjs`, yeni `gemini-cli` CI işi). `@google/gemini-cli` paketini npm'den geçici bir HOME'a kurar ve `aswitch use` + yönlendirici üzerinden yerel sahte bir sağlayıcıya karşı başsız çalıştırır. Şunları doğrular: akışlı yanıt, anahtar/model/araçların sağlayıcıya ulaşması, `list_directory` araç çağrısı gidiş-dönüşü, `aswitch run gemini`, güvenilen klasörde `~/.gemini/.env` okunması ve kullanım kaydı. Gemini CLI 0.62.0 ile doğrulandı.
+- Linux **arm64** masaüstü sürümleri (AppImage + deb); her sürümde 10 kurulum dosyası.
+
+### Değişenler
+- **Masaüstü: Electron 33 → 44**, electron-builder 25 → 26 (Dependabot PR #1). Masaüstü uygulaması için **macOS 13 (Ventura) ya da daha yenisi gerekir** (Electron 44 macOS 12 desteğini bıraktı). CLI değişmedi: Node.js ≥ 18.
+- Sağlayıcılardan gelen model listeleri temizlenir: en çok 5000 kayıt, en çok 200 karakterlik ve kontrol karakteri içermeyen kimlikler; sayısal alanlar sonlu ve ≥ 0 olmalı.
+- Gemini CLI uygulandıktan sonra bir ipucu Gemini'nin klasör güvenini açıklar: Gemini CLI `~/.gemini/.env` dosyasını yalnızca güvenilen klasörlerde okur. Başsız çalıştırmalar `--skip-trust` ya da `GEMINI_CLI_TRUST_WORKSPACE=true` ister; `aswitch run gemini` her yerde çalışır.
+- Electron uçtan uca testi artık internete ihtiyaç duymaz: yerel sahte bir sağlayıcı ve paketle gelen model listeleri kullanılır (`E2E_LIVE=1` canlı yenilemeyi de ekler). Test artık CI'da **Linux, macOS ve Windows** üzerinde koşar ve dengeleme/senaryo/devre kesici, paylaşım bağlantıları (ikinci örneğe verilen bağlantı dahil) ile anahtar zincirini de kapsar (54 kontrol).
+
+### Düzeltilenler
+- Modeller sekmesi: daha önce seçilmiş bir sağlayıcının geç gelen yanıtı, o an seçili sağlayıcının tablosunu silebiliyordu.
+- İkinci masaüstü örneği (örneğin bir bağlantının başlattığı) kapanmadan önce kendi panel sunucusunu başlatmaz oldu.
+
+### Güvenlik
+- 0.3.0 sonrasında açık kalan CodeQL uyarıları düzeltildi ya da gerekçesi yazılarak kapatıldı (bkz. `docs/AUDIT.md`).
+
 ## [0.3.0] - 2026-10-01
 
 Benzer 32 açık kaynak projenin incelenmesine dayanır (bkz. `docs/COMPETITIVE-ANALYSIS.md`).

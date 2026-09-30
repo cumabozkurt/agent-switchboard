@@ -1,3 +1,68 @@
+# Audit report — v0.4.0
+
+Date: 2026-10-01 (Europe/Istanbul). Scope: everything new in 0.4.0:
+- load balancing, circuit breaker and scenario routing
+- `aswitch://` share links
+- optional OS keychain
+- the outbound URL policy
+- Electron 44
+- Linux arm64
+- the real Gemini CLI test and the offline e2e
+- the remaining CodeQL alerts
+
+The v0.3.0 and v0.2.0 reports below still apply to the unchanged parts.
+
+Method:
+- `npm test`: 157 tests (156 plus a real OS-keychain round-trip that runs on macOS/Windows), on macOS/Windows/Linux × Node 18/20/22 in CI.
+- The real Electron 44 app driven by Playwright (`desktop/test/e2e.mjs`, 54 checks) on **Linux, macOS and Windows** in CI. It uses a local mock upstream, so no internet is needed.
+- The **real Gemini CLI 0.62.0** (`@google/gemini-cli` from npm) run headless through the router in a throwaway HOME (`scripts/gemini-cli-e2e.mjs`, CI job `gemini-cli`).
+- The Electron 33 → 44 breaking-change notes were read against `desktop/main.js`, and a full `release.yml` build ran on the Dependabot branch.
+- Sandbox as before: `ASWITCH_HOME_OVERRIDE`, `ASWITCH_DIR`, `XDG_CONFIG_HOME`; `CODEX_HOME`, `CLAUDE_CONFIG_DIR` and `GEMINI_CLI_HOME` unset. The real `~/.claude`, `~/.codex`, `~/.gemini` and OpenCode configs were never touched.
+
+| Area | Finding | Status |
+|---|---|---|
+| Electron 44 | Drops macOS 12. In Electron 42+ the `electron` package no longer downloads its binary in postinstall (lazy download) | **Handled**: README says macOS 13+. The e2e (which runs the downloaded binary) and the builds pass on all 3 OSes. No API used by `main.js` changed |
+| Router | Balance/scenario/fallback targets must keep their own model even when the tool asks for another (e.g. haiku) | **Fixed during development**: those targets carry `fixedModel`; test |
+| Router | Should a 4xx client error (400/401/404) count toward the breaker? | **No**: only 429, 408, 5xx and network errors count, so a bad request cannot knock out a healthy provider; test |
+| Router | If every candidate's circuit is open | The router still tries them (in order) rather than failing without a request; test |
+| Router | Mid-stream replay on another provider | **Not implemented on purpose**. Fallback happens only before the first byte reaches the tool. Afterwards the tool has shown part of the answer and may already be running a tool call, so a replay would duplicate output and could run tools twice. Documented in README → Limitations |
+| Router | A tool connected directly would silently ignore a new fallback/balance/scenario setting | **Fixed**: `ensureRouted` moves it to the router; the CLI prints a notice and the desktop app auto-starts the router |
+| Links | Links could smuggle keys, point at attacker hosts, or overwrite a provider that already has a saved key | Key-like parameters and `keys` blocks are dropped with a warning. URLs pass the outbound policy. Existing entries are kept unless overwrite is chosen, and if a base URL changes on overwrite, the saved key is removed (same rule as import). Nothing is applied without confirmation (CLI prompt/`--yes`, desktop dialog). Max 16 KB. Tests + e2e |
+| Links | The desktop app must not register the scheme during development or tests | Registered only when `app.isPackaged` (and never with `ASWITCH_NO_PROTOCOL`). The deb's desktop file carries `MimeType=x-scheme-handler/aswitch` (checked in the arm64 deb built by CI) |
+| Desktop | A second instance started by a link could briefly start its own panel server before quitting | **Fixed**: `create()` runs only in the primary instance. The e2e starts a second instance with a link and checks that it exits and that the first window shows the dialog |
+| Keychain | Secrets must not appear on a command line (visible in `ps`) | macOS: `security -i` reads the command from stdin (hex-encoded data). Windows: the script is passed as `-EncodedCommand` without the secret, and the secret goes over stdin as base64. Linux: `secret-tool store` reads stdin |
+| Keychain | macOS `security -w` prints non-ASCII passwords as hex | **Fixed after the first CI run**: values are stored as `b64:<base64>` and decoded on read. The real round-trip test (with `ü`) now passes on macOS and Windows runners |
+| Keychain | Windows: `-Command -` with a here-string did not store anything | **Fixed**: `-EncodedCommand` + `$ErrorActionPreference = 'Stop'`; the real round-trip test passes |
+| Keychain | Claude Code in direct mode still needs its token in `settings.json` | **Documented**. `--via-router` writes only a placeholder there |
+| Netguard | Plain-http URLs to public hosts would send keys unencrypted | **Refused** (http allowed only for loopback, RFC 1918/ULA/link-local, `.local`/`.lan`/`.internal`/`.home.arpa`, single-label). URLs with `user:pass@` are refused. Tests + e2e (the UI rejects `http://proxy.example.com`) |
+| Model lists | Remote lists were stored as-is | Sanitized: ≤ 5000 entries, ids ≤ 200 chars without control characters, finite non-negative numbers; test |
+| Gemini CLI | Gemini CLI 0.62 loads `~/.gemini/.env` **only in trusted folders**, and in headless mode refuses untrusted folders (exit 55) | **Documented + hint after apply**: trust the folder, use `aswitch run gemini`, or `--skip-trust` / `GEMINI_CLI_TRUST_WORKSPACE=true` for headless runs. With that, the real CLI works end to end: streaming, tool declarations translated, `list_directory` round-trip, usage logged |
+| UI | Models tab: a late answer for the previously selected provider could clear the current table (seen once the e2e went offline) | **Fixed**: stale answers are ignored |
+| e2e | The breaker save raced a policy reload; the second-instance check raced Playwright's debugger attach | **Fixed** (re-fill + poll `/health`; the second instance is now a plain child process) |
+
+## CodeQL
+
+After the v0.3.0 triage, alerts #6–#12 were open. Each was re-checked for v0.4.0:
+
+| # | Rule | Location | Decision |
+|---|---|---|---|
+| 6 | `js/file-system-race` | `test/cli.test.js` | **Dismissed: used in tests.** The test writes into its own `mkdtemp` folder to check that `writeFileSafe` keeps the file mode; no other process can race it |
+| 7 | `js/file-access-to-http` | `src/models.js` | **Dismissed: won't fix.** Sending the saved key to that provider's model-list URL is the feature. The URL now passes `netguard.checkOutboundUrl` |
+| 8 | `js/file-access-to-http` | `src/core.js` (endpoint test) | **Dismissed: won't fix.** Same reason; URL checked by the outbound policy |
+| 9 | `js/file-access-to-http` | `src/ui/server.js` | **Fixed**: the router-probe port comes from config and is now validated by `netguard.checkPort` |
+| 10 | `js/http-to-file-access` | `scripts/snapshot-models.js` | **Dismissed: won't fix.** A maintainer script that writes public model lists to `models/*.json` on purpose; data goes through `normalizeModels` |
+| 11, 12 | `js/http-to-file-access` | `src/fsutil.js` | **Dismissed: won't fix.** The atomic writer behind the model cache; data sanitized by `normalizeModels`, parsed only as JSON |
+| 13–23 | URL substring checks, log lines from page text | new tests (`e2e.mjs`, `links-keychain.test.js`, `gemini-cli-e2e.mjs`) | **Fixed** in the tests: exact comparisons, and single-line log output |
+
+The dismissals were made through `gh api -X PATCH …/code-scanning/alerts/N` with the comments above (GitHub limits each comment to 280 characters).
+
+## Not verified
+
+- Clicking an `aswitch://` link in a real browser on macOS/Windows with an installed build. The registration path (`setAsDefaultProtocolClient`, the electron-builder `protocols` config and the deb `MimeType`) and the handling path (second-instance argv, `open-url`) are covered separately: the e2e covers the argv path, and the deb metadata was inspected.
+- Linux arm64 builds were produced by CI and their package metadata inspected, but they were not run on arm64 hardware.
+- The real Linux Secret Service (`secret-tool` with GNOME Keyring) was not run; CI Linux uses a stand-in with the same command-line contract.
+
+
 # Audit report — v0.3.0
 
 Date: 2026-10-01 (Europe/Istanbul). Scope: everything new in 0.3.0 (Gemini CLI target and Gemini-API router, profiles, fallback chain, usage log, MCP sync, import/export, endpoint test, update check, tray, env-conflict warning) plus the release/CI pipeline. The v0.2.0 report below still applies to the unchanged parts.

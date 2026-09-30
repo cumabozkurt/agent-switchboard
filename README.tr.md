@@ -78,11 +78,14 @@ Yalnızca kendi yönettiği ayarları değiştirir. Temalarınız, izinleriniz, 
 | 🧠 **Canlı model listeleri** | Her sağlayıcının `/models` uç noktasından çekilir (6 saat önbellek). `latest` / `latest:sonnet` uygulama anında en yeni eşleşmeye çözülür. |
 | 🔁 **Yerel çeviri yönlendiricisi** | Claude Code → Chat Completions veya OpenAI Responses; Codex → Chat Completions; Gemini CLI → Messages, Chat veya Responses. Araç çağrıları, görseller, akış ve **düşünme (reasoning)** dahil. Yalnızca `127.0.0.1` üzerinde dinler. |
 | 🛟 **Yedek zinciri** | Sağlayıcı 429/5xx döndürür ya da ulaşılamazsa yönlendirici listelediğiniz sıradaki sağlayıcıyı/modeli dener. |
+| ⚖️ **Yük dengeleme + devre kesici** | Bir aracın isteklerini birden çok sağlayıcı/modele dağıtın (ağırlıklı ya da sırayla). Sürekli hata veren sağlayıcı bir süre atlanır, sonra bir kez yeniden denenir (yarı açık). |
+| 🧭 **Senaryoya göre yönlendirme** | Görsel, uzun istem, web arama, düşünme ya da arka plan istekleri ana modelden farklı bir modele gidebilir. |
+| 🔗 **Paylaşım bağlantıları** | `aswitch://` bağlantıları, bir onay penceresinden sonra özel bir sağlayıcıyı, profili ya da tüm kurulumu içe aktarır. Asla anahtar içermez. |
 | 📊 **Kullanım ve istek kaydı** | Yönlendiriciden geçen her istek için token, gecikme, ilk token süresi ve tahmini maliyet. Yalnızca özet bilgi — istem ya da anahtar asla. |
 | ⏱️ **Uç nokta testi** | Tüm sağlayıcılar için tek tıkla gecikme ve anahtar denetimi (`aswitch ping`). |
 | 🔌 **MCP eşitleme** | Dört aracın MCP sunucularını görün ve bir araçtan diğerlerine kopyalayın. |
 | 🎯 **Model başına uç nokta** | OpenCode Zen/Go her modeli kendi API'sinde sunar; aswitch her model için doğrudan ya da yönlendirici bağlantısını seçer, çalışamayacak eşleşmeleri hiçbir dosyaya yazmadan reddeder. |
-| 🔑 **Anahtarlar ve OAuth** | Anahtarlar yerelde saklanır (macOS/Linux'ta yalnızca size açık dosya). OpenRouter'a resmî OAuth PKCE ile giriş. |
+| 🔑 **Anahtarlar ve OAuth** | Anahtarlar yerelde saklanır (macOS/Linux'ta yalnızca size açık dosya) ya da isteğe bağlı olarak **işletim sistemi anahtar zincirinde** (macOS Anahtar Zinciri, Windows Kimlik Bilgisi Yöneticisi, Linux Secret Service). OpenRouter'a resmî OAuth PKCE ile giriş. |
 | ↩️ **Güvenli geri alma** | İlk dokunuşta orijinal dosya saklanır, her değişiklikten önce zaman damgalı yedek alınır (son 50), tek bir yedeği tek tıkla geri yükleyebilirsiniz. |
 | 🖥️ **Masaüstü uygulaması** | CLI'ın yaptığı her şey, terminal gerekmeden. Tepsi / menü çubuğundan hızlı geçiş, yönlendiriciyi başlat/durdur/otomatik başlat, güncelleme bildirimi, çıkışta düzgün kapanma, tek örnek. |
 | 🌍 **Türkçe + English** | Arayüz, CLI yardımı ve hataları, yönlendirici hataları, menüler ve pencere başlığı. İşletim sisteminizin dilini izler, istediğiniz an değiştirilebilir. |
@@ -102,6 +105,8 @@ Tüm ekran görüntüleri gerçek uygulamaya aittir; otomatik Electron testi (`d
 | ![Profiller](docs/images/profiles-tr.png) | ![Kullanım](docs/images/usage-tr.png) |
 | **MCP sunucuları** | **Genel bakış** |
 | ![MCP](docs/images/mcp-tr.png) | ![Genel bakış](docs/images/overview-tr.png) |
+| **Paylaşım bağlantısı onayı** | |
+| ![Bağlantı onayı](docs/images/link-dialog-tr.png) | |
 
 İngilizce arayüzün tüm sekmeleri: [README.md](README.md#screenshots)
 
@@ -119,6 +124,9 @@ Tüm ekran görüntüleri gerçek uygulamaya aittir; otomatik Electron testi (`d
 | **macOS, Intel** | `Agent.Switchboard-<sürüm>-mac-x64.dmg` (veya `.zip`) | |
 | **Linux (x64)** | `Agent.Switchboard-<sürüm>-linux-x86_64.AppImage` | `chmod +x` yapıp çalıştırın. |
 | | `Agent.Switchboard-<sürüm>-linux-amd64.deb` | `sudo apt install ./Agent.Switchboard-*.deb` |
+| **Linux (arm64)** | `Agent.Switchboard-<sürüm>-linux-arm64.AppImage` / `…-linux-arm64.deb` | Raspberry Pi 4/5 (64 bit işletim sistemi), Arm dizüstüler ve sunucular. |
+
+Masaüstü uygulaması **macOS 13 (Ventura) ya da daha yenisini** (Electron 44), Windows 10/11'i ya da güncel bir 64 bit Linux'u gerektirir. Her sürümde ayrıca `SHA256SUMS.txt` bulunur.
 
 Paketler henüz **kod imzalı değildir**:
 
@@ -178,13 +186,13 @@ aswitch status
 | **API anahtarları** | Sağlayıcı başına anahtar kaydet/kaldır (maskeli; kayıtlı ayardan mı ortam değişkeninden mi geldiğini gösterir), her sağlayıcının anahtar sayfasına bağlantı, OpenRouter OAuth girişi, **Uç noktaları test et** (gecikme + anahtar durumu). |
 | **Profiller** | Mevcut ayarı bir adla kaydedin, profilleri uygulayın ya da silin; etkin profil işaretlenir. |
 | **Modeller** | Her sağlayıcı için canlı liste, yenileme, arama kutusu, modele tıklayıp kullanma. |
-| **Yönlendirici** | Çalışıyor / durdu / harici durumu, adres ve port, **Başlat / Durdur / Yeniden başlat**, otomatik başlatma seçeneği, mevcut yönlendirmeler, araç başına **yedek zinciri**. Uygulamadan çıkınca yönlendirici düzgünce durur. |
+| **Yönlendirici** | Çalışıyor / durdu / harici durumu, adres ve port, **Başlat / Durdur / Yeniden başlat**, otomatik başlatma seçeneği, mevcut yönlendirmeler ve araç başına: **yedek zinciri**, **yük dengeleme** grubu (ağırlıklı / sırayla), **senaryo** modelleri (görsel, uzun bağlam + eşik, web arama, düşünme, arka plan) ve her sağlayıcının canlı durumuyla **devre kesici** ayarları. Uygulamadan çıkınca yönlendirici düzgünce durur. |
 | **Kullanım ve kayıtlar** | Sağlayıcı/model başına istekler, token, gecikme, ilk token süresi, tahmini maliyet, son istekler; kaydı aç/kapat, temizle. |
 | **MCP sunucuları** | Tüm araçların MCP sunucuları tek tabloda; bir araçtan diğerlerine kopyalama (aynı adlıları koru ya da üzerine yaz). |
 | **Özel sağlayıcılar** | OpenAI uyumlu (isteğe bağlı olarak Anthropic uyumlu) her uç noktayı ekleyin: kimlik, ad, taban adresler, model listesi adresi, kablo API'si (Responses/Chat), anahtar değişkeni. Tekrar kaldırın. |
 | **Geri yükleme ve yedekler** | Resmî girişe dönüş (Claude Pro/Max, ChatGPT), araç başına orijinal dosyaları geri yükleme, tüm zaman damgalı yedekleri listeleyip istediğinizi geri yükleme (önce mevcut dosyanın yedeği alınır). |
 | **Ortam değişkenleri** | Codex/OpenCode anahtarları için kabuk profilinize ekleyeceğiniz satırlar (sh/zsh/bash, fish, PowerShell, cmd). Değerler **Anahtarları tam göster**'e basana kadar maskelidir. |
-| **Ayarlar** | Dil (Otomatik / English / Türkçe), yönlendirici otomatik başlatma, **içe / dışa aktarma**, **güncellemeleri denetle**, aswitch'in kullandığı tüm dosya yolları, sürüm. |
+| **Ayarlar** | Dil (Otomatik / English / Türkçe), yönlendirici otomatik başlatma, **içe / dışa aktarma**, **paylaşım bağlantıları** (sağlayıcı / profil / tümü için bağlantı oluşturun ya da bir bağlantıyı yapıştırıp önizleyin ve içe aktarın), **işletim sistemi anahtar zinciri** (anahtarları içeri/dışarı taşıma), **güncellemeleri denetle**, aswitch'in kullandığı tüm dosya yolları, sürüm. |
 
 **Tepsi / menü çubuğu:** uygulama açıkken simgesi kayıtlı profilleri, *tüm araçlar → resmî giriş*, yönlendiriciyi başlat/durdur, pencereyi aç ve çık seçeneklerini sunar. Pencereyi kapatmak uygulamadan (ve başlattığı yönlendiriciden) çıkar.
 
@@ -203,7 +211,7 @@ Genel seçenek: `--lang en|tr` (ya da `ASWITCH_LANG=en|tr`). Komuttan önce yaz�
 | `aswitch key get <sağlayıcı>` | Anahtarı yazdırır (`--codex-key command` bunu kullanır). | `aswitch key get openrouter` |
 | `aswitch login openrouter [--port 3000]` | Tarayıcıda OpenRouter OAuth (PKCE); anahtar kaydedilir. | `aswitch login openrouter` |
 | `aswitch models <sağlayıcı> [--refresh] [--filter x] [--limit 50] [--json]` | Canlı model listesi, en yeni en üstte. | `aswitch models opencode-zen --filter claude` |
-| `aswitch use <sağlayıcı> [--model m] [--fast m] [--tools …] [--codex-key env\|command] [--port p]` | Sağlayıcıyı ve modeli araçlara uygular (varsayılan: kurulu tüm araçlar; `~/.gemini` varsa Gemini CLI de). | `aswitch use openrouter --model latest:claude-opus --fast latest:claude-haiku` |
+| `aswitch use <sağlayıcı> [--model m] [--fast m] [--tools …] [--codex-key env\|command] [--port p] [--via-router]` | Sağlayıcıyı ve modeli araçlara uygular (varsayılan: kurulu tüm araçlar; `~/.gemini` varsa Gemini CLI de). `--via-router` her zaman yönlendiriciden bağlar (yedek/dengeleme/senaryo için gerekir; ayrıca anahtarı Claude Code'un `settings.json` dosyasına yazmaz). | `aswitch use openrouter --model latest:claude-opus --fast latest:claude-haiku` |
 | `aswitch official [--tools claude,codex,gemini]` | aswitch ayarlarını kaldırıp aracın kendi girişine döner. `--tools opencode` OpenCode'un orijinal dosyasını geri yükler. | `aswitch official` |
 | `aswitch restore [--tools …]` | Dosyaları aswitch dokunmadan önceki hâline birebir getirir. | `aswitch restore --tools codex` |
 | `aswitch backups` | Zaman damgalı yedekleri listeler. | `aswitch backups` |
@@ -216,10 +224,16 @@ Genel seçenek: `--lang en|tr` (ya da `ASWITCH_LANG=en|tr`). Komuttan önce yaz�
 | `aswitch profile project <ad>` | Bulunduğunuz klasöre `.aswitch.json` yazar; `aswitch run` burada o profili uygular. | `aswitch profile project is` |
 | `aswitch ping [sağlayıcı …] [--json]` | Uç nokta gecikmesi ve anahtar durumu. | `aswitch ping openrouter deepseek` |
 | `aswitch fallback [set <araç> s:model … \| clear <araç>]` | 429/408/5xx/ağ hatasında yönlendiricinin yedek zinciri (claude, codex, gemini). | `aswitch fallback set claude opencode-go:glm-5.1 ollama:qwen3` |
+| `aswitch balance [set <araç> s:model*ağırlık … [--strategy weighted\|round-robin] \| clear <araç> \| list] [--json]` | İki ya da daha çok sağlayıcı/model arasında yük dengeleme. | `aswitch balance set codex openrouter:openai/gpt-5*2 deepseek:deepseek-chat` |
+| `aswitch scenario [set <araç> <image\|longContext\|webSearch\|think\|background> s:model \| clear <araç> [ad] \| threshold <token>] [--json]` | Senaryoya göre yönlendirme; `threshold` uzun bağlam sınırını ayarlar (tahmini token, varsayılan 60000). | `aswitch scenario set claude image openrouter:google/gemini-2.5-flash` |
+| `aswitch breaker [on\|off\|set --failures N --cooldown S\|status] [--json]` | Devre kesici ayarları ve canlı durumu (varsayılan açık, 3 hata, 30 sn). | `aswitch breaker set --failures 5 --cooldown 60` |
 | `aswitch usage [--days 7] [--recent] [--json] [--clear] [--log on\|off]` | Yönlendirici istek kaydı: token, gecikme, ilk token süresi, tahmini maliyet. | `aswitch usage --recent` |
 | `aswitch mcp [list] [--json]` | Her aracın MCP sunucuları. | `aswitch mcp` |
 | `aswitch mcp sync [--from claude] [--to codex,opencode,gemini] [--only a,b] [--overwrite]` | MCP sunucularını araçlar arasında kopyalar (önce yedek alınır). | `aswitch mcp sync --to gemini` |
 | `aswitch export [dosya] [--with-keys]` / `aswitch import <dosya> [--overwrite]` | Özel sağlayıcıları, profilleri, yedek zincirlerini ve ayarları taşır (anahtarlar yalnızca istenirse). | `aswitch export ayar.json` |
+| `aswitch link <aswitch://…> [--yes] [--overwrite] [--json]` | Paylaşım bağlantısını önizler, onaydan sonra içe aktarır (anahtarları asla almaz). | `aswitch link "aswitch://provider?id=agim&openaiBase=https%3A%2F%2Fgw.example.com%2Fv1"` |
+| `aswitch link make provider\|profile\|all [kimlik]` | Paylaşım bağlantısı oluşturur. | `aswitch link make profile ucuz` |
+| `aswitch keychain [on\|off\|status] [--json]` | Kayıtlı anahtarları işletim sistemi anahtar zincirine taşır (`on`) ya da `config.json`'a geri alır (`off`). | `aswitch keychain on` |
 | `aswitch update` | GitHub'da yeni sürüm var mı bakar (`ASWITCH_NO_UPDATE_CHECK=1` otomatik denetimi kapatır). | `aswitch update` |
 | `aswitch env [--shell sh\|fish\|powershell\|cmd] [--all]` | Etkin Codex/OpenCode anahtarları için `export` satırlarını yazdırır. | `aswitch env --shell powershell` |
 | `aswitch ui [--port 4567] [--no-open]` | Kontrol panelini tarayıcıda açar. | `aswitch ui` |
@@ -268,7 +282,7 @@ aswitch use openrouter --model latest:claude-sonnet --tools gemini # yönlendiri
 aswitch run gemini                                                  # ya da "gemini"yi normal başlatın
 ```
 
-Gemini CLI `~/.gemini/.env` dosyasını yalnızca proje klasöründe (ya da üst klasörlerinde) `.env` yoksa okur. `aswitch run gemini` değişkenleri doğrudan verdiği için her yerde çalışır.
+Gemini CLI `~/.gemini/.env` dosyasını yalnızca **güvendiğiniz** klasörlerde (ilk seferde sorar) ve proje klasöründe ya da üst klasörlerinde `.env` yoksa okur. `aswitch run gemini` değişkenleri doğrudan verdiği için her yerde çalışır. Güvenilmeyen klasörde başsız çalıştırmalar (`gemini -p …`) ayrıca `--skip-trust` ya da `GEMINI_CLI_TRUST_WORKSPACE=true` ister; bu Gemini CLI'ın kendi kuralıdır. Bu kurulum CI'da gerçek Gemini CLI ile test edilir (`scripts/gemini-cli-e2e.mjs`).
 
 ### Profiller, projeye özel ayar ve yedek zinciri
 
@@ -279,6 +293,40 @@ cd ~/is/musteri-a && aswitch profile project ucuz    # bu klasör hep "ucuz" kul
 aswitch run claude                                    # "ucuz"u uygular, sonra Claude Code'u başlatır
 aswitch fallback set claude openrouter:anthropic/claude-sonnet-4.5   # DeepSeek çökerse
 ```
+
+### Yük dengeleme, devre kesici ve senaryolar
+
+```bash
+aswitch balance set claude openrouter:anthropic/claude-sonnet-4.5*3 opencode-go:glm-5.1*1   # 3:1 dağıtım
+aswitch balance set codex openrouter:openai/gpt-5 deepseek:deepseek-chat --strategy round-robin
+aswitch scenario set claude image openrouter:google/gemini-2.5-flash       # ekran görüntüleri → görsel model
+aswitch scenario set claude longContext openrouter:google/gemini-2.5-pro   # çok uzun istemler → 1M bağlam
+aswitch scenario set claude background deepseek:deepseek-chat              # haiku/hızlı istekler → ucuz model
+aswitch scenario threshold 100000
+aswitch breaker status                                                     # sağlayıcı başına canlı durum
+```
+
+Her istekte sıra şöyledir: eşleşen bir senaryo varsa onun modeli, sonra dengeleme grubu (ya da ana model), sonra yedek zinciri. Devresi açık sağlayıcılar sona alınır. Bunlardan birini doğrudan bağlı bir araca tanımlamak aracı yönlendiriciye alır.
+
+### Kurulumu bağlantıyla paylaşmak
+
+```bash
+aswitch link make provider agim       # → aswitch://provider?id=agim&openaiBase=…   (içinde anahtar yok)
+aswitch link make profile ucuz        # bir profil (+ kullandığı özel sağlayıcılar)
+aswitch link "aswitch://provider?…"   # neyin ekleneceğini gösterir, içe aktarmadan önce sorar
+```
+
+Masaüstü uygulamasında bağlantılar **Ayarlar → Paylaşım bağlantıları** bölümünde oluşturulur ve açılır. Tarayıcıda bir `aswitch://` bağlantısına tıklamak kurulu uygulamayı aynı onay penceresiyle açar. Anahtarlar asla içe aktarılmaz; ardından kendi anahtarınızı ekleyin.
+
+### Anahtarlar işletim sistemi anahtar zincirinde
+
+```bash
+aswitch keychain on       # macOS Anahtar Zinciri / Windows Kimlik Bilgisi Yöneticisi / Linux secret-tool
+aswitch keychain status
+aswitch keychain off      # config.json'a geri
+```
+
+`config.json` içindeki kopya `@keychain` işaretiyle değiştirilmeden önce her anahtar anahtar zincirinden geri okunur. Not: *Doğrudan* moddaki Claude Code belirtecini kendi `settings.json` dosyasından okur, bu yüzden oraya yine yazılır. O dosyada yalnızca bir yer tutucu olsun istiyorsanız `aswitch use … --via-router` kullanın.
 
 ### MCP sunucularını paylaşmak
 
@@ -369,7 +417,7 @@ flowchart LR
   R -->|429/5xx'te: yedek zincirinde sıradaki| FB[(başka sağlayıcı)]
 ```
 
-Yönlendirici her istekte ayarları yeniden okur; model değiştirmek için yeniden başlatmak gerekmez. Metin, araç çağrıları/sonuçları, görseller, akış (SSE) ve düşünme (reasoning) çevrilir; hatalar çağıran aracın kendi hata biçiminde döner. Gemini CLI istekleri önce Anthropic Messages'a çevrilir, sonra Claude Code ile aynı yolu izler. Bir istek, araca henüz bir şey akmadan 429, 408, 5xx ya da ağ hatasıyla başarısız olursa aracın yedek zincirindeki sıradaki kayıt denenir. Her isteğin özet bilgisi (içerik değil) kullanım kaydına yazılır.
+Yönlendirici her istekte ayarları yeniden okur; model değiştirmek için yeniden başlatmak gerekmez. Metin, araç çağrıları/sonuçları, görseller, akış (SSE) ve düşünme (reasoning) çevrilir; hatalar çağıran aracın kendi hata biçiminde döner. Gemini CLI istekleri önce Anthropic Messages'a çevrilir, sonra Claude Code ile aynı yolu izler. Yönlendirici her istek için bir aday listesi kurar: istek bir **senaryoya** uyuyorsa (görsel, uzun bağlam, web arama, düşünme, arka plan) onun modeli, sonra ağırlıklı ya da sıralı düzende **yük dengeleme** grubu (ya da ana model), sonra **yedek zinciri**. **Devre kesicisi** açık sağlayıcılar sona alınır. Bir istek, araca henüz bir şey akmadan 429, 408, 5xx ya da ağ hatasıyla başarısız olursa sıradaki aday denenir. Her isteğin özet bilgisi (içerik değil, eşleşen senaryo dahil) kullanım kaydına yazılır.
 
 ## Hangi dosyalara tam olarak ne yazılır
 
@@ -381,7 +429,7 @@ Yönlendirici her istekte ayarları yeniden okur; model değiştirmek için yeni
 | Gemini CLI | `~/.gemini/.env` ve `~/.gemini/settings.json` (`GEMINI_CLI_HOME`) | `.env` içinde işaretli bir blok (en sonda, `0600`): `GOOGLE_GEMINI_BASE_URL` (yönlendirici ya da Google), `GEMINI_API_KEY`, `GEMINI_MODEL`. `settings.json` içinde: `model.name` ve `security.auth.selectedType = "gemini-api-key"`. Önceki değerler hatırlanır ve `official` ile geri konur. |
 | MCP eşitleme (yalnızca siz çalıştırınca) | Codex `config.toml` (kendi işaretli bloğu), OpenCode `mcp`, Gemini `mcpServers` | Yalnızca kopyaladığınız sunucular; önce her şeyin yedeği alınır. `~/.claude.json` yalnızca okunur. |
 | Proje | `.aswitch.json` (yalnızca `aswitch profile project` ile) | `{"profile": "<ad>"}` |
-| aswitch | `~/.agent-switchboard/` (`ASWITCH_DIR`) | `config.json` (anahtarlar, özel sağlayıcılar, etkin seçimler, profiller, yedek zincirleri, dil, yönlendirici portu; `0600`), `usage.jsonl` (yönlendirici istek özetleri, `0600`, en fazla 5000 satır), `originals/`, `backups/`, model önbelleği, güncelleme denetimi önbelleği. Klasör `0700`. |
+| aswitch | `~/.agent-switchboard/` (`ASWITCH_DIR`) | `config.json` (anahtarlar ya da `@keychain` işaretleri, özel sağlayıcılar, etkin seçimler, profiller, yedek zincirleri, dengeleme grupları, senaryolar, devre kesici ayarları, dil, yönlendirici portu; `0600`), `usage.jsonl` (yönlendirici istek özetleri, `0600`, en fazla 5000 satır), `originals/`, `backups/`, model önbelleği, güncelleme denetimi önbelleği. Klasör `0700`. |
 
 `aswitch use openrouter --model anthropic/claude-sonnet-4.5 --fast anthropic/claude-haiku-4.5` sonrası gerçek örnekler için İngilizce README'deki [örneklere](README.md#exactly-which-files-are-touched) bakın; içerik dilden bağımsızdır.
 
@@ -444,9 +492,10 @@ Ana model ile `--fast` modeli farklı uç noktalardaysa ikisi de yönlendiricide
 | | Windows 10/11 | macOS | Linux |
 |---|---|---|---|
 | CLI (Node 18/20/22) | ✅ CI'da test edilir | ✅ CI'da test edilir | ✅ CI'da test edilir |
-| Masaüstü uygulaması | ✅ x64 kurulum + taşınabilir | ✅ arm64 + x64 (dmg, zip) | ✅ x64 AppImage + deb |
+| Masaüstü uygulaması | ✅ x64 kurulum + taşınabilir | ✅ arm64 + x64 (dmg, zip), macOS 13+ | ✅ x64 + arm64 AppImage + deb |
 | Kabuk satırları (`aswitch env`) | PowerShell, cmd | sh/zsh/bash, fish | sh/zsh/bash, fish |
-| Masaüstü E2E testi (Electron üzerinde Playwright, 40+ denetim) | yalnızca CI derlemesi | yalnızca CI derlemesi | ✅ CI'da her gönderimde (Xvfb) |
+| Masaüstü E2E testi (Electron üzerinde Playwright, 54 denetim, çevrimdışı sahte sağlayıcı) | ✅ CI'da her gönderimde | ✅ CI'da her gönderimde | ✅ CI'da her gönderimde (Xvfb) |
+| İşletim sistemi anahtar zinciri | Kimlik Bilgisi Yöneticisi (PowerShell) | Anahtar Zinciri (`security`) | Secret Service (`secret-tool`) |
 
 ## Dil (Türkçe / English)
 
@@ -461,7 +510,9 @@ Yeni bir dil eklemek = `src/i18n/` içinde aynı anahtarlara sahip bir dosya. Bi
 
 - **Telemetri yok, hesap yok, bulut yok.** aswitch yalnızca seçtiğiniz sağlayıcı adresleriyle (model listeleri, OAuth, uç nokta testi) ve yerel araçlarınızla konuşur; ayrıca güncelleme bildirimi için en fazla 12 saatte bir GitHub'a kimliksiz tek bir istek atar (`ASWITCH_NO_UPDATE_CHECK=1` kapatır).
 - **Kullanım kaydı:** yalnızca özet bilgi (zaman, araç, sağlayıcı, model, durum, gecikme, token sayıları). İstem, yanıt ya da anahtar asla yazılmaz. `aswitch usage --log off` ile kapatılır.
-- **Saklanan anahtarlar:** `~/.agent-switchboard/config.json` `0600`, klasörü `0700` izinlidir (macOS/Linux). Windows'ta dosyalar kullanıcı profilinizdedir ve hesabınızın NTFS izinleriyle korunur. Anahtarlar şifrelenmez; kullanıcı dosyalarınızı okuyabilen biri onları da okuyabilir (araçların kendi ayar dosyalarında olduğu gibi). Claude Code'un `settings.json` dosyası belirteç içerdiği için `0600` ile yazılır.
+- **Saklanan anahtarlar:** `~/.agent-switchboard/config.json` `0600`, klasörü `0700` izinlidir (macOS/Linux). Windows'ta dosyalar kullanıcı profilinizdedir ve hesabınızın NTFS izinleriyle korunur. Varsayılan olarak anahtarlar şifrelenmez; kullanıcı dosyalarınızı okuyabilen biri onları da okuyabilir (araçların kendi ayar dosyalarında olduğu gibi). `aswitch keychain on` ile işletim sistemi anahtar zincirine taşınırlar. Sır `security` / PowerShell / `secret-tool` araçlarına komut satırından değil stdin üzerinden verilir. Claude Code'un `settings.json` dosyası doğrudan modda belirteç içerdiği için `0600` ile yazılır.
+- **Anahtarların gidebileceği yerler:** anahtar yalnızca `https://` adreslerine ya da yerel, özel ağ, `.local`/`.lan`/`.internal` veya tek parçalı adlı sunuculardaki düz `http://` adreslerine gönderilir. `kullanıcı:parola@` içeren URL'ler reddedilir (`src/netguard.js`).
+- **Paylaşım bağlantıları** asla anahtar taşımaz (anahtara benzeyen parametreler uyarıyla atılır), 16 KB ile sınırlıdır, aynı URL kurallarına uyar ve ancak siz onaylayınca uygulanır. Siz istemedikçe var olan kayıtların üzerine yazılmaz. Masaüstü uygulaması `aswitch:` şemasını yalnızca kurulu sürümlerde kaydeder.
 - **Yerel sunucular:** kontrol paneli ve yönlendirici yalnızca `127.0.0.1` üzerinde dinler. Panel her açılışta rastgele bir belirteç, eşleşen bir `Host` başlığı (DNS rebinding koruması) ve `Content-Type: application/json` ister (siteler arası form gönderimlerini engeller), gövdeyi 1 MB ile sınırlar ve katı bir Content-Security-Policy gönderir. Yönlendirici `Origin` başlığı taşıyan (tarayıcı) ya da yerel olmayan `Host` ile gelen istekleri reddeder.
 - **Arayüz:** hiçbir yerde `innerHTML` yok; her değer metin olarak eklenir. Dış bağlantılar uygulamanın içinde değil, sistem tarayıcınızda açılır.
 - **Komutlar:** `aswitch run` macOS/Linux'ta aracı kabuk olmadan başlatır; Windows'ta her argümanı `cmd.exe` için tırnaklar. Adresler kabuk kullanılmadan açılır.
@@ -520,16 +571,18 @@ Aynı kullanıcı ayar dosyalarını okurlar; bu yüzden değişiklikler, her ü
 
 - Düşünme okunabilir metin olarak çevrilir (akıl yürütme özetleri / `reasoning_content`); şifreli akıl yürütme sağlayıcılar arasında taşınmaz. Claude Code → Responses durumsuzdur (`store: false`). `stop_sequences` yalnızca Chat sağlayıcılarına ulaşır (en fazla 4). Sağlayıcıda barındırılan araçlar (web arama) iletilmez. `count_tokens` yaklaşık bir tahmindir.
 - Codex yalnızca `/messages` ile sunulan modelleri kullanamaz (Responses → Messages çevirisi yok). OpenCode Zen'deki Google'a özgü modeller (`gemini-*`) Claude Code, Codex ya da Gemini CLI'dan kullanılamaz.
-- Gemini CLI: proje klasöründeki (ya da bir üst klasördeki) `.env` dosyası `~/.gemini/.env`'yi gizler; orada `aswitch run gemini` kullanın. Gemini'nin kendi Google girişi modlarına (Code Assist / Vertex) `official` dokunmaz.
-- Yedek zinciri yalnızca ilk bayt akmadan önce işe yarar; yarıda kopan bir akış yeniden oynatılmaz (çıktı iki kez yazılırdı). Yük dengeleme ya da devre kesici yok (tek kullanıcılı bir araç).
+- Gemini CLI: `~/.gemini/.env` yalnızca güvenilen klasörlerde okunur; proje klasöründeki (ya da bir üst klasördeki) `.env` dosyası da onu gizler. Oralarda `aswitch run gemini` kullanın. Gemini'nin kendi Google girişi modlarına (Code Assist / Vertex) `official` dokunmaz.
+- Yedek zinciri, yük dengeleme ve devre kesici ilk bayt akmadan önce devreye girer. Yarıda kopan bir akış bilerek başka bir sağlayıcıda **yeniden oynatılmaz**: araç yanıtın ve araç çağrılarının bir kısmını zaten göstermiş (ve belki uygulamış) olur; yeniden oynatma çıktıyı çoğaltır ve araçları iki kez çalıştırabilir. Devre kesici durumu yönlendirici sürecinde tutulur (yönlendirici yeniden başlayınca sıfırlanır).
+- Senaryo algılama sezgiseldir: uzun bağlam tahmini token sayısına (karakter ÷ 4), arka plan Claude'un haiku/hızlı modeline ya da Gemini'nin flash-lite modeline, web arama da istekteki sağlayıcı web arama aracına bakar.
 - Kullanım kaydındaki maliyet, sağlayıcının model listesindeki fiyatlardan yapılan bir **tahmindir** (OpenRouter yayımlar; çoğu yayımlamaz → "—"). Doğrudan bağlantılar (yönlendiricisiz) kaydedilmez.
 - MCP eşitleme: Claude Code yalnızca kaynaktır (çalışırken `~/.claude.json`'u yeniden yazar). OAuth kullanan uzak MCP sunucularına her araçta yeniden giriş yapmak gerekir.
-- Güncellemeler **yalnızca bildirilir**: paketler imzasız ve macOS imzasız güncellemeleri otomatik kurmaz; bu yüzden uygulama sessizce kurmak yerine yeni sürümü ve bağlantısını gösterir. Derin bağlantılar (`aswitch://`) henüz yok.
+- Güncellemeler **yalnızca bildirilir**: paketler imzasız ve macOS imzasız güncellemeleri otomatik kurmaz; bu yüzden uygulama sessizce kurmak yerine yeni sürümü ve bağlantısını gösterir.
+- `aswitch://` bağlantıları uygulamayı yalnızca kurulu masaüstü sürümlerinde açar (şema kurulumda / ilk açılışta kaydedilir). Taşınabilir Windows sürümü ve CLI bağlantıları `aswitch link <url>` ile ya da Ayarlar → Paylaşım bağlantıları bölümünde kabul eder.
 - Tepsi simgesi yalnızca masaüstü uygulaması açıkken vardır; pencereyi kapatmak uygulamadan çıkar.
-- Anahtarlar işletim sistemi anahtar zincirinde değil, izinle korunan bir dosyada saklanır.
-- Masaüstü paketleri imzasızdır. Linux paketleri yalnızca x64'tür (henüz arm64 yok).
+- İşletim sistemi anahtar zinciri isteğe bağlıdır ve varsayılan olarak kapalıdır. Doğrudan moddaki Claude Code belirteci yine kendi `settings.json` dosyasında ister; Codex/OpenCode anahtarları ortam değişkenlerinden okur (`aswitch run` / `aswitch env` onları anahtar zincirinden alır). Linux'ta `secret-tool` (libsecret) ve çalışan bir Secret Service (GNOME Keyring, KWallet …) gerekir.
+- Masaüstü paketleri imzasızdır. Masaüstü uygulaması macOS 13 ya da daha yenisini ister (Electron 44).
 - Windows'ta `aswitch run` argümanları `cmd.exe` üzerinden iletir; `%DEĞİŞKEN%` içeren argümanlar cmd tarafından genişletilebilir.
-- Electron uçtan uca testi Linux'ta çalışır (CI, her gönderimde); macOS ve Windows masaüstü paketleri CI'da üretilir ama arayüzleri otomatik test edilmez.
+- Electron uçtan uca testi CI'da sahte bir sağlayıcıyla Linux, macOS ve Windows üzerinde çalışır. Gerçek sağlayıcılara yalnızca `E2E_LIVE=1` ile bağlanılır. Uçtan uca testteki anahtar zinciri yerine geçen bir `secret-tool` kullanır; gerçek macOS Anahtar Zinciri ve Windows Kimlik Bilgisi Yöneticisi o CI makinelerindeki birim testlerle sınanır.
 
 ## Benzer projelerle karşılaştırma
 
@@ -541,6 +594,10 @@ Aynı kullanıcı ayar dosyalarını okurlar; bu yüzden değişiklikler, her ü
 | Yönetilen araçlar | Claude Code, Codex, OpenCode, Gemini CLI | Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, Claude Desktop ve fazlası | Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, pi | Claude Code (yönlendirme katmanı) |
 | Yerel protokol çevirisi | ✅ Messages⇄Chat, Messages⇄Responses, Responses⇄Chat, Gemini⇄Messages | Biçim dönüştüren yerel vekil | Yerel vekil | ✅ (temel özellik, dönüştürücüler) |
 | Hatada yedeğe geçiş | ✅ araç başına zincir | ✅ | ✅ | ✅ yedek modeller, yeniden deneme |
+| Yük dengeleme / devre kesici | ✅ ağırlıklı + sırayla / ✅ | — / ✅ | — | — |
+| Senaryoya göre yönlendirme | ✅ görsel, uzun bağlam, web arama, düşünme, arka plan | — | — | ✅ (temel fikri) |
+| Derin bağlantılar | ✅ `aswitch://` (onaylı, anahtarsız) | ✅ | — | — |
+| Anahtarlar için işletim sistemi anahtar zinciri | ✅ isteğe bağlı | — | — | — |
 | Kullanım / maliyet görünümü | ✅ (yönlendirici istekleri, tahmini) | ✅ | — | ✅ kayıtlar |
 | MCP sunucu eşitleme | ✅ 4 araç | ✅ | ✅ | — |
 | Profiller / içe-dışa aktarma | ✅ + projeye özel | ✅ | ✅ | ayar dosyası |
@@ -549,14 +606,12 @@ Aynı kullanıcı ayar dosyalarını okurlar; bu yüzden değişiklikler, her ü
 | Çalışma zamanı bağımlılığı | 0 (yalnızca Node.js) | Yerel uygulama | Rust ikili dosyası | Node.js paketleri |
 | Arayüz dilleri | English, Türkçe | birden çok | birden çok | — |
 
-cc-switch'in özellik yelpazesi daha geniştir (yetenek/istem eşitleme, bulut eşitleme, derin bağlantılar, 90+ hazır ayar). Agent Switchboard; iki arayüzde de aynı özellikleri sunan bağımlılıksız bir CLI + uygulamaya, dört biçimli bir yönlendiriciye ve birebir geri yüklemeye odaklanır. Düzeltmelere açığız.
+cc-switch'in özellik yelpazesi daha geniştir (yetenek/istem eşitleme, bulut eşitleme, 90+ hazır ayar). Agent Switchboard; iki arayüzde de aynı özellikleri sunan bağımlılıksız bir CLI + uygulamaya, dengeleme ve senaryolar içeren dört biçimli bir yönlendiriciye ve birebir geri yüklemeye odaklanır. Düzeltmelere açığız.
 
 ## Yol haritası
 
-- Bir web sayfasından sağlayıcı/profil içe aktarmak için derin bağlantılar (`aswitch://…`)
-- Senaryoya göre yönlendirme (uzun bağlam / görsel / arka plan işleri → farklı modeller)
-- Anahtarlar için isteğe bağlı işletim sistemi anahtar zinciri desteği
-- Sessiz otomatik güncellemeli imzalı/onaylı masaüstü paketleri, Linux arm64
+- Sessiz otomatik güncellemeli imzalı/onaylı masaüstü paketleri
+- Yalnızca `/messages` ile sunulan modeller için Codex desteği (Responses → Messages çevirisi)
 - Daha fazla ajan (Qwen Code, Crush …) ve arayüz dili (katkılara açığız)
 
 ## Katkı
@@ -565,7 +620,8 @@ Katkılarınızı memnuniyetle karşılarız; [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ```bash
 git clone https://github.com/cumabozkurt/agent-switchboard && cd agent-switchboard
-npm test                          # ~140 test, node:test, bağımlılık yok
+npm test                          # ~160 test, node:test, bağımlılık yok
+node scripts/gemini-cli-e2e.mjs   # gerçek Gemini CLI, yönlendirici + sahte sağlayıcıya karşı
 cd desktop && npm install && npm run e2e   # Electron uçtan uca testi (Linux: xvfb-run -a npm run e2e)
 cd desktop && npm install && npm start
 ```

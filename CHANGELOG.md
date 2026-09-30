@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). Turkish: [CHANGELOG.tr.md](CHANGELOG.tr.md).
 
+## [0.4.0] - 2026-10-01
+
+### Added
+- **Load balancing** in the router: `aswitch balance set claude openrouter:anthropic/claude-sonnet-4.5*3 deepseek:deepseek-chat*1 [--strategy weighted|round-robin]` spreads a tool's requests over two or more provider/models (weights, or strict rotation). The other members, then the fallback chain, are tried if the chosen one fails. Desktop: Router → Load balancing.
+- **Circuit breaker**: after N failures in a row (429, 408, 5xx or network; default 3) a provider is skipped for a cooldown (default 30 s), then one trial request is allowed (half-open). A success closes it again. Other 4xx errors never count. If every candidate is open, the router still tries them rather than failing without a try. `aswitch breaker [on|off|set --failures N --cooldown S|status]` shows the live state; so do `/health` and the Router tab.
+- **Scenario routing** (like claude-code-router): send `image`, `longContext` (estimated tokens ≥ a threshold, default 60,000), `webSearch`, `think` (thinking/reasoning requested) or `background` (Claude's haiku/fast model, Gemini flash-lite) requests to another model: `aswitch scenario set claude longContext openrouter:google/gemini-2.5-pro`, `aswitch scenario threshold 100000`. Usage log entries record the scenario.
+- `aswitch use … --via-router` always connects through the router, even when a direct connection would work. Setting a fallback, balance group or scenario for a tool that is connected directly now moves it to the router automatically.
+- **Share links (`aswitch://`)**: `aswitch://provider?…`, `aswitch://profile?…` and `aswitch://import?data=…` import a custom provider, a profile or a whole setup. **Links never carry API keys**: key-like parameters and `keys` blocks are dropped (with a warning). Nothing is applied without confirmation: the desktop app registers the `aswitch:` scheme (installed builds; macOS `open-url`, Windows/Linux second-instance argument) and shows a dialog with every endpoint; the CLI prints a preview and asks (`--yes` to confirm in scripts). URLs follow the same rules as custom providers. Existing entries are kept unless you choose overwrite. `aswitch link make provider|profile|all` and Settings → Share links create links.
+- **Optional OS keychain** for saved keys, with no native modules: macOS Keychain (`security`, secret sent over stdin), Windows Credential Manager (PowerShell + `CredWrite`/`CredRead`, secret over stdin), Linux Secret Service (`secret-tool`). `aswitch keychain on|off|status` and Settings → OS keychain move every key and read each one back before removing the file copy. `config.json` then only holds `@keychain` markers. If the keychain can't be read, the provider's environment variable is used instead.
+- **Outbound URL policy** (`src/netguard.js`): every URL that gets a key (custom providers, model lists, endpoint test, router upstreams) must be `http(s)`, must not contain `user:password@`, and may use plain `http` only for loopback, private-network, `.local`/`.lan`/`.internal` or single-label hosts. The panel's router-probe port is validated.
+- **Real Gemini CLI end-to-end test** (`scripts/gemini-cli-e2e.mjs`, a new `gemini-cli` CI job). It installs `@google/gemini-cli` from npm into a throwaway HOME and runs it headless through `aswitch use` + the router against a local mock upstream. It checks the streaming answer, key/model/tools reaching the upstream, a `list_directory` tool-call round-trip, `aswitch run gemini`, a trusted folder picking up `~/.gemini/.env`, and the usage log. Verified with Gemini CLI 0.62.0.
+- Linux **arm64** desktop builds (AppImage + deb); 10 installers per release.
+
+### Changed
+- **Desktop: Electron 33 → 44**, electron-builder 25 → 26 (Dependabot PR #1). **macOS 13 (Ventura) or newer is required** for the desktop app (Electron 44 dropped macOS 12). The CLI is unchanged: Node.js ≥ 18.
+- Model lists from providers are sanitized: at most 5000 entries, ids up to 200 characters with no control characters, and numeric fields must be finite and ≥ 0.
+- After applying Gemini CLI, a hint explains Gemini's folder trust: Gemini CLI reads `~/.gemini/.env` only in trusted folders. Headless runs need `--skip-trust` or `GEMINI_CLI_TRUST_WORKSPACE=true`, and `aswitch run gemini` works everywhere.
+- The Electron e2e test no longer needs the internet: it uses a local mock upstream and the bundled model snapshots (`E2E_LIVE=1` adds live refreshes). It now runs on **Linux, macOS and Windows** in CI and covers balance/scenario/breaker, share links (including a link handed to a second instance) and the keychain (54 checks).
+
+### Fixed
+- Models tab: a slow answer for a previously selected provider could clear the table of the current one.
+- A second desktop instance (for example, one started by a link) quit without starting its own panel server first.
+
+### Security
+- The CodeQL alerts open after 0.3.0 were fixed, or dismissed with a written reason (see `docs/AUDIT.md`).
+
 ## [0.3.0] - 2026-10-01
 
 Based on a review of 32 similar open-source projects (see `docs/COMPETITIVE-ANALYSIS.md`).
@@ -79,6 +105,8 @@ Based on a review of 32 similar open-source projects (see `docs/COMPETITIVE-ANAL
 ### Added
 - First release: CLI, local web UI and Electron app to switch the API provider and model of Claude Code, Codex and OpenCode; live model lists; OpenRouter OAuth; local router; backups and restore.
 
+[0.4.0]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.1.1...v0.1.2

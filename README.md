@@ -78,11 +78,14 @@ It only changes the settings it manages. Your themes, permissions, MCP servers a
 | 🧠 **Live model lists** | Fetched from each provider's `/models` endpoint (cached 6 h). `latest` / `latest:sonnet` resolve to the newest match when you apply. |
 | 🔁 **Local translating router** | Claude Code → Chat Completions or OpenAI Responses; Codex → Chat Completions; Gemini CLI → Messages, Chat or Responses. Tools, images, streaming and **thinking/reasoning** included. Listens on `127.0.0.1` only. |
 | 🛟 **Fallback chain** | If the provider answers 429/5xx or is unreachable, the router tries the next provider/model you listed. |
+| ⚖️ **Load balancing + circuit breaker** | Spread a tool's requests over several provider/models (weighted or round-robin). A provider that keeps failing is skipped for a cooldown, then tried once again (half-open). |
+| 🧭 **Scenario routing** | Images, long prompts, web search, thinking or background requests can go to a different model than the main one. |
+| 🔗 **Share links** | `aswitch://` links import a custom provider, a profile or a whole setup after a confirmation dialog. They never contain keys. |
 | 📊 **Usage & request log** | Tokens, latency, time to first token and estimated cost per request that goes through the router. Metadata only — never prompts or keys. |
 | ⏱️ **Endpoint test** | Latency and key check for every provider in one click (`aswitch ping`). |
 | 🔌 **MCP sync** | See the MCP servers of all four tools and copy them from one tool to the others. |
 | 🎯 **Per-model endpoints** | OpenCode Zen/Go serve each model on its own API; aswitch picks direct or router per model and refuses combinations that cannot work, before writing anything. |
-| 🔑 **Keys & OAuth** | Keys stored locally (owner-only file on macOS/Linux). OpenRouter sign-in with official OAuth PKCE. |
+| 🔑 **Keys & OAuth** | Keys stored locally (owner-only file on macOS/Linux), or optionally in the **OS keychain** (macOS Keychain, Windows Credential Manager, Linux Secret Service). OpenRouter sign-in with official OAuth PKCE. |
 | ↩️ **Safe undo** | Original file kept on first touch, timestamped backup before every change (last 50), one-click restore of any single backup. |
 | 🖥️ **Desktop app** | Everything the CLI does, no terminal needed. Tray / menu-bar quick switch, router start/stop/auto-start, update notice, clean shutdown on quit, single instance. |
 | 🌍 **English + Türkçe** | UI, CLI help and errors, router errors, menus and window title. Follows your OS language, switchable any time. |
@@ -106,6 +109,8 @@ All screenshots are of the real app, captured by the automated Electron test (`d
 | ![Router](docs/images/router-en.png) | ![Restore](docs/images/restore-en.png) |
 | **Custom providers** | **Environment variables** |
 | ![Providers](docs/images/providers-en.png) | ![Env](docs/images/env-en.png) |
+| **Share link confirmation** | **Router: fallback, load balancing, scenarios, circuit breaker** |
+| ![Link dialog](docs/images/link-dialog-en.png) | ![Router](docs/images/router-en.png) |
 
 Türkçe arayüz: [README.tr.md](README.tr.md) · ![Genel bakış](docs/images/overview-tr.png)
 
@@ -123,6 +128,9 @@ Download the file for your system from the [latest release](https://github.com/c
 | **macOS, Intel** | `Agent.Switchboard-<version>-mac-x64.dmg` (or `.zip`) | |
 | **Linux (x64)** | `Agent.Switchboard-<version>-linux-x86_64.AppImage` | `chmod +x` then run. |
 | | `Agent.Switchboard-<version>-linux-amd64.deb` | `sudo apt install ./Agent.Switchboard-*.deb` |
+| **Linux (arm64)** | `Agent.Switchboard-<version>-linux-arm64.AppImage` / `…-linux-arm64.deb` | Raspberry Pi 4/5 (64-bit OS), Arm laptops and servers. |
+
+The desktop app needs **macOS 13 (Ventura) or newer** (Electron 44), Windows 10/11 or a current 64-bit Linux. Every release also has `SHA256SUMS.txt`.
 
 The builds are **not code-signed** yet:
 
@@ -183,13 +191,13 @@ aswitch status
 | **API keys** | Save/remove a key per provider (masked, shows whether it comes from the saved config or an environment variable), links to each provider's key page, OpenRouter OAuth sign-in, **Test endpoints** (latency + key status). |
 | **Profiles** | Save the current setup under a name, apply or delete profiles; the active profile is marked. |
 | **Models** | Live list for any provider, refresh, search box, click a model to use it. |
-| **Router** | Running / stopped / external state, address and port, **Start / Stop / Restart**, auto-start option, the current routes, the **fallback chain** per tool. The router stops cleanly when you quit the app. |
+| **Router** | Running / stopped / external state, address and port, **Start / Stop / Restart**, auto-start option, the current routes, and per tool: the **fallback chain**, **load balancing** group (weighted / round-robin), **scenario** models (image, long context + threshold, web search, thinking, background) and the **circuit breaker** settings with the live state of each provider. The router stops cleanly when you quit the app. |
 | **Usage & logs** | Requests per provider/model, tokens, latency, TTFT, estimated cost, recent requests; turn logging on/off, clear the log. |
 | **MCP servers** | Every tool's MCP servers in one table; copy from one tool to the others (keep or overwrite same-name servers). |
 | **Custom providers** | Add any OpenAI-compatible (and optionally Anthropic-compatible) endpoint: id, name, base URLs, models URL, wire API (Responses/Chat), key variable. Remove it again. |
 | **Restore & backups** | Back to official login (Claude Pro/Max, ChatGPT), restore original files per tool, list every timestamped backup and restore any one of them (the current file is backed up first). |
 | **Environment** | The exact lines to add to your shell profile (sh/zsh/bash, fish, PowerShell, cmd) for Codex/OpenCode keys. Values are masked until you press **Show full keys**. |
-| **Settings** | Language (Auto / English / Türkçe), router auto-start, **import / export**, **check for updates**, the paths of every file aswitch uses, version. |
+| **Settings** | Language (Auto / English / Türkçe), router auto-start, **import / export**, **share links** (create one for a provider / profile / everything, or paste one to preview and import it), **OS keychain** (move keys in and out), **check for updates**, the paths of every file aswitch uses, version. |
 
 **Tray / menu bar:** while the app runs, its icon offers the saved profiles, *all tools → official login*, router start/stop, open window and quit. Closing the window quits the app (and the router it started).
 
@@ -208,7 +216,7 @@ Global option: `--lang en|tr` (also `ASWITCH_LANG=en|tr`). Put it before the com
 | `aswitch key get <provider>` | Print a key (used by `--codex-key command`). | `aswitch key get openrouter` |
 | `aswitch login openrouter [--port 3000]` | OpenRouter OAuth (PKCE) in your browser; the key is saved. | `aswitch login openrouter` |
 | `aswitch models <provider> [--refresh] [--filter x] [--limit 50] [--json]` | Live model list, newest first. | `aswitch models opencode-zen --filter claude` |
-| `aswitch use <provider> [--model m] [--fast m] [--tools …] [--codex-key env\|command] [--port p]` | Apply provider + model to the tools (default: every installed tool; Gemini CLI when `~/.gemini` exists). | `aswitch use openrouter --model latest:claude-opus --fast latest:claude-haiku` |
+| `aswitch use <provider> [--model m] [--fast m] [--tools …] [--codex-key env\|command] [--port p] [--via-router]` | Apply provider + model to the tools (default: every installed tool; Gemini CLI when `~/.gemini` exists). `--via-router` always connects through the router (needed for fallback/balance/scenarios; also keeps the key out of Claude Code's `settings.json`). | `aswitch use openrouter --model latest:claude-opus --fast latest:claude-haiku` |
 | `aswitch official [--tools claude,codex,gemini]` | Remove aswitch settings and go back to the tool's own login. `--tools opencode` restores OpenCode's original file. | `aswitch official` |
 | `aswitch restore [--tools …]` | Put files back exactly as they were before aswitch touched them. | `aswitch restore --tools codex` |
 | `aswitch backups` | List timestamped backups. | `aswitch backups` |
@@ -221,10 +229,16 @@ Global option: `--lang en|tr` (also `ASWITCH_LANG=en|tr`). Put it before the com
 | `aswitch profile project <name>` | Write `.aswitch.json` in the current folder; `aswitch run` applies that profile here. | `aswitch profile project work` |
 | `aswitch ping [provider …] [--json]` | Endpoint latency and key status. | `aswitch ping openrouter deepseek` |
 | `aswitch fallback [set <tool> p:model … \| clear <tool>]` | Router fallback chain on 429/408/5xx/network errors (claude, codex, gemini). | `aswitch fallback set claude opencode-go:glm-5.1 ollama:qwen3` |
+| `aswitch balance [set <tool> p:model*weight … [--strategy weighted\|round-robin] \| clear <tool> \| list] [--json]` | Load balancing over two or more provider/models. | `aswitch balance set codex openrouter:openai/gpt-5*2 deepseek:deepseek-chat` |
+| `aswitch scenario [set <tool> <image\|longContext\|webSearch\|think\|background> p:model \| clear <tool> [name] \| threshold <tokens>] [--json]` | Scenario routing; `threshold` sets the long-context limit (estimated tokens, default 60000). | `aswitch scenario set claude image openrouter:google/gemini-2.5-flash` |
+| `aswitch breaker [on\|off\|set --failures N --cooldown S\|status] [--json]` | Circuit breaker settings and live state (default on, 3 failures, 30 s). | `aswitch breaker set --failures 5 --cooldown 60` |
 | `aswitch usage [--days 7] [--recent] [--json] [--clear] [--log on\|off]` | Router request log: tokens, latency, TTFT, estimated cost. | `aswitch usage --recent` |
 | `aswitch mcp [list] [--json]` | MCP servers of every tool. | `aswitch mcp` |
 | `aswitch mcp sync [--from claude] [--to codex,opencode,gemini] [--only a,b] [--overwrite]` | Copy MCP servers between tools (backups first). | `aswitch mcp sync --to gemini` |
 | `aswitch export [file] [--with-keys]` / `aswitch import <file> [--overwrite]` | Move custom providers, profiles, fallbacks and settings (keys only on request). | `aswitch export setup.json` |
+| `aswitch link <aswitch://…> [--yes] [--overwrite] [--json]` | Preview a share link and import it after confirmation (never imports keys). | `aswitch link "aswitch://provider?id=mygw&openaiBase=https%3A%2F%2Fgw.example.com%2Fv1"` |
+| `aswitch link make provider\|profile\|all [id]` | Create a share link. | `aswitch link make profile cheap` |
+| `aswitch keychain [on\|off\|status] [--json]` | Move saved keys into the OS keychain (`on`) or back to `config.json` (`off`). | `aswitch keychain on` |
 | `aswitch update` | Check GitHub for a newer release (also: `ASWITCH_NO_UPDATE_CHECK=1` disables automatic checks). | `aswitch update` |
 | `aswitch env [--shell sh\|fish\|powershell\|cmd] [--all]` | Print `export` lines for the active Codex/OpenCode keys. | `aswitch env --shell powershell` |
 | `aswitch ui [--port 4567] [--no-open]` | Open the control panel in your browser. | `aswitch ui` |
@@ -273,7 +287,7 @@ aswitch use openrouter --model latest:claude-sonnet --tools gemini # router: Gem
 aswitch run gemini                                                  # or start "gemini" normally
 ```
 
-Gemini CLI reads `~/.gemini/.env` only when there is no `.env` in the project folder (or its parents). `aswitch run gemini` sets the variables directly, so it works everywhere.
+Gemini CLI reads `~/.gemini/.env` only in folders you have **trusted** (it asks the first time), and only when there is no `.env` in the project folder or its parents. `aswitch run gemini` sets the variables directly, so it works everywhere. Headless runs (`gemini -p …`) in an untrusted folder also need `--skip-trust` or `GEMINI_CLI_TRUST_WORKSPACE=true`; that is Gemini CLI's own policy. This setup is tested with the real Gemini CLI in CI (`scripts/gemini-cli-e2e.mjs`).
 
 ### Profiles, per-project setups and fallback
 
@@ -284,6 +298,40 @@ cd ~/work/client-a && aswitch profile project cheap    # this folder always uses
 aswitch run claude                                     # applies "cheap", then starts Claude Code
 aswitch fallback set claude openrouter:anthropic/claude-sonnet-4.5   # if DeepSeek is down
 ```
+
+### Load balancing, circuit breaker and scenarios
+
+```bash
+aswitch balance set claude openrouter:anthropic/claude-sonnet-4.5*3 opencode-go:glm-5.1*1   # 3:1 split
+aswitch balance set codex openrouter:openai/gpt-5 deepseek:deepseek-chat --strategy round-robin
+aswitch scenario set claude image openrouter:google/gemini-2.5-flash       # screenshots → a vision model
+aswitch scenario set claude longContext openrouter:google/gemini-2.5-pro   # huge prompts → 1M context
+aswitch scenario set claude background deepseek:deepseek-chat              # haiku/fast requests → cheap model
+aswitch scenario threshold 100000
+aswitch breaker status                                                     # live state per provider
+```
+
+The order for each request: the scenario model (if one matches), then the balance group (or the main model), then the fallback chain. Providers whose circuit is open are moved to the end. Setting any of these for a directly connected tool moves it to the router.
+
+### Share a setup with a link
+
+```bash
+aswitch link make provider mygw       # → aswitch://provider?id=mygw&openaiBase=…   (no key inside)
+aswitch link make profile cheap       # a profile (+ the custom providers it uses)
+aswitch link "aswitch://provider?…"   # shows what would be added, asks before importing
+```
+
+In the desktop app, links can be created and opened in **Settings → Share links**. Clicking an `aswitch://` link in a browser opens the installed app with the same confirmation dialog. Keys are never imported; add your own key afterwards.
+
+### Keys in the OS keychain
+
+```bash
+aswitch keychain on       # macOS Keychain / Windows Credential Manager / Linux secret-tool
+aswitch keychain status
+aswitch keychain off      # back to config.json
+```
+
+Each key is read back from the keychain before the copy in `config.json` is replaced by a `@keychain` marker. Note: Claude Code in *direct* mode reads its token from its own `settings.json`, so it is still written there. Use `aswitch use … --via-router` if you want only a placeholder in that file.
 
 ### Share MCP servers
 
@@ -374,7 +422,7 @@ flowchart LR
   R -->|on 429/5xx: next in fallback chain| FB[(other provider)]
 ```
 
-The router re-reads the config on every request, so switching models does not need a restart. Text, tool calls/results, images, streaming (SSE) and thinking/reasoning are translated; errors are returned in the calling tool's own error format. Gemini CLI requests are first converted to Anthropic Messages, then take the same path as Claude Code. If a request fails with 429, 408, 5xx or a network error before anything was streamed, the next entry of the tool's fallback chain is tried. Each request's metadata (no content) goes to the usage log.
+The router re-reads the config on every request, so switching models does not need a restart. Text, tool calls/results, images, streaming (SSE) and thinking/reasoning are translated; errors are returned in the calling tool's own error format. Gemini CLI requests are first converted to Anthropic Messages, then take the same path as Claude Code. For each request the router builds a candidate list: the **scenario** model if the request matches one (image, long context, web search, thinking, background), then the **load-balancing** group in weighted or round-robin order (or the main model), then the **fallback chain**. Providers whose **circuit breaker** is open are moved to the end. If a request fails with 429, 408, 5xx or a network error before anything was streamed, the next candidate is tried. Each request's metadata (no content, including the matched scenario) goes to the usage log.
 
 ## Exactly which files are touched
 
@@ -386,7 +434,7 @@ The router re-reads the config on every request, so switching models does not ne
 | Gemini CLI | `~/.gemini/.env` and `~/.gemini/settings.json` (`GEMINI_CLI_HOME`) | In `.env` a marked block (placed last, `0600`): `GOOGLE_GEMINI_BASE_URL` (router or Google), `GEMINI_API_KEY`, `GEMINI_MODEL`. In `settings.json`: `model.name` and `security.auth.selectedType = "gemini-api-key"`. The previous values are remembered and put back by `official`. |
 | MCP sync (only when you run it) | Codex `config.toml` (own marked block), OpenCode `mcp`, Gemini `mcpServers` | Only the servers you copy; everything backed up first. `~/.claude.json` is only read. |
 | Project | `.aswitch.json` (only with `aswitch profile project`) | `{"profile": "<name>"}` |
-| aswitch | `~/.agent-switchboard/` (`ASWITCH_DIR`) | `config.json` (keys, custom providers, active choices, profiles, fallbacks, language, router port; `0600`), `usage.jsonl` (router request metadata, `0600`, max 5000 lines), `originals/`, `backups/`, model cache, update-check cache. Folder is `0700`. |
+| aswitch | `~/.agent-switchboard/` (`ASWITCH_DIR`) | `config.json` (keys or `@keychain` markers, custom providers, active choices, profiles, fallbacks, balance groups, scenarios, breaker settings, language, router port; `0600`), `usage.jsonl` (router request metadata, `0600`, max 5000 lines), `originals/`, `backups/`, model cache, update-check cache. Folder is `0700`. |
 
 Real example after `aswitch use openrouter --model anthropic/claude-sonnet-4.5 --fast anthropic/claude-haiku-4.5`:
 
@@ -500,9 +548,10 @@ If the main model and the `--fast` model live on different endpoints, both go th
 | | Windows 10/11 | macOS | Linux |
 |---|---|---|---|
 | CLI (Node 18/20/22) | ✅ tested in CI | ✅ tested in CI | ✅ tested in CI |
-| Desktop app | ✅ x64 installer + portable | ✅ arm64 + x64 (dmg, zip) | ✅ x64 AppImage + deb |
+| Desktop app | ✅ x64 installer + portable | ✅ arm64 + x64 (dmg, zip), macOS 13+ | ✅ x64 + arm64 AppImage + deb |
 | Shell snippets (`aswitch env`) | PowerShell, cmd | sh/zsh/bash, fish | sh/zsh/bash, fish |
-| Desktop E2E test (Playwright over Electron, 40+ checks) | CI build only | CI build only | ✅ every push in CI (Xvfb) |
+| Desktop E2E test (Playwright over Electron, 54 checks, offline mock upstream) | ✅ every push in CI | ✅ every push in CI | ✅ every push in CI (Xvfb) |
+| OS keychain | Credential Manager (PowerShell) | Keychain (`security`) | Secret Service (`secret-tool`) |
 
 ## Language (English / Türkçe)
 
@@ -517,7 +566,9 @@ Adding a language = one file in `src/i18n/` with the same keys; a test checks th
 
 - **No telemetry, no accounts, no cloud.** aswitch talks only to the provider URLs you choose (model lists, OAuth, endpoint test) and to your local tools, plus one anonymous request to GitHub at most every 12 hours for the update notice (`ASWITCH_NO_UPDATE_CHECK=1` turns it off).
 - **Usage log:** only metadata (time, tool, provider, model, status, latency, token counts). Never prompts, answers or keys. Turn it off with `aswitch usage --log off`.
-- **Keys at rest:** `~/.agent-switchboard/config.json` is `0600`, its folder `0700` (macOS/Linux). On Windows the files live in your user profile, protected by your account's NTFS permissions. Keys are not encrypted — anyone who can read your user files can read them, exactly like the tools' own config files. Claude Code's `settings.json` is written with `0600` because it contains the token.
+- **Keys at rest:** `~/.agent-switchboard/config.json` is `0600`, its folder `0700` (macOS/Linux). On Windows the files live in your user profile, protected by your account's NTFS permissions. By default keys are not encrypted: anyone who can read your user files can read them, exactly like the tools' own config files. With `aswitch keychain on` they move into the OS keychain instead. The secret is passed to `security` / PowerShell / `secret-tool` over stdin, never on a command line. Claude Code's `settings.json` is written with `0600` because it contains the token in direct mode.
+- **Where keys may go:** a key is only sent to `https://` URLs, or to plain `http://` on loopback, private-network, `.local`/`.lan`/`.internal` or single-label hosts. URLs with `user:password@` are refused (`src/netguard.js`).
+- **Share links** never carry keys (key-like parameters are dropped with a warning), are limited to 16 KB, follow the same URL rules and are only applied after you confirm. Existing entries are not overwritten unless you ask. The desktop app registers the `aswitch:` scheme only in installed builds.
 - **Local servers:** the control panel and the router listen on `127.0.0.1` only. The panel requires a random per-launch token, a matching `Host` header (DNS-rebinding protection), `Content-Type: application/json` (blocks cross-site form posts), limits bodies to 1 MB, and sends a strict Content-Security-Policy. The router rejects any request with an `Origin` header (browsers) or a non-local `Host`.
 - **UI:** no `innerHTML` anywhere; every value is inserted as text. External links open in your system browser, never inside the app.
 - **Commands:** `aswitch run` spawns the tool without a shell on macOS/Linux; on Windows it quotes each argument for `cmd.exe`. URLs are opened without a shell.
@@ -576,16 +627,18 @@ They read the same user config files, so changes apply to them too, as far as ea
 
 - Thinking is translated as readable text (reasoning summaries / `reasoning_content`); encrypted reasoning is not carried across providers. Claude Code → Responses is stateless (`store: false`). `stop_sequences` reach Chat providers only (max 4). Provider-hosted tools (web search) are not forwarded. `count_tokens` is an estimate.
 - Codex cannot use `/messages`-only models (no Responses → Messages translation). Google-native models on OpenCode Zen (`gemini-*`) cannot be used from Claude Code, Codex or Gemini CLI.
-- Gemini CLI: a `.env` file in the project folder (or a parent) hides `~/.gemini/.env`; use `aswitch run gemini` there. Gemini's own Google-login modes (Code Assist / Vertex) are left untouched by `official`.
-- The fallback chain only helps before the first byte is streamed; a stream that breaks midway is not replayed (that would duplicate output). No load balancing or circuit breaker (this is a single-user tool).
+- Gemini CLI: `~/.gemini/.env` is read only in trusted folders, and a `.env` file in the project folder (or a parent) hides it; use `aswitch run gemini` there. Gemini's own Google-login modes (Code Assist / Vertex) are left untouched by `official`.
+- Fallback, load balancing and the circuit breaker act before the first byte is streamed. A stream that breaks midway is **not** replayed on another provider on purpose: the tool has already shown (and may have acted on) part of the answer and its tool calls, so a replay would duplicate output and could run tools twice. The breaker state lives in the router process (it resets when the router restarts).
+- Scenario detection is heuristic: long context uses an estimated token count (characters ÷ 4), background means Claude's haiku/fast model or Gemini's flash-lite model, and web search means a provider web-search tool in the request.
 - Cost in the usage log is an **estimate** from the prices in the provider's model list (OpenRouter publishes them; many others do not → "—"). Direct connections (without the router) are not logged.
 - MCP sync: Claude Code is a source only (it rewrites `~/.claude.json` while it runs). Remote MCP servers with OAuth need to be signed in again in each tool.
-- Updates are **notify-only**: the builds are unsigned, and macOS will not auto-install unsigned updates, so the app shows the new version and a link instead of installing it silently. Deep links (`aswitch://`) are not implemented yet.
+- Updates are **notify-only**: the builds are unsigned, and macOS will not auto-install unsigned updates, so the app shows the new version and a link instead of installing it silently.
+- `aswitch://` links open the app only in installed desktop builds (the scheme is registered by the installer / on first start). The portable Windows build and the CLI accept links with `aswitch link <url>` or in Settings → Share links.
 - The tray icon exists only while the desktop app is open; closing the window quits the app.
-- Keys are stored in a permission-protected file, not in the OS keychain.
-- Desktop builds are unsigned. Linux builds are x64 only (no arm64 yet).
+- The OS keychain is optional and off by default. Claude Code in direct mode still needs the token in its own `settings.json`, and Codex/OpenCode read keys from environment variables (`aswitch run` / `aswitch env` fetch them from the keychain). Linux needs `secret-tool` (libsecret) and a running Secret Service (GNOME Keyring, KWallet …).
+- Desktop builds are unsigned. The desktop app needs macOS 13 or newer (Electron 44).
 - On Windows, `aswitch run` passes arguments through `cmd.exe`; arguments containing `%VAR%` may be expanded by cmd.
-- The Electron end-to-end test runs on Linux (CI, every push); macOS and Windows desktop builds are produced by CI but not UI-tested automatically.
+- The Electron end-to-end test runs on Linux, macOS and Windows in CI with a mock upstream. The real providers are only contacted with `E2E_LIVE=1`. The OS keychain in the e2e uses a stand-in `secret-tool`; the real macOS Keychain and Windows Credential Manager are exercised by the unit tests on those CI runners.
 
 ## Comparison with similar projects
 
@@ -597,6 +650,10 @@ We cloned and read 33 candidate projects (32 met the criteria) for 0.3.0 — the
 | Tools managed | Claude Code, Codex, OpenCode, Gemini CLI | Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, Claude Desktop and more | Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, pi | Claude Code (routing layer) |
 | Local protocol translation | ✅ Messages⇄Chat, Messages⇄Responses, Responses⇄Chat, Gemini⇄Messages | Local proxy with format conversion | Local proxy | ✅ (core feature, transformers) |
 | Fallback on errors | ✅ chain per tool | ✅ failover | ✅ failover | ✅ fallback models, retries |
+| Load balancing / circuit breaker | ✅ weighted + round-robin / ✅ | — / ✅ | — | — |
+| Scenario routing | ✅ image, long context, web search, thinking, background | — | — | ✅ (its core idea) |
+| Deep links | ✅ `aswitch://` (confirm, no keys) | ✅ | — | — |
+| OS keychain for keys | ✅ optional | — | — | — |
 | Usage / cost view | ✅ (router requests, estimated) | ✅ | — | ✅ logs |
 | MCP server sync | ✅ 4 tools | ✅ | ✅ | — |
 | Profiles / import-export | ✅ + per-project | ✅ | ✅ | config file |
@@ -605,14 +662,12 @@ We cloned and read 33 candidate projects (32 met the criteria) for 0.3.0 — the
 | Runtime dependencies | 0 (Node.js only) | Native app | Rust binary | Node.js packages |
 | UI languages | English, Türkçe | several | several | — |
 
-cc-switch has a broader feature set (skills/prompt sync, cloud sync, deep links, 90+ presets). Agent Switchboard focuses on a zero-dependency CLI + app with the same features in both, a four-format router and exact restore. Corrections welcome.
+cc-switch has a broader feature set (skills/prompt sync, cloud sync, 90+ presets). Agent Switchboard focuses on a zero-dependency CLI + app with the same features in both, a four-format router with balancing and scenarios, and exact restore. Corrections welcome.
 
 ## Roadmap
 
-- Deep links (`aswitch://…`) to import a provider/profile from a web page
-- Scenario routing (long context / images / background tasks → different models)
-- OS keychain storage for keys (optional)
-- Signed/notarized desktop builds with silent auto-update, Linux arm64
+- Signed/notarized desktop builds with silent auto-update
+- Codex with `/messages`-only models (Responses → Messages translation)
 - More agent targets (Qwen Code, Crush …), more UI languages (contributions welcome)
 
 ## Contributing
@@ -621,7 +676,8 @@ Contributions are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Quick
 
 ```bash
 git clone https://github.com/cumabozkurt/agent-switchboard && cd agent-switchboard
-npm test                          # ~140 tests, node:test, no dependencies
+npm test                          # ~160 tests, node:test, no dependencies
+node scripts/gemini-cli-e2e.mjs   # real Gemini CLI against the router + a mock upstream
 cd desktop && npm install && npm run e2e   # Electron end-to-end test (Linux: xvfb-run -a npm run e2e)
 cd desktop && npm install && npm start
 ```
