@@ -363,7 +363,7 @@ function selectTab(name, focus) {
   for (const tab of tabs) {
     const on = tab.id === 'tab-' + name;
     tab.setAttribute('aria-selected', on); tab.tabIndex = on ? 0 : -1;
-    $(tab.getAttribute('aria-controls')).hidden = !on;
+    document.getElementById(tab.getAttribute('aria-controls')).hidden = !on;
     if (on && focus) tab.focus();
   }
   if (name === 'restore') loadBackups().catch(e => log(t('ui.error', { msg: e.message }), 'err'));
