@@ -40,6 +40,10 @@ function askHidden(q) {
 
 const toolsOf = f => (typeof f.tools === 'string' ? f.tools.split(',').map(s => s.trim()).filter(Boolean) : undefined);
 const str = v => (typeof v === 'string' ? v : undefined);
+async function rerouted(tool) {
+  const r = await core.ensureRouted(tool);
+  if (r) console.log(t('cli.rerouted', { tool: toolName(tool) }));
+}
 const toolName = id => ({ claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', gemini: 'Gemini CLI' }[id] || id);
 const listOf = v => (typeof v === 'string' ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined);
 
@@ -60,6 +64,8 @@ function printStatus(s) {
   if (r?.codex) console.log(`  Codex       → ${r.codex.provider} · ${r.codex.model}`);
   if (r?.gemini) console.log(`  Gemini CLI  → ${r.gemini.provider} · ${r.gemini.model}${r.gemini.fastModel ? ' / ' + r.gemini.fastModel : ''}`);
   for (const [tool, list] of Object.entries(r?.fallback || {})) if (list.length) console.log(`  ${t('ui.fallback.title')} ${toolName(tool)}: ${list.map(f => f.provider + ':' + f.model).join(' → ')}`);
+  for (const [tool, g] of Object.entries(r?.balance || {})) if (g?.members?.length) console.log(`  ${t('ui.balance.title')} ${toolName(tool)}: ${g.members.map(m => `${m.provider}:${m.model}*${m.weight ?? 1}`).join('  ')}`);
+  for (const [tool, m] of Object.entries(r?.scenarios || {})) if (Object.keys(m).length) console.log(`  ${t('ui.scenario.title')} ${toolName(tool)}: ${Object.entries(m).map(([n, v]) => `${n} → ${v.provider}:${v.model}`).join('  ')}`);
 }
 
 const fmtN = n => (n || 0).toLocaleString('en-US');
@@ -128,7 +134,7 @@ async function main() {
       break;
     }
     case 'use': {
-      const r = await core.useProvider({ provider: f._[0], model: str(f.model), fastModel: str(f.fast), tools: toolsOf(f), port: f.port && Number(f.port), codexKey: str(f['codex-key']) });
+      const r = await core.useProvider({ provider: f._[0], model: str(f.model), fastModel: str(f.fast), tools: toolsOf(f), port: f.port && Number(f.port), codexKey: str(f['codex-key']), viaRouter: !!f['via-router'] });
       console.log(r.model ? t('cli.appliedModel', { provider: r.provider, model: r.model }) : t('cli.applied', { provider: r.provider }));
       for (const x of r.results) {
         console.log(`  ${x.tool.padEnd(9)} ${x.file}`);
@@ -213,11 +219,52 @@ async function main() {
     }
     case 'fallback': {
       const [sub, tool, ...specs] = f._;
-      if (sub === 'set') { core.setFallback(tool, specs); console.log(t('cli.saved')); }
+      if (sub === 'set') { core.setFallback(tool, specs); console.log(t('cli.saved')); await rerouted(tool); }
       else if (sub === 'clear') { core.setFallback(tool, []); console.log(t('cli.removed')); }
       else if (sub && sub !== 'list') { help(); process.exitCode = 1; break; }
       const fb = core.getFallback();
       for (const [k, list] of Object.entries(fb)) console.log(`${toolName(k).padEnd(12)} ${list.length ? list.map(x => x.provider + ':' + x.model).join(' → ') : t('ui.none')}`);
+      break;
+    }
+    case 'balance': {
+      const [sub, tool, ...specs] = f._;
+      if (sub === 'set') { core.setBalance(tool, specs, { strategy: str(f.strategy) || 'weighted' }); console.log(t('cli.saved')); await rerouted(tool); }
+      else if (sub === 'clear') { core.setBalance(tool, []); console.log(t('cli.removed')); }
+      else if (sub && sub !== 'list') { help(); process.exitCode = 1; break; }
+      if (f.json) { console.log(JSON.stringify(core.getBalance(), null, 2)); break; }
+      for (const [k, g] of Object.entries(core.getBalance())) console.log(`${toolName(k).padEnd(12)} ${g ? `[${t('ui.balance.strategy.' + g.strategy)}] ` + g.members.map(m => `${m.provider}:${m.model}*${m.weight}`).join('  ') : t('ui.none')}`);
+      break;
+    }
+    case 'scenario': {
+      const [sub, tool, name, spec] = f._;
+      if (sub === 'set') { if (!spec) throw new Error(t('err.fallbackSpec', { spec: '' })); core.setScenario(tool, name, spec); console.log(t('cli.saved')); await rerouted(tool); }
+      else if (sub === 'clear') { core.setScenario(tool, name || '*', null); console.log(t('cli.removed')); }
+      else if (sub === 'threshold') { core.setLongContextThreshold(tool); console.log(t('cli.saved')); }
+      else if (sub && sub !== 'list') { help(); process.exitCode = 1; break; }
+      const sc = core.getScenarios();
+      if (f.json) { console.log(JSON.stringify(sc, null, 2)); break; }
+      for (const [k, m] of Object.entries(sc.tools)) {
+        const e = Object.entries(m);
+        console.log(`${toolName(k).padEnd(12)} ${e.length ? e.map(([n, v]) => `${n} → ${v.provider}:${v.model}`).join('  ') : t('ui.none')}`);
+      }
+      console.log(t('cli.longContext', { n: sc.longContextThreshold }));
+      break;
+    }
+    case 'breaker': {
+      const [sub] = f._;
+      if (sub === 'on' || sub === 'off') core.setBreaker({ enabled: sub === 'on' });
+      else if (sub === 'set') core.setBreaker({ failures: f.failures, cooldownSec: f.cooldown });
+      else if (sub && sub !== 'status') { help(); process.exitCode = 1; break; }
+      const b = core.getBreaker();
+      const live = await core.routerHealth().catch(() => null);
+      if (f.json) { console.log(JSON.stringify({ ...b, live: live?.breaker?.providers || null }, null, 2)); break; }
+      console.log(t(b.enabled ? 'cli.breakerOn' : 'cli.breakerOff', { failures: b.failures, cooldown: b.cooldownSec }));
+      if (!live) console.log('  ' + t('cli.breakerNoRouter'));
+      else {
+        const e = Object.entries(live.breaker?.providers || {});
+        if (!e.length) console.log('  ' + t('cli.breakerAllClosed'));
+        for (const [p, st] of e) console.log(`  ${p.padEnd(14)} ${t('ui.breaker.state.' + st.state)}  ${st.failures}×${st.retryInSec ? '  ' + t('ui.breaker.retryIn', { s: st.retryInSec }) : ''}`);
+      }
       break;
     }
     case 'ping': {

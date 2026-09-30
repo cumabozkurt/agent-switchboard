@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { checkOutboundUrl } from './netguard.js';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { appDir } from './paths.js';
@@ -20,7 +21,7 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
   } else if (key && !provider.noKey) {
     headers.authorization = `Bearer ${key}`;
   }
-  const url = provider.modelsAuth === 'anthropic' ? `${provider.modelsUrl}?limit=1000` : provider.modelsUrl;
+  const url = checkOutboundUrl(provider.modelsAuth === 'anthropic' ? `${provider.modelsUrl}?limit=1000` : provider.modelsUrl, 'modelsUrl');
   let res;
   try {
     res = await fetchImpl(url, { headers, signal: AbortSignal.timeout(20000) });
@@ -43,13 +44,19 @@ export async function fetchModels(provider, key, { refresh = false, fetchImpl = 
 
 export function normalizeModels(body) {
   const arr = Array.isArray(body) ? body : body?.data || body?.models || [];
-  const list = arr.filter(m => m && typeof m === 'object').map(m => ({
-    id: m.id || m.name,
-    name: m.display_name || m.name || m.id,
-    created: toEpoch(m.created ?? m.created_at),
-    context: m.context_length || m.context_window || null,
-    ...(m.pricing && typeof m.pricing === 'object' ? { pricing: { prompt: Number(m.pricing.prompt) || 0, completion: Number(m.pricing.completion) || 0 } } : {})
-  })).filter(m => typeof m.id === 'string' && m.id);
+  // Untrusted network data: keep only typed, bounded fields (ids ≤ 200 chars, no control characters, ≤ 5000 models).
+  const str = v => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 200) : '');
+  const num = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 0; };
+  const list = (Array.isArray(arr) ? arr : []).slice(0, 5000).filter(m => m && typeof m === 'object').map(m => {
+    const id = str(m.id) || str(m.name);
+    return {
+      id,
+      name: str(m.display_name) || str(m.name) || id,
+      created: toEpoch(m.created ?? m.created_at),
+      context: num(m.context_length || m.context_window) || null,
+      ...(m.pricing && typeof m.pricing === 'object' ? { pricing: { prompt: num(m.pricing.prompt), completion: num(m.pricing.completion) } } : {})
+    };
+  }).filter(m => m.id);
   // Bazı uç noktalar (ör. OpenCode Zen/Go) her modelin "created" alanına isteğin anını yazar;
   // bu durumda tarih bilgi taşımaz ve sıralama/"latest" sürüm numarasına göre yapılır.
   if (list.length > 1 && list.every(m => m.created === list[0].created)) for (const m of list) m.created = 0;
@@ -64,7 +71,8 @@ function newestFirst(a, b) {
 
 function toEpoch(v) {
   if (v == null) return 0;
-  if (typeof v === 'number') return v > 1e12 ? Math.floor(v / 1000) : v;
+  if (typeof v === 'number') return !Number.isFinite(v) || v < 0 ? 0 : v > 1e12 ? Math.floor(v / 1000) : Math.floor(v);
+  if (typeof v !== 'string') return 0;
   const t = Date.parse(v);
   return Number.isNaN(t) ? 0 : Math.floor(t / 1000);
 }

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { checkPort } from '../netguard.js';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +24,7 @@ const SHELLS = ['sh', 'fish', 'powershell', 'cmd'];
 // Is an aswitch router (possibly another process, e.g. `aswitch router` in a terminal) answering on this port?
 export async function probeRouter(port, timeoutMs = 600) {
   try {
-    const r = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    const r = await fetch(`http://127.0.0.1:${checkPort(port)}/health`, { signal: AbortSignal.timeout(timeoutMs) });
     const j = await r.json();
     return !!j?.ok;
   } catch { return false; }
@@ -154,7 +155,26 @@ export async function startUi({ port = 4567, open = true, locale, onLangChange, 
           return json(200, s);
         }
         case '/api/fallback': return json(200, core.getFallback());
-        case '/api/fallback/set': return json(200, core.setFallback(str(body.tool), Array.isArray(body.specs) ? body.specs.map(String).filter(x => x.trim()) : []));
+        case '/api/fallback/set': {
+          const r = core.setFallback(str(body.tool), Array.isArray(body.specs) ? body.specs.map(String).filter(x => x.trim()) : []);
+          const re = await core.ensureRouted(str(body.tool)); if (re) await maybeAutoStart();
+          return json(200, { ...r, rerouted: !!re });
+        }
+        case '/api/balance': return json(200, core.getBalance());
+        case '/api/balance/set': {
+          const r = core.setBalance(str(body.tool), Array.isArray(body.specs) ? body.specs.map(String).filter(x => x.trim()) : [], { strategy: str(body.strategy) || 'weighted' });
+          const re = await core.ensureRouted(str(body.tool)); if (re) await maybeAutoStart();
+          return json(200, { balance: r, rerouted: !!re });
+        }
+        case '/api/scenarios': return json(200, core.getScenarios());
+        case '/api/scenario/set': {
+          const r = core.setScenario(str(body.tool), str(body.name), body.spec ? str(body.spec) : null);
+          const re = await core.ensureRouted(str(body.tool)); if (re) await maybeAutoStart();
+          return json(200, { ...r, rerouted: !!re });
+        }
+        case '/api/scenario/threshold': return json(200, core.setLongContextThreshold(body.tokens));
+        case '/api/breaker': return json(200, { ...core.getBreaker(), live: (await core.routerHealth())?.breaker?.providers || null });
+        case '/api/breaker/set': return json(200, core.setBreaker({ enabled: body.enabled, failures: body.failures, cooldownSec: body.cooldownSec }));
         case '/api/ping': return json(200, await core.pingProviders(Array.isArray(body.ids) ? body.ids.map(String) : undefined));
         case '/api/usage': return json(200, { ...(await core.usageReport({ days: Number.isFinite(body.days) ? body.days : 7 })), log: core.routerLogEnabled() });
         case '/api/usage/clear': core.clearUsage(); return json(200, { ok: true });

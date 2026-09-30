@@ -3,6 +3,11 @@ import crypto from 'node:crypto';
 import { t as i18n } from './i18n/index.js';
 import { geminiToAnthropic, geminiSink, geminiError } from './gemini-wire.js';
 import { meter } from './usage.js';
+import { detectScenario, buildChain, createBreaker, BREAKER_DEFAULTS } from './routing.js';
+
+// One breaker and one round-robin state per router process.
+export const defaultBreaker = createBreaker();
+const defaultBalanceState = new Map();
 
 // Text the router injects into model-facing prompts is always English (models follow it best).
 const IMG_NOTE = '[image output is in the next user message]';
@@ -660,6 +665,8 @@ const RETRYABLE = s => s === 408 || s === 429 || s >= 500;
 
 // Picks the upstream model for a Claude Code request: haiku-class → fast model, other claude-* → main model.
 function claudeModel(t, requested) {
+  // Fallback / balance / scenario candidates always use their own model (the requested id belongs to the primary).
+  if (t.fixedModel) return /haiku/i.test(requested || '') && t.fastModel ? t.fastModel : t.model;
   if (!requested) return t.model;
   if (/haiku/i.test(requested) && t.fastModel) return t.fastModel;
   if (/^claude-/i.test(requested) && t.model) return t.model;
@@ -712,25 +719,38 @@ async function attempt(kind, t, body, reqHeaders, fetchImpl) {
 // Serves one Claude Code (Anthropic Messages) or Codex (Responses) request, trying the fallback chain on
 // 429/5xx/network errors as long as nothing has been sent to the client yet. `res` may be a real HTTP
 // response or a sink (Gemini translation, metering). `info` receives provider/model/fallback details.
-export async function serveRequest(kind, reqHeaders, res, t, body, { fetchImpl = fetch, log = () => {}, info = {} } = {}) {
+export async function serveRequest(kind, reqHeaders, res, t, body, { fetchImpl = fetch, log = () => {}, info = {}, breaker = defaultBreaker, balanceState = defaultBalanceState, requestedModel } = {}) {
   const isClaude = kind === 'claude';
   const sendJson = (code, obj) => { if (!res.headersSent) res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
   const errJson = (code, msg) => isClaude ? { type: 'error', error: { type: ERR_TYPE[code] || 'api_error', message: msg } } : { error: { message: msg, type: 'upstream_error', code: String(code) } };
-  const chain = [t, ...(t.fallbacks || [])];
+  // Scenario routing (image / long context / web search / thinking / background → a dedicated model).
+  let scenarioTarget = null;
+  if (t.scenarios && Object.keys(t.scenarios).length) {
+    const tokens = kind === 'codex' ? Math.ceil(JSON.stringify(body.input ?? '').length / 4) : estimateTokens(body);
+    const scen = detectScenario(kind, body, { tokens, threshold: t.longContextThreshold, requestedModel: requestedModel ?? body.model });
+    if (scen && t.scenarios[scen]) { scenarioTarget = t.scenarios[scen]; info.scenario = scen; }
+  }
+  const breakerCfg = t.breaker || BREAKER_DEFAULTS;
+  const { chain, skipped } = buildChain({ primary: t, scenario: scenarioTarget, balance: t.balance, fallbacks: t.fallbacks || [], breaker, breakerCfg, balanceState, balanceKey: kind });
+  if (skipped.length) log(i18n('router.breakerSkip', { providers: skipped.join(', ') }));
   let tr = null, a = null;
   try {
     for (let i = 0; i < chain.length; i++) {
       const c = chain[i];
       const last = i === chain.length - 1;
       info.provider = c.provider; info.fallback = i;
+      breaker?.begin(c.provider);
       try {
         a = await attempt(kind, c, body, reqHeaders, fetchImpl);
       } catch (e) {
+        breaker?.failure(c.provider, breakerCfg);
         if (last) throw Object.assign(new Error(i18n('router.upstreamUnreachable', { reason: e.cause?.code || e.message })), { status: 502 });
         log(i18n('router.fallback', { from: c.provider, to: chain[i + 1].provider, reason: e.cause?.code || e.message }));
         continue;
       }
       info.model = a.model; info.api = a.api;
+      if (a.up.ok) breaker?.success(c.provider);
+      else if (RETRYABLE(a.up.status)) breaker?.failure(c.provider, breakerCfg);
       if (!a.up.ok && RETRYABLE(a.up.status) && !last) {
         log(i18n('router.fallback', { from: c.provider, to: chain[i + 1].provider, reason: 'HTTP ' + a.up.status }));
         try { await a.up.text(); } catch { /* drain */ }
@@ -788,7 +808,8 @@ const GEMINI_PATH = /^\/(v1beta|v1|v1alpha)\/models\/([^/:]+):(generateContent|s
 // targets: { claude?, codex?, gemini? } — or a function returning the current targets on every request, so
 // "aswitch use" takes effect without restarting. The old single-target signature (target) is still accepted.
 // onUsage(entry) receives one metadata record per request (see usage.js); omit it to disable logging.
-export function startRouter({ port = 3456, target, targets, log = console.log, fetchImpl = fetch, onUsage }) {
+export function startRouter({ port = 3456, target, targets, log = console.log, fetchImpl = fetch, onUsage, breaker = defaultBreaker }) {
+  const balanceState = new Map();
   const getTargets = typeof targets === 'function' ? targets : () => targets || { claude: target, codex: target };
   const server = http.createServer(async (req, res0) => {
     const sendJson0 = (code, obj) => { if (!res0.headersSent) res0.writeHead(code, { 'content-type': 'application/json' }); res0.end(JSON.stringify(obj)); };
@@ -799,8 +820,15 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
       let tg;
       try { tg = getTargets() || {}; } catch (e) { return sendJson0(503, { type: 'error', error: { type: 'api_error', message: e.message } }); }
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
-        const desc = x => x ? { target: x.baseUrl, provider: x.provider, model: x.model, api: typeof x.apiFor === 'function' ? x.apiFor(x.model) : (x.api || 'chat'), fallbacks: (x.fallbacks || []).map(f => `${f.provider}:${f.model}`) } : null;
-        return sendJson0(200, { ok: true, claude: desc(tg.claude), codex: tg.codex ? { target: tg.codex.baseUrl, model: tg.codex.model, fallbacks: (tg.codex.fallbacks || []).map(f => `${f.provider}:${f.model}`) } : null, gemini: desc(tg.gemini) });
+        const spec = f => `${f.provider}:${f.model}`;
+        const extra = x => ({
+          fallbacks: (x.fallbacks || []).map(spec),
+          ...(x.balance?.members?.length ? { balance: { strategy: x.balance.strategy, members: x.balance.members.map(m => `${spec(m)}*${m.weight ?? 1}`) } } : {}),
+          ...(x.scenarios && Object.keys(x.scenarios).length ? { scenarios: Object.fromEntries(Object.entries(x.scenarios).map(([k, v]) => [k, spec(v)])) } : {})
+        });
+        const desc = x => x ? { target: x.baseUrl, provider: x.provider, model: x.model, api: typeof x.apiFor === 'function' ? x.apiFor(x.model) : (x.api || 'chat'), ...extra(x) } : null;
+        const bcfg = (tg.claude || tg.codex || tg.gemini)?.breaker || BREAKER_DEFAULTS;
+        return sendJson0(200, { ok: true, claude: desc(tg.claude), codex: tg.codex ? { target: tg.codex.baseUrl, provider: tg.codex.provider, model: tg.codex.model, ...extra(tg.codex) } : null, gemini: desc(tg.gemini), breaker: { ...bcfg, providers: breaker.snapshot(bcfg) } });
       }
       if (req.method !== 'POST') return sendJson0(404, { type: 'error', error: { type: 'not_found_error', message: i18n('router.notFound') } });
       const chunks = []; for await (const c of req) chunks.push(c);
@@ -819,7 +847,7 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
       if (kind === 'claude' && url.pathname.startsWith('/v1/messages/count_tokens')) return sendJson0(200, { input_tokens: estimateTokens(body) });
 
       const info = { provider: t.provider, model: t.model };
-      const res = onUsage ? meter(res0, m => onUsage({ ts: new Date().toISOString(), tool: kind, provider: info.provider, model: info.model, api: info.api, status: m.status, ms: m.ms, ttft: m.ttft, in: m.in, out: m.out, fallback: info.fallback || 0, ...(info.error ? { error: String(info.error).slice(0, 300) } : {}) })) : res0;
+      const res = onUsage ? meter(res0, m => onUsage({ ts: new Date().toISOString(), tool: kind, provider: info.provider, model: info.model, api: info.api, status: m.status, ms: m.ms, ttft: m.ttft, in: m.in, out: m.out, fallback: info.fallback || 0, ...(info.scenario ? { scenario: info.scenario } : {}), ...(info.error ? { error: String(info.error).slice(0, 300) } : {}) })) : res0;
       if (kind === 'gemini') {
         const areq = geminiToAnthropic(body, { model: geminiModel(t, gm[2]) });
         if (gm[3] === 'countTokens') {
@@ -834,9 +862,9 @@ export function startRouter({ port = 3456, target, targets, log = console.log, f
         // No model in the body: every candidate in the fallback chain then uses its own model.
         const ct = { ...t, model: areq.model, fastModel: areq.model };
         delete areq.model;
-        return await serveRequest('claude', {}, sink, ct, areq, { fetchImpl, log, info });
+        return await serveRequest('claude', {}, sink, ct, areq, { fetchImpl, log, info, breaker, balanceState, requestedModel: gm[2] });
       }
-      return await serveRequest(kind, req.headers, res, t, body, { fetchImpl, log, info });
+      return await serveRequest(kind, req.headers, res, t, body, { fetchImpl, log, info, breaker, balanceState });
     } catch (e) {
       log(i18n('router.logError'), e.message);
       if (res0.headersSent) return res0.end();

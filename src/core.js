@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { checkOutboundUrl, checkPort } from './netguard.js';
+import { SCENARIOS, BALANCE_STRATEGIES, BREAKER_DEFAULTS, DEFAULT_LONG_CONTEXT, parseSpec } from './routing.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, saveConfig, getKey, mask } from './config.js';
@@ -47,13 +49,25 @@ function routerCfg(cfg) {
   return r;
 }
 
+// True when the tool has router-only features configured (fallback chain, balance group, scenario models).
+function routerFeatures(r, tool) {
+  return !!(r?.fallback?.[tool]?.length || r?.balance?.[tool]?.members?.length || Object.keys(r?.scenarios?.[tool] || {}).length);
+}
+// Keeps cfg.router only while it carries something (a routed tool, a policy, a custom port, logging off).
+function storeRouter(cfg, r) {
+  for (const k of ['fallback', 'balance', 'scenarios']) if (r[k] && !Object.keys(r[k]).length) delete r[k];
+  const keep = ROUTED_TOOLS.some(k => r[k]) || r.fallback || r.balance || r.scenarios || r.breaker || r.longContext
+    || (r.port || DEFAULT_ROUTER_PORT) !== DEFAULT_ROUTER_PORT || r.log !== undefined;
+  if (keep) cfg.router = r; else delete cfg.router;
+}
+
 // Default targets for "use": Gemini CLI is included only when it has a config directory (i.e. it is
 // installed/used), so upgrading aswitch never creates ~/.gemini on machines without Gemini CLI.
 export function defaultTools() {
   return fs.existsSync(path.dirname(geminiSettingsPath())) ? TOOLS : TOOLS.filter(t => t !== 'gemini');
 }
 
-export async function useProvider({ tools = defaultTools(), provider: pid, model, fastModel, port, codexKey }) {
+export async function useProvider({ tools = defaultTools(), provider: pid, model, fastModel, port, codexKey, viaRouter = false }) {
   const cfg = loadConfig();
   need(pid, 'err.noProvider');
   const provider = resolveProvider(cfg, pid);
@@ -82,6 +96,8 @@ export async function useProvider({ tools = defaultTools(), provider: pid, model
       need(mode, api ? 'err.modelApiUnsupported' : 'err.providerNoClaude', { id: pid, model, api, tool: 'Claude Code' });
       need(mode === 'direct' || model, 'err.routerNeedsModel', { id: pid, tool: 'Claude Code' });
       plan.claude = mode;
+      // Router features (fallback, balance, scenarios) or --via-router: route even direct-capable models.
+      if (mode === 'direct' && model && (viaRouter || routerFeatures(router, 'claude'))) plan.claude = 'router';
       if (fastModel && fastModel !== model) {
         // Hızlı model başka bir uç noktadaysa (ör. ana model /messages, hızlı model /responses) her iki
         // modeli de yönlendirici taşır; yönlendirici /messages modellerini çevirmeden iletir.
@@ -93,14 +109,14 @@ export async function useProvider({ tools = defaultTools(), provider: pid, model
       const mode = codexMode(provider, model);
       need(mode, provider.openaiBase ? 'err.modelApiUnsupported' : 'err.providerNoOpenai', { id: pid, model, api, tool: 'Codex' });
       need(mode === 'direct' || model, 'err.routerNeedsModel', { id: pid, tool: 'Codex' });
-      plan.codex = mode;
+      plan.codex = mode === 'direct' && model && (viaRouter || routerFeatures(router, 'codex')) ? 'router' : mode;
     } else if (tool === 'opencode') {
       need(provider.openaiBase, 'err.providerNoOpenai', { id: pid, tool: 'OpenCode' });
     } else if (tool === 'gemini') {
       const mode = geminiMode(provider, model);
       need(mode, api ? 'err.modelApiUnsupported' : 'err.providerNoClaude', { id: pid, model, api, tool: 'Gemini CLI' });
       need(mode === 'direct' || model, 'err.routerNeedsModel', { id: pid, tool: 'Gemini CLI' });
-      plan.gemini = mode;
+      plan.gemini = mode === 'direct' && model && (viaRouter || routerFeatures(router, 'gemini')) ? 'router' : mode;
     }
   }
 
@@ -131,8 +147,7 @@ export async function useProvider({ tools = defaultTools(), provider: pid, model
   }
   // The port is kept even when no tool needs the router, so a custom --port survives later switches.
   const keep = Object.fromEntries(Object.entries(router).filter(([k]) => !ROUTED_TOOLS.includes(k) && k !== 'port'));
-  cfg.router = { port: routerPort, ...keep, ...Object.fromEntries(ROUTED_TOOLS.filter(k => router[k]).map(k => [k, router[k]])) };
-  if (!ROUTED_TOOLS.some(k => router[k]) && routerPort === DEFAULT_ROUTER_PORT && !Object.keys(keep).length) delete cfg.router;
+  storeRouter(cfg, { port: routerPort, ...keep, ...Object.fromEntries(ROUTED_TOOLS.filter(k => router[k]).map(k => [k, router[k]])) });
   delete cfg.activeProfile; // a manual switch leaves any profile
   saveConfig(cfg);
   return { provider: pid, model, fastModel, results };
@@ -142,7 +157,7 @@ function dropRouter(cfg, tools) {
   const r = routerCfg(cfg);
   if (!r) return;
   for (const tool of tools) delete r[tool];
-  if (ROUTED_TOOLS.some(k => r[k]) || (r.port && r.port !== DEFAULT_ROUTER_PORT) || r.fallback || r.log !== undefined) cfg.router = r; else delete cfg.router;
+  storeRouter(cfg, r);
 }
 
 // Aracın kendi resmî girişine (Claude Pro/Max OAuth, ChatGPT girişi) döner; diğer ayarlar korunur.
@@ -247,7 +262,7 @@ export function addProvider(id, spec = {}) {
   need(id && ID_RE.test(id), 'err.badProviderId');
   need(!PRESETS[id], 'err.presetId', { id });
   need(spec.anthropicBase || spec.openaiBase, 'err.needBase');
-  for (const k of ['anthropicBase', 'openaiBase', 'modelsUrl']) if (spec[k]) need(URL_RE.test(spec[k]), 'err.badUrl', { field: k, url: spec[k] });
+  for (const k of ['anthropicBase', 'openaiBase', 'modelsUrl']) if (spec[k]) { need(URL_RE.test(spec[k]), 'err.badUrl', { field: k, url: spec[k] }); checkOutboundUrl(spec[k], k); }
   if (spec.codexWire) need(['responses', 'chat'].includes(spec.codexWire), 'err.badWire');
   if (spec.keyEnv) need(/^[A-Za-z_][A-Za-z0-9_]*$/.test(spec.keyEnv), 'err.badKeyEnv');
   const allowed = ['label', 'anthropicBase', 'openaiBase', 'modelsUrl', 'codexWire', 'keyEnv'];
@@ -333,19 +348,36 @@ export function routerTargets() {
   const one = (id, model, fastModel) => {
     const p = resolveProvider(cfg, id);
     need(p, 'err.routerProviderMissing', { id });
-    return { provider: id, baseUrl: p.openaiBase, anthropicBase: p.anthropicBase, key: p.noKey ? '' : getKey(cfg, p), model, fastModel, apiFor: m => claudeRouterApi(p, m), codexApi: m => codexMode(p, m) === 'direct' ? 'responses' : 'chat' };
+    for (const u of [p.openaiBase, p.anthropicBase]) if (u) checkOutboundUrl(u, id);
+    // Models Claude Code could reach directly are passed through to the Anthropic endpoint untouched.
+    return { provider: id, baseUrl: p.openaiBase, anthropicBase: p.anthropicBase, key: p.noKey ? '' : getKey(cfg, p), model, fastModel,
+      apiFor: m => (claudeMode(p, m) === 'direct' && p.anthropicBase ? 'messages' : claudeRouterApi(p, m)), codexApi: m => codexMode(p, m) === 'direct' ? 'responses' : 'chat' };
+  };
+  const breaker = { ...BREAKER_DEFAULTS, ...(r.breaker || {}) };
+  const fixed = (x, tool) => { try { const c = one(x.provider, x.model, x.model); c.fixedModel = true; if (tool === 'gemini') geminiApi(c, x.provider); return c; } catch { return null; } };
+  const geminiApi = (t, id) => {
+    const p = resolveProvider(cfg, id);
+    t.apiFor = m => { const a = modelApi(p, m); return (a === 'messages' || a === null) && p.anthropicBase ? 'messages' : claudeRouterApi(p, m); };
   };
   const mk = (x, tool) => {
     if (!x) return undefined;
     const t = one(x.provider, x.model, x.fastModel);
-    if (tool === 'gemini') {
-      // Gemini CLI has no direct Anthropic mode, so a provider's Anthropic endpoint is the best route.
-      const p = resolveProvider(cfg, x.provider);
-      t.apiFor = m => { const a = modelApi(p, m); return (a === 'messages' || a === null) && p.anthropicBase ? 'messages' : claudeRouterApi(p, m); };
-    }
+    // Gemini CLI has no direct Anthropic mode, so a provider's Anthropic endpoint is the best route.
+    if (tool === 'gemini') geminiApi(t, x.provider);
     // Ordered fallback chain (provider:model) tried on 429/5xx/network errors before any byte is sent.
-    const chain = (r.fallback?.[tool] || []).map(f => { try { return one(f.provider, f.model, f.model); } catch { return null; } }).filter(Boolean);
+    const chain = (r.fallback?.[tool] || []).map(f => fixed(f, tool)).filter(Boolean);
     if (chain.length) t.fallbacks = chain;
+    const bal = r.balance?.[tool];
+    if (bal?.members?.length) {
+      const members = bal.members.map(m => { const c = fixed(m, tool); if (c) c.weight = m.weight ?? 1; return c; }).filter(Boolean);
+      if (members.length) t.balance = { strategy: bal.strategy || 'weighted', members };
+    }
+    const sc = r.scenarios?.[tool];
+    if (sc && Object.keys(sc).length) {
+      t.scenarios = Object.fromEntries(Object.entries(sc).map(([k, v]) => [k, fixed(v, tool)]).filter(([, v]) => v));
+      t.longContextThreshold = r.longContext || DEFAULT_LONG_CONTEXT;
+    }
+    t.breaker = breaker;
     return t;
   };
   return { port: r.port || DEFAULT_ROUTER_PORT, claude: mk(r.claude, 'claude'), codex: mk(r.codex, 'codex'), gemini: mk(r.gemini, 'gemini'), log: r.log !== false };
@@ -421,22 +453,12 @@ const FALLBACK_TOOLS = ['claude', 'codex', 'gemini'];
 export function setFallback(tool, specs = []) {
   need(FALLBACK_TOOLS.includes(tool), 'err.fallbackTool', { tool, tools: FALLBACK_TOOLS.join(' | ') });
   const cfg = loadConfig();
-  const list = specs.map(s => {
-    const str = String(s).trim();
-    const i = str.indexOf(':');
-    need(i > 0 && i < str.length - 1, 'err.fallbackSpec', { spec: str });
-    const provider = str.slice(0, i), model = str.slice(i + 1);
-    const p = resolveProvider(cfg, provider);
-    need(p, 'err.unknownProvider', { id: provider });
-    need(tool === 'codex' ? p.openaiBase : (p.anthropicBase || p.openaiBase), 'err.providerNoClaude', { id: provider });
-    return { provider, model };
-  });
+  const list = specs.map(s => { const { provider, model } = routeSpec(cfg, tool, s); return { provider, model }; });
   const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
   r.fallback = { ...(r.fallback || {}) };
   if (list.length) r.fallback[tool] = list; else delete r.fallback[tool];
   if (!Object.keys(r.fallback).length) delete r.fallback;
-  cfg.router = r;
-  if (!ROUTED_TOOLS.some(k => r[k]) && !r.fallback && (r.port || DEFAULT_ROUTER_PORT) === DEFAULT_ROUTER_PORT && r.log === undefined) delete cfg.router;
+  storeRouter(cfg, r);
   saveConfig(cfg);
   return getFallback();
 }
@@ -446,13 +468,102 @@ export function getFallback() {
   return Object.fromEntries(FALLBACK_TOOLS.map(t => [t, r?.fallback?.[t] || []]));
 }
 
+// "provider:model" (optionally "*weight") checked against the tool: Codex needs an OpenAI endpoint,
+// Claude Code / Gemini CLI any endpoint the router can translate from.
+function routeSpec(cfg, tool, s) {
+  const spec = parseSpec(s);
+  need(spec, 'err.fallbackSpec', { spec: String(s) });
+  const p = resolveProvider(cfg, spec.provider);
+  need(p, 'err.unknownProvider', { id: spec.provider });
+  need(tool === 'codex' ? p.openaiBase : (p.anthropicBase || p.openaiBase), 'err.providerNoClaude', { id: spec.provider });
+  return spec;
+}
+
+// Load balancing: a group of provider:model*weight entries that replaces the tool's primary target in the router.
+export function setBalance(tool, specs = [], { strategy = 'weighted' } = {}) {
+  need(FALLBACK_TOOLS.includes(tool), 'err.fallbackTool', { tool, tools: FALLBACK_TOOLS.join(' | ') });
+  need(BALANCE_STRATEGIES.includes(strategy), 'err.badStrategy', { strategy, list: BALANCE_STRATEGIES.join(' | ') });
+  const cfg = loadConfig();
+  const members = specs.map(s => routeSpec(cfg, tool, s));
+  need(!members.length || members.length >= 2, 'err.balanceTwo');
+  const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
+  r.balance = { ...(r.balance || {}) };
+  if (members.length) r.balance[tool] = { strategy, members }; else delete r.balance[tool];
+  storeRouter(cfg, r);
+  saveConfig(cfg);
+  return getBalance();
+}
+export function getBalance() {
+  const r = routerCfg(loadConfig());
+  return Object.fromEntries(FALLBACK_TOOLS.map(t => [t, r?.balance?.[t] || null]));
+}
+
+// Scenario routing: image / longContext / webSearch / think / background → provider:model.
+export function setScenario(tool, name, spec) {
+  need(FALLBACK_TOOLS.includes(tool), 'err.fallbackTool', { tool, tools: FALLBACK_TOOLS.join(' | ') });
+  const cfg = loadConfig();
+  const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
+  r.scenarios = { ...(r.scenarios || {}) };
+  const cur = { ...(r.scenarios[tool] || {}) };
+  if (name === '*' && !spec) delete r.scenarios[tool];
+  else {
+    need(SCENARIOS.includes(name), 'err.badScenario', { name, list: SCENARIOS.join(' | ') });
+    if (spec) { const { provider, model } = routeSpec(cfg, tool, spec); cur[name] = { provider, model }; } else delete cur[name];
+    if (Object.keys(cur).length) r.scenarios[tool] = cur; else delete r.scenarios[tool];
+  }
+  storeRouter(cfg, r);
+  saveConfig(cfg);
+  return getScenarios();
+}
+export function setLongContextThreshold(tokens) {
+  const n = Number(tokens);
+  need(Number.isInteger(n) && n >= 1000 && n <= 10000000, 'err.badThreshold', { value: String(tokens) });
+  const cfg = loadConfig();
+  const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
+  if (n === DEFAULT_LONG_CONTEXT) delete r.longContext; else r.longContext = n;
+  storeRouter(cfg, r);
+  saveConfig(cfg);
+  return getScenarios();
+}
+export function getScenarios() {
+  const r = routerCfg(loadConfig());
+  return { tools: Object.fromEntries(FALLBACK_TOOLS.map(t => [t, r?.scenarios?.[t] || {}])), longContextThreshold: r?.longContext || DEFAULT_LONG_CONTEXT, scenarios: SCENARIOS };
+}
+
+// Circuit breaker settings (live state comes from the running router's /health).
+export function setBreaker({ enabled, failures, cooldownSec } = {}) {
+  const cfg = loadConfig();
+  const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
+  const b = { ...BREAKER_DEFAULTS, ...(r.breaker || {}) };
+  if (enabled !== undefined) b.enabled = !!enabled;
+  if (failures !== undefined) { const n = Number(failures); need(Number.isInteger(n) && n >= 1 && n <= 100, 'err.badBreaker', { field: 'failures', value: String(failures) }); b.failures = n; }
+  if (cooldownSec !== undefined) { const n = Number(cooldownSec); need(Number.isInteger(n) && n >= 1 && n <= 3600, 'err.badBreaker', { field: 'cooldown', value: String(cooldownSec) }); b.cooldownSec = n; }
+  if (b.enabled === BREAKER_DEFAULTS.enabled && b.failures === BREAKER_DEFAULTS.failures && b.cooldownSec === BREAKER_DEFAULTS.cooldownSec) delete r.breaker; else r.breaker = b;
+  storeRouter(cfg, r);
+  saveConfig(cfg);
+  return getBreaker();
+}
+export function getBreaker() { return { ...BREAKER_DEFAULTS, ...(routerCfg(loadConfig())?.breaker || {}) }; }
+
+// After a router feature is configured, a tool that currently connects directly is re-applied through the
+// router (same provider/model), otherwise the feature would have no effect. Returns the re-apply result.
+export async function ensureRouted(tool) {
+  const cfg = loadConfig();
+  const a = cfg.active?.[tool];
+  const r = routerCfg(cfg);
+  if (!a || !a.provider || ['official', 'backup'].includes(a.provider) || r?.[tool] || !routerFeatures(r, tool) || !a.model) return null;
+  const prof = cfg.activeProfile;
+  const res = await useProvider({ provider: a.provider, model: a.model, fastModel: a.fastModel || undefined, tools: [tool] });
+  if (prof) { const c = loadConfig(); c.activeProfile = prof; saveConfig(c); }
+  return res;
+}
+
 // Router request logging (metadata only) — on by default, can be turned off.
 export function setRouterLog(on) {
   const cfg = loadConfig();
   const r = routerCfg(cfg) || { port: DEFAULT_ROUTER_PORT };
   if (on) delete r.log; else r.log = false;
-  cfg.router = r;
-  if (!ROUTED_TOOLS.some(k => r[k]) && !r.fallback && (r.port || DEFAULT_ROUTER_PORT) === DEFAULT_ROUTER_PORT && r.log === undefined) delete cfg.router;
+  storeRouter(cfg, r);
   saveConfig(cfg);
 }
 export function routerLogEnabled() { return routerCfg(loadConfig())?.log !== false; }
@@ -607,6 +718,7 @@ export async function pingProviders(ids, { fetchImpl = fetch, timeoutMs = 8000 }
     if (p.modelsAuth === 'anthropic') { headers['x-api-key'] = key; headers['anthropic-version'] = '2023-06-01'; } else if (key && !p.noKey) headers.authorization = `Bearer ${key}`;
     const started = Date.now();
     try {
+      checkOutboundUrl(url, p.id);
       const r = await fetchImpl(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
       const ms = Date.now() - started;
       try { await r.arrayBuffer(); } catch { /* ignore */ }
@@ -635,4 +747,14 @@ export async function routerUsageHook() {
     if (!routerLogEnabled()) return;
     recordUsage({ ...entry, cost: estimateCost(entry.provider, entry.model, entry.in, entry.out) });
   };
+}
+
+// Live state of a running router on the configured port (null when none answers).
+export async function routerHealth({ timeoutMs = 800, fetchImpl = fetch } = {}) {
+  const port = checkPort(routerCfg(loadConfig())?.port || DEFAULT_ROUTER_PORT);
+  try {
+    const r = await fetchImpl(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    const j = await r.json();
+    return j?.ok ? j : null;
+  } catch { return null; }
 }
