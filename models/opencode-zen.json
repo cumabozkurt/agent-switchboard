@@ -384,6 +384,12 @@
     "context": null
   },
   {
+    "id": "fledge-alpha-free",
+    "name": "fledge-alpha-free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "deepseek-v4.1-flash",
     "name": "deepseek-v4.1-flash",
     "created": 0,

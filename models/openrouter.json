@@ -1,5 +1,17 @@
 [
   {
+    "id": "apodex/apodex-1.1-mini:free",
+    "name": "Apodex: Apodex 1.1 Mini (free)",
+    "created": 1790875335,
+    "context": 262144
+  },
+  {
+    "id": "unbiased/pareto-26.10-preview",
+    "name": "Pareto 26.10 Preview",
+    "created": 1790863623,
+    "context": 1048576
+  },
+  {
     "id": "openai/gpt-6.1-sol-pro",
     "name": "OpenAI: GPT-6.1 Sol Pro",
     "created": 1790702886,
