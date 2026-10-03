@@ -1,5 +1,11 @@
 [
   {
+    "id": "inclusionai/ling-3.1-flash",
+    "name": "inclusionAI: Ling 3.1 Flash",
+    "created": 1790950024,
+    "context": 262144
+  },
+  {
     "id": "apodex/apodex-1.1-mini:free",
     "name": "Apodex: Apodex 1.1 Mini (free)",
     "created": 1790875335,
@@ -153,6 +159,12 @@
     "id": "anthropic/claude-opus-5.5",
     "name": "Anthropic: Claude Opus 5.5",
     "created": 1790094732,
+    "context": 1000000
+  },
+  {
+    "id": "nvidia/switchyard",
+    "name": "NVIDIA: Switchyard",
+    "created": 1790025947,
     "context": 1000000
   },
   {
