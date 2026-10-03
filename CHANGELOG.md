@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). Turkish: [CHANGELOG.tr.md](CHANGELOG.tr.md).
 
+## [0.4.1] - 2026-10-03
+
+Maintenance release: no code changes since 0.4.0.
+
+### Changed
+- Bundled model snapshots (used offline and by the desktop e2e test) refreshed by the daily `models-snapshot` workflow:
+  - OpenCode Zen: added `ling-3.1-flash-free` and `fledge-alpha-free`.
+  - OpenRouter: added `inclusionai/ling-3.1-flash`, `apodex/apodex-1.1-mini:free`, `unbiased/pareto-26.10-preview` and `nvidia/switchyard`; removed `openai/gpt-6.1-sol:batch` and `openai/gpt-6.1-sol-pro:batch`.
+
+### Documentation
+- `docs/AUTOMATION.md`: v0.4.0 release evidence (workflow runs, installers, checksums).
+
 ## [0.4.0] - 2026-10-01
 
 ### Added
@@ -105,6 +117,7 @@ Based on a review of 32 similar open-source projects (see `docs/COMPETITIVE-ANAL
 ### Added
 - First release: CLI, local web UI and Electron app to switch the API provider and model of Claude Code, Codex and OpenCode; live model lists; OpenRouter OAuth; local router; backups and restore.
 
+[0.4.1]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cumabozkurt/agent-switchboard/compare/v0.1.3...v0.2.0

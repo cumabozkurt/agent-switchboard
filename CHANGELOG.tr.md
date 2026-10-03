@@ -2,6 +2,18 @@
 
 Bu projedeki önemli değişiklikler burada yazılıdır. Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) kurallarına uyar, proje [Anlamsal Sürümleme](https://semver.org/lang/tr/) kullanır. İngilizce sürüm: [CHANGELOG.md](CHANGELOG.md).
 
+## [0.4.1] - 2026-10-03
+
+Bakım sürümü: 0.4.0'dan bu yana kod değişikliği yok.
+
+### Değişenler
+- Paketle gelen model listeleri (çevrim dışı kullanımda ve masaüstü e2e testinde kullanılır) günlük `models-snapshot` iş akışıyla yenilendi:
+  - OpenCode Zen: `ling-3.1-flash-free` ve `fledge-alpha-free` eklendi.
+  - OpenRouter: `inclusionai/ling-3.1-flash`, `apodex/apodex-1.1-mini:free`, `unbiased/pareto-26.10-preview` ve `nvidia/switchyard` eklendi; `openai/gpt-6.1-sol:batch` ve `openai/gpt-6.1-sol-pro:batch` kaldırıldı.
+
+### Belgeler
+- `docs/AUTOMATION.md`: v0.4.0 sürüm kanıtları (iş akışı çalıştırmaları, kurulum dosyaları, sağlama toplamları).
+
 ## [0.4.0] - 2026-10-01
 
 ### Eklenenler
