@@ -72,12 +72,6 @@
     "context": 1000000
   },
   {
-    "id": "stealth/space-bunny-alpha",
-    "name": "Space Bunny Alpha",
-    "created": 1790174884,
-    "context": 1000000
-  },
-  {
     "id": "aion-labs/aion-3.5-mini",
     "name": "AionLabs: Aion 3.5 Mini",
     "created": 1790170962,
@@ -472,12 +466,6 @@
     "name": "Z.ai: GLM 5.3",
     "created": 1787086655,
     "context": 1048576
-  },
-  {
-    "id": "qwen/qwen3.8-27b:free",
-    "name": "Qwen: Qwen3.8 27B (free)",
-    "created": 1786722910,
-    "context": 262144
   },
   {
     "id": "qwen/qwen3.8-27b",
