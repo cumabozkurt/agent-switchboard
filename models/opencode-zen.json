@@ -66,6 +66,12 @@
     "context": null
   },
   {
+    "id": "mistral-large-4",
+    "name": "mistral-large-4",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "minimax-m3",
     "name": "minimax-m3",
     "created": 0,
@@ -86,12 +92,6 @@
   {
     "id": "mimo-v2.6-flash-free",
     "name": "mimo-v2.6-flash-free",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "mimo-v2.5-free",
-    "name": "mimo-v2.5-free",
     "created": 0,
     "context": null
   },
@@ -396,6 +396,12 @@
     "context": null
   },
   {
+    "id": "exo-free",
+    "name": "exo-free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "deepseek-v4.1-flash",
     "name": "deepseek-v4.1-flash",
     "created": 0,
@@ -410,12 +416,6 @@
   {
     "id": "deepseek-v4-flash-vision-exp",
     "name": "deepseek-v4-flash-vision-exp",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "deepseek-v4-flash-free",
-    "name": "deepseek-v4-flash-free",
     "created": 0,
     "context": null
   },

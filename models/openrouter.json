@@ -1,5 +1,17 @@
 [
   {
+    "id": "google/gemini-nano-banana-2.1",
+    "name": "Google: Nano Banana 2.1",
+    "created": 1791300825,
+    "context": 65536
+  },
+  {
+    "id": "mistralai/mistral-large-4-0",
+    "name": "Mistral: Mistral Large 4",
+    "created": 1791294122,
+    "context": 524288
+  },
+  {
     "id": "inclusionai/ling-3.1-flash",
     "name": "inclusionAI: Ling 3.1 Flash",
     "created": 1790950024,
@@ -688,12 +700,6 @@
     "name": "Meta: Muse Spark 1.1",
     "created": 1784215741,
     "context": 1048576
-  },
-  {
-    "id": "kwaipilot/kat-coder-pro-v2.5",
-    "name": "Kwaipilot: KAT-Coder-Pro V2.5",
-    "created": 1783714589,
-    "context": 262144
   },
   {
     "id": "openai/gpt-5.6-luna-pro:batch",
