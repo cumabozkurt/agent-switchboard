@@ -492,6 +492,12 @@
     "context": null
   },
   {
+    "id": "claude-haiku-5-5",
+    "name": "claude-haiku-5-5",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "claude-haiku-4-5",
     "name": "claude-haiku-4-5",
     "created": 0,

@@ -1,5 +1,17 @@
 [
   {
+    "id": "anthropic/claude-haiku-5.5:batch",
+    "name": "Anthropic: Claude Haiku 5.5 (batch)",
+    "created": 1791397883,
+    "context": 1000000
+  },
+  {
+    "id": "anthropic/claude-haiku-5.5",
+    "name": "Anthropic: Claude Haiku 5.5",
+    "created": 1791397883,
+    "context": 1000000
+  },
+  {
     "id": "google/gemini-nano-banana-2.1",
     "name": "Google: Nano Banana 2.1",
     "created": 1791300825,
@@ -1029,7 +1041,7 @@
     "id": "~anthropic/claude-haiku-latest",
     "name": "Anthropic: Claude Haiku Latest",
     "created": 1777318492,
-    "context": 200000
+    "context": 1000000
   },
   {
     "id": "~openai/gpt-mini-latest",
