@@ -1,5 +1,11 @@
 [
   {
+    "id": "step-5-preview-free",
+    "name": "step-5-preview-free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "space-bunny",
     "name": "space-bunny",
     "created": 0,
@@ -254,6 +260,12 @@
   {
     "id": "deepseek-flash",
     "name": "deepseek-flash",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "claude-haiku-5-5",
+    "name": "claude-haiku-5-5",
     "created": 0,
     "context": null
   }

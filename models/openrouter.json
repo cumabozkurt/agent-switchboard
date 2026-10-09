@@ -1,5 +1,11 @@
 [
   {
+    "id": "stepfun/step-5-preview",
+    "name": "StepFun: Step 5 Preview",
+    "created": 1791462849,
+    "context": 1000000
+  },
+  {
     "id": "anthropic/claude-haiku-5.5:batch",
     "name": "Anthropic: Claude Haiku 5.5 (batch)",
     "created": 1791397883,
@@ -21,7 +27,7 @@
     "id": "mistralai/mistral-large-4-0",
     "name": "Mistral: Mistral Large 4",
     "created": 1791294122,
-    "context": 524288
+    "context": 1048576
   },
   {
     "id": "inclusionai/ling-3.1-flash",
@@ -42,9 +48,21 @@
     "context": 1048576
   },
   {
+    "id": "openai/gpt-6.1-sol-pro:batch",
+    "name": "OpenAI: GPT-6.1 Sol Pro (batch)",
+    "created": 1790702886,
+    "context": 1050000
+  },
+  {
     "id": "openai/gpt-6.1-sol-pro",
     "name": "OpenAI: GPT-6.1 Sol Pro",
     "created": 1790702886,
+    "context": 1050000
+  },
+  {
+    "id": "openai/gpt-6.1-sol:batch",
+    "name": "OpenAI: GPT-6.1 Sol (batch)",
+    "created": 1790702882,
     "context": 1050000
   },
   {
@@ -354,8 +372,8 @@
     "context": 1050000
   },
   {
-    "id": "inclusionai/ling-3.0-flash-sante:free",
-    "name": "inclusionAI: Ling 3.0 Flash Sante (free)",
+    "id": "inclusionai/ling-3.0-flash-sante",
+    "name": "inclusionAI: Ling 3.0 Flash Sante",
     "created": 1788545946,
     "context": 262144
   },
@@ -2176,12 +2194,6 @@
     "name": "Morph: Morph V3 Fast",
     "created": 1751910002,
     "context": 81920
-  },
-  {
-    "id": "baidu/ernie-4.5-vl-424b-a47b",
-    "name": "Baidu: ERNIE 4.5 VL 424B A47B ",
-    "created": 1751300903,
-    "context": 123000
   },
   {
     "id": "mistralai/mistral-small-3.2-24b-instruct",

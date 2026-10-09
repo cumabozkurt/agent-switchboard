@@ -1,5 +1,11 @@
 [
   {
+    "id": "step-5-preview-free",
+    "name": "step-5-preview-free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "space-bunny-free",
     "name": "space-bunny-free",
     "created": 0,
@@ -386,12 +392,6 @@
   {
     "id": "gemini-3-flash",
     "name": "gemini-3-flash",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "fledge-alpha-free",
-    "name": "fledge-alpha-free",
     "created": 0,
     "context": null
   },
