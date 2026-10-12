@@ -42,12 +42,6 @@
     "context": null
   },
   {
-    "id": "qwen3.5-plus",
-    "name": "qwen3.5-plus",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "omen-alpha",
     "name": "omen-alpha",
     "created": 0,
@@ -108,18 +102,6 @@
     "context": null
   },
   {
-    "id": "mimo-v2-pro",
-    "name": "mimo-v2-pro",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "mimo-v2-omni",
-    "name": "mimo-v2-omni",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "longcat-2.5-preview-free",
     "name": "longcat-2.5-preview-free",
     "created": 0,
@@ -150,20 +132,8 @@
     "context": null
   },
   {
-    "id": "kimi-k2.5",
-    "name": "kimi-k2.5",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "hy4-preview",
     "name": "hy4-preview",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "hy3-preview",
-    "name": "hy3-preview",
     "created": 0,
     "context": null
   },
@@ -182,12 +152,6 @@
   {
     "id": "grok-4.6",
     "name": "grok-4.6",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "grok-4.5",
-    "name": "grok-4.5",
     "created": 0,
     "context": null
   },
@@ -224,12 +188,6 @@
   {
     "id": "glm-5.1",
     "name": "glm-5.1",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "glm-5",
-    "name": "glm-5",
     "created": 0,
     "context": null
   },
