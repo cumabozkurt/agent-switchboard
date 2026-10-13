@@ -226,5 +226,11 @@
     "name": "claude-haiku-5-5",
     "created": 0,
     "context": null
+  },
+  {
+    "id": "cat-jam-free",
+    "name": "cat-jam-free",
+    "created": 0,
+    "context": null
   }
 ]

@@ -1,5 +1,11 @@
 [
   {
+    "id": "meta/muse-wonder",
+    "name": "Meta: Muse Wonder",
+    "created": 1791807945,
+    "context": 1048576
+  },
+  {
     "id": "stepfun/step-5-preview",
     "name": "StepFun: Step 5 Preview",
     "created": 1791462849,
