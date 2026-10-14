@@ -1,5 +1,47 @@
 [
   {
+    "id": "~unbiased/pareto-latest",
+    "name": "Pareto Latest",
+    "created": 1791933050,
+    "context": 262144
+  },
+  {
+    "id": "unbiased/pareto-26.9",
+    "name": "Pareto 26.9",
+    "created": 1791930537,
+    "context": 262144
+  },
+  {
+    "id": "liquid/lfm-2.5-24b-a2b",
+    "name": "LiquidAI: LFM2.5-24B-A2B",
+    "created": 1791912025,
+    "context": 128000
+  },
+  {
+    "id": "google/gemini-4-argon:batch",
+    "name": "Google: Gemini 4 Argon (batch)",
+    "created": 1791907477,
+    "context": 1048576
+  },
+  {
+    "id": "google/gemini-4-argon",
+    "name": "Google: Gemini 4 Argon",
+    "created": 1791907477,
+    "context": 1048576
+  },
+  {
+    "id": "scaledown/summarize",
+    "name": "ScaleDown: Summarize",
+    "created": 1791893360,
+    "context": 1000000
+  },
+  {
+    "id": "scaledown/extract",
+    "name": "ScaleDown: Extract",
+    "created": 1791893351,
+    "context": 1000000
+  },
+  {
     "id": "meta/muse-wonder",
     "name": "Meta: Muse Wonder",
     "created": 1791807945,
@@ -39,12 +81,6 @@
     "id": "inclusionai/ling-3.1-flash",
     "name": "inclusionAI: Ling 3.1 Flash",
     "created": 1790950024,
-    "context": 262144
-  },
-  {
-    "id": "apodex/apodex-1.1-mini:free",
-    "name": "Apodex: Apodex 1.1 Mini (free)",
-    "created": 1790875335,
     "context": 262144
   },
   {
@@ -252,12 +288,6 @@
     "context": 1048576
   },
   {
-    "id": "unbiased/pareto",
-    "name": "Pareto",
-    "created": 1789686178,
-    "context": 262144
-  },
-  {
     "id": "~deepseek/deepseek-pro-latest",
     "name": "DeepSeek: DeepSeek Pro Latest",
     "created": 1789399174,
@@ -321,7 +351,7 @@
     "id": "inclusionai/ling-3.0-flash-vl",
     "name": "inclusionAI: Ling 3.0 Flash VL",
     "created": 1789056114,
-    "context": 262144
+    "context": 131072
   },
   {
     "id": "deepseek/deepseek-v4.1-flash:batch",
@@ -378,12 +408,6 @@
     "context": 1050000
   },
   {
-    "id": "inclusionai/ling-3.0-flash-sante",
-    "name": "inclusionAI: Ling 3.0 Flash Sante",
-    "created": 1788545946,
-    "context": 262144
-  },
-  {
     "id": "qwen/qwen3.8-max-0902",
     "name": "Qwen: Qwen3.8 Max (0902)",
     "created": 1788469704,
@@ -436,12 +460,6 @@
     "name": "Tencent: Hy4 preview",
     "created": 1787897375,
     "context": 1048576
-  },
-  {
-    "id": "inclusionai/ling-3.0-flash-fin",
-    "name": "inclusionAI: Ling 3.0 Flash Fin",
-    "created": 1787846290,
-    "context": 262144
   },
   {
     "id": "~z-ai/glm-flash-latest",
