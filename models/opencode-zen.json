@@ -108,12 +108,6 @@
     "context": null
   },
   {
-    "id": "ling-3.1-flash-free",
-    "name": "ling-3.1-flash-free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "kimi-k3",
     "name": "kimi-k3",
     "created": 0,
@@ -392,6 +386,12 @@
   {
     "id": "gemini-3-flash",
     "name": "gemini-3-flash",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "deepseek-v4.1-flash-free",
+    "name": "deepseek-v4.1-flash-free",
     "created": 0,
     "context": null
   },
