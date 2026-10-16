@@ -1,5 +1,35 @@
 [
   {
+    "id": "moondream/moondream3-preview",
+    "name": "Moondream: Moondream 3 Preview",
+    "created": 1792102385,
+    "context": 32000
+  },
+  {
+    "id": "moondream/moondream3.1-9b-a2b",
+    "name": "Moondream: Moondream 3.1",
+    "created": 1792102373,
+    "context": 32000
+  },
+  {
+    "id": "meta/muse-spark-open",
+    "name": "Meta: Muse Spark Open",
+    "created": 1792087069,
+    "context": 1048576
+  },
+  {
+    "id": "nvidia/nemotron-3.5-super-vl:free",
+    "name": "NVIDIA: Nemotron 3.5 Super VL (free)",
+    "created": 1792076662,
+    "context": 1000000
+  },
+  {
+    "id": "nvidia/nemotron-3.5-super-vl",
+    "name": "NVIDIA: Nemotron 3.5 Super VL",
+    "created": 1792076662,
+    "context": 1048576
+  },
+  {
     "id": "~unbiased/pareto-latest",
     "name": "Pareto Latest",
     "created": 1791933050,
@@ -82,12 +112,6 @@
     "name": "inclusionAI: Ling 3.1 Flash",
     "created": 1790950024,
     "context": 262144
-  },
-  {
-    "id": "unbiased/pareto-26.10-preview",
-    "name": "Pareto 26.10 Preview",
-    "created": 1790863623,
-    "context": 1048576
   },
   {
     "id": "openai/gpt-6.1-sol-pro:batch",
@@ -2218,12 +2242,6 @@
     "name": "DeepSeek: R1 0528",
     "created": 1748455170,
     "context": 163840
-  },
-  {
-    "id": "anthropic/claude-sonnet-4",
-    "name": "Anthropic: Claude Sonnet 4",
-    "created": 1747930371,
-    "context": 200000
   },
   {
     "id": "mistralai/mistral-medium-3",

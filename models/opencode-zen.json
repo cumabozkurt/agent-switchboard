@@ -6,12 +6,6 @@
     "context": null
   },
   {
-    "id": "step-5-preview-free",
-    "name": "step-5-preview-free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "space-bunny-free",
     "name": "space-bunny-free",
     "created": 0,
@@ -38,6 +32,12 @@
   {
     "id": "qwen3.5-plus",
     "name": "qwen3.5-plus",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "nemotron-3.5-super-vl-free",
+    "name": "nemotron-3.5-super-vl-free",
     "created": 0,
     "context": null
   },
@@ -104,6 +104,12 @@
   {
     "id": "longcat-2.5-preview-free",
     "name": "longcat-2.5-preview-free",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "ll-alpha-free",
+    "name": "ll-alpha-free",
     "created": 0,
     "context": null
   },
@@ -308,6 +314,12 @@
   {
     "id": "gpt-5",
     "name": "gpt-5",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "glm-5.3-flash-free",
+    "name": "glm-5.3-flash-free",
     "created": 0,
     "context": null
   },
