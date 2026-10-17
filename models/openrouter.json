@@ -1,5 +1,23 @@
 [
   {
+    "id": "elorian/glimpse",
+    "name": "Elorian: Glimpse",
+    "created": 1792206629,
+    "context": 262144
+  },
+  {
+    "id": "xingchen-agi/xing4.0-29b-a4b:free",
+    "name": "XingChen: Xing4.0 29B A4B (free)",
+    "created": 1792177496,
+    "context": 262144
+  },
+  {
+    "id": "reflection/beam-1.0-501b-a23b",
+    "name": "Reflection: Beam 1.0 501B A23B",
+    "created": 1792160499,
+    "context": 1048576
+  },
+  {
     "id": "moondream/moondream3-preview",
     "name": "Moondream: Moondream 3 Preview",
     "created": 1792102385,
@@ -993,6 +1011,12 @@
     "id": "nvidia/nemotron-3-ultra-550b-a55b",
     "name": "NVIDIA: Nemotron 3 Ultra",
     "created": 1780551208,
+    "context": 262144
+  },
+  {
+    "id": "qwen/qwen3.7-plus:batch",
+    "name": "Qwen: Qwen3.7 Plus (batch)",
+    "created": 1780491783,
     "context": 262144
   },
   {

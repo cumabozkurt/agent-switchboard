@@ -48,20 +48,8 @@
     "context": null
   },
   {
-    "id": "muse-spark-1.3-contributor-free",
-    "name": "muse-spark-1.3-contributor-free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "muse-spark-1.3",
     "name": "muse-spark-1.3",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "muse-spark-1.2-contributor-free",
-    "name": "muse-spark-1.2-contributor-free",
     "created": 0,
     "context": null
   },
@@ -104,12 +92,6 @@
   {
     "id": "longcat-2.5-preview-free",
     "name": "longcat-2.5-preview-free",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "ll-alpha-free",
-    "name": "ll-alpha-free",
     "created": 0,
     "context": null
   },
@@ -516,14 +498,14 @@
     "context": null
   },
   {
-    "id": "cat-jam-free",
-    "name": "cat-jam-free",
+    "id": "big-pickle",
+    "name": "big-pickle",
     "created": 0,
     "context": null
   },
   {
-    "id": "big-pickle",
-    "name": "big-pickle",
+    "id": "beam-free",
+    "name": "beam-free",
     "created": 0,
     "context": null
   }
