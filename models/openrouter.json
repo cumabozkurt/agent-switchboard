@@ -1,5 +1,11 @@
 [
   {
+    "id": "deepseek/deepseek-v4.1-flash-1017",
+    "name": "DeepSeek: DeepSeek V4.1 Flash 1017",
+    "created": 1792225624,
+    "context": 1048576
+  },
+  {
     "id": "elorian/glimpse",
     "name": "Elorian: Glimpse",
     "created": 1792206629,
@@ -48,10 +54,16 @@
     "context": 1048576
   },
   {
+    "id": "unbiased/pareto-26.10",
+    "name": "Pareto 26.10",
+    "created": 1792073620,
+    "context": 1048576
+  },
+  {
     "id": "~unbiased/pareto-latest",
     "name": "Pareto Latest",
     "created": 1791933050,
-    "context": 262144
+    "context": 1048576
   },
   {
     "id": "unbiased/pareto-26.9",
