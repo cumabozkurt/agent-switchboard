@@ -2223,7 +2223,7 @@
     "id": "morph/morph-v3-fast",
     "name": "Morph: Morph V3 Fast",
     "created": 1751910002,
-    "context": 81920
+    "context": 262144
   },
   {
     "id": "mistralai/mistral-small-3.2-24b-instruct",
