@@ -6,12 +6,6 @@
     "context": null
   },
   {
-    "id": "space-bunny-free",
-    "name": "space-bunny-free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "qwen3.8-max",
     "name": "qwen3.8-max",
     "created": 0,
@@ -62,6 +56,12 @@
   {
     "id": "mistral-large-4",
     "name": "mistral-large-4",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "minimax-m3.1-flash-free",
+    "name": "minimax-m3.1-flash-free",
     "created": 0,
     "context": null
   },

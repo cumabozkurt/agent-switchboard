@@ -1,5 +1,11 @@
 [
   {
+    "id": "minimax/minimax-m3.1-flash:free",
+    "name": "MiniMax: MiniMax M3.1 Flash (free)",
+    "created": 1792379569,
+    "context": 1000000
+  },
+  {
     "id": "deepseek/deepseek-v4.1-flash-1017",
     "name": "DeepSeek: DeepSeek V4.1 Flash 1017",
     "created": 1792225624,
@@ -22,6 +28,12 @@
     "name": "Reflection: Beam 1.0 501B A23B",
     "created": 1792160499,
     "context": 1048576
+  },
+  {
+    "id": "inception/mercury-3",
+    "name": "Inception: Mercury 3",
+    "created": 1792158337,
+    "context": 1000000
   },
   {
     "id": "moondream/moondream3-preview",
@@ -2379,7 +2391,7 @@
     "id": "meta-llama/llama-4-maverick",
     "name": "Meta: Llama 4 Maverick",
     "created": 1743881822,
-    "context": 1048576
+    "context": 524288
   },
   {
     "id": "meta-llama/llama-4-scout",
@@ -2514,12 +2526,6 @@
     "context": 127072
   },
   {
-    "id": "deepseek/deepseek-r1",
-    "name": "DeepSeek: R1",
-    "created": 1737381095,
-    "context": 64000
-  },
-  {
     "id": "minimax/minimax-01",
     "name": "MiniMax: MiniMax-01",
     "created": 1736915462,
@@ -2536,12 +2542,6 @@
     "name": "DeepSeek: DeepSeek V3",
     "created": 1735241320,
     "context": 163840
-  },
-  {
-    "id": "sao10k/l3.3-euryale-70b",
-    "name": "Sao10K: Llama 3.3 Euryale 70B",
-    "created": 1734535928,
-    "context": 131072
   },
   {
     "id": "openai/o1",
@@ -2740,12 +2740,6 @@
     "name": "Mistral: Mixtral 8x22B Instruct",
     "created": 1713312000,
     "context": 65536
-  },
-  {
-    "id": "microsoft/wizardlm-2-8x22b",
-    "name": "WizardLM-2 8x22B",
-    "created": 1713225600,
-    "context": 65535
   },
   {
     "id": "openai/gpt-4-turbo:batch",

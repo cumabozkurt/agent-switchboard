@@ -6,12 +6,6 @@
     "context": null
   },
   {
-    "id": "space-bunny",
-    "name": "space-bunny",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "qwen3.8-max",
     "name": "qwen3.8-max",
     "created": 0,
@@ -56,6 +50,12 @@
   {
     "id": "muse-spark-1.2-contributor",
     "name": "muse-spark-1.2-contributor",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "minimax-m3.1-flash-free",
+    "name": "minimax-m3.1-flash-free",
     "created": 0,
     "context": null
   },
