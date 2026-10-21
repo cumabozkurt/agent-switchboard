@@ -2250,21 +2250,9 @@
     "context": 1000000
   },
   {
-    "id": "google/gemini-2.5-flash:batch",
-    "name": "Google: Gemini 2.5 Flash (batch)",
-    "created": 1750172488,
-    "context": 1048576
-  },
-  {
     "id": "google/gemini-2.5-flash",
     "name": "Google: Gemini 2.5 Flash",
     "created": 1750172488,
-    "context": 1048576
-  },
-  {
-    "id": "google/gemini-2.5-pro:batch",
-    "name": "Google: Gemini 2.5 Pro (batch)",
-    "created": 1750169544,
     "context": 1048576
   },
   {
