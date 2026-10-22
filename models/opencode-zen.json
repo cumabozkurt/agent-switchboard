@@ -96,12 +96,6 @@
     "context": null
   },
   {
-    "id": "longcat-2.5-preview-free",
-    "name": "longcat-2.5-preview-free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "kimi-k3",
     "name": "kimi-k3",
     "created": 0,
@@ -386,6 +380,12 @@
   {
     "id": "gemini-3-flash",
     "name": "gemini-3-flash",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "flint-40b-free",
+    "name": "flint-40b-free",
     "created": 0,
     "context": null
   },

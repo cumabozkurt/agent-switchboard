@@ -1,5 +1,11 @@
 [
   {
+    "id": "recursive/flint-v1.0:free",
+    "name": "Recursive: Flint (free)",
+    "created": 1792622765,
+    "context": 262144
+  },
+  {
     "id": "minimax/minimax-m3.1-flash:free",
     "name": "MiniMax: MiniMax M3.1 Flash (free)",
     "created": 1792379569,
@@ -2188,12 +2194,6 @@
     "name": "ByteDance: UI-TARS 7B ",
     "created": 1753205056,
     "context": 128000
-  },
-  {
-    "id": "google/gemini-2.5-flash-lite:batch",
-    "name": "Google: Gemini 2.5 Flash Lite (batch)",
-    "created": 1753200276,
-    "context": 1048576
   },
   {
     "id": "google/gemini-2.5-flash-lite",
