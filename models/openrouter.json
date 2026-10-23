@@ -6,10 +6,10 @@
     "context": 262144
   },
   {
-    "id": "minimax/minimax-m3.1-flash:free",
-    "name": "MiniMax: MiniMax M3.1 Flash (free)",
+    "id": "minimax/minimax-m3.1-flash",
+    "name": "MiniMax: MiniMax M3.1 Flash",
     "created": 1792379569,
-    "context": 1000000
+    "context": 1048576
   },
   {
     "id": "deepseek/deepseek-v4.1-flash-1017",
