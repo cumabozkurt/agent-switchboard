@@ -1,5 +1,11 @@
 [
   {
+    "id": "moonshotai/kimi-k3.1-pro",
+    "name": "MoonshotAI: Kimi K3.1 Pro",
+    "created": 1792778188,
+    "context": 1048576
+  },
+  {
     "id": "recursive/flint-v1.0:free",
     "name": "Recursive: Flint (free)",
     "created": 1792622765,
