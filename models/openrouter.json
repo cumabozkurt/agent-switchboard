@@ -672,6 +672,12 @@
     "context": 65536
   },
   {
+    "id": "liquid/lfm-2.5-2.6b",
+    "name": "LiquidAI: LFM2.5-2.6B",
+    "created": 1786470519,
+    "context": 128000
+  },
+  {
     "id": "nvidia/nemotron-3.5-lightning:free",
     "name": "NVIDIA: Nemotron 3.5 Lightning (free)",
     "created": 1786452751,
@@ -2766,12 +2772,6 @@
     "context": 2000000
   },
   {
-    "id": "openai/gpt-3.5-turbo-instruct",
-    "name": "OpenAI: GPT-3.5 Turbo Instruct",
-    "created": 1695859200,
-    "context": 4095
-  },
-  {
     "id": "openai/gpt-3.5-turbo-16k",
     "name": "OpenAI: GPT-3.5 Turbo 16k",
     "created": 1693180800,
@@ -2800,17 +2800,5 @@
     "name": "OpenAI: GPT-4",
     "created": 1685232000,
     "context": 8191
-  },
-  {
-    "id": "openai/gpt-3.5-turbo:batch",
-    "name": "OpenAI: GPT-3.5 Turbo (batch)",
-    "created": 1685232000,
-    "context": 16385
-  },
-  {
-    "id": "openai/gpt-3.5-turbo",
-    "name": "OpenAI: GPT-3.5 Turbo",
-    "created": 1685232000,
-    "context": 16385
   }
 ]

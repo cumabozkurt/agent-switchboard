@@ -132,6 +132,12 @@
     "context": null
   },
   {
+    "id": "iceman-contributor-free",
+    "name": "iceman-contributor-free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "hy4-preview",
     "name": "hy4-preview",
     "created": 0,
@@ -192,8 +198,8 @@
     "context": null
   },
   {
-    "id": "gemini-4-argon-contributor",
-    "name": "gemini-4-argon-contributor",
+    "id": "gemini-4-argon",
+    "name": "gemini-4-argon",
     "created": 0,
     "context": null
   },
