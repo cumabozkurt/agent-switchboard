@@ -402,12 +402,6 @@
     "context": null
   },
   {
-    "id": "deepseek-v4-flash",
-    "name": "deepseek-v4-flash",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "claude-sonnet-5-5",
     "name": "claude-sonnet-5-5",
     "created": 0,

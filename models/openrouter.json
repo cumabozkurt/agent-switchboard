@@ -1,5 +1,29 @@
 [
   {
+    "id": "openai/gpt-6.1-terra-pro:batch",
+    "name": "OpenAI: GPT-6.1 Terra Pro (batch)",
+    "created": 1793038556,
+    "context": 1050000
+  },
+  {
+    "id": "openai/gpt-6.1-terra-pro",
+    "name": "OpenAI: GPT-6.1 Terra Pro",
+    "created": 1793038556,
+    "context": 1050000
+  },
+  {
+    "id": "openai/gpt-6.1-terra:batch",
+    "name": "OpenAI: GPT-6.1 Terra (batch)",
+    "created": 1793038409,
+    "context": 1050000
+  },
+  {
+    "id": "openai/gpt-6.1-terra",
+    "name": "OpenAI: GPT-6.1 Terra",
+    "created": 1793038409,
+    "context": 1050000
+  },
+  {
     "id": "moonshotai/kimi-k3.1-pro",
     "name": "MoonshotAI: Kimi K3.1 Pro",
     "created": 1792778188,
@@ -1362,12 +1386,6 @@
     "context": 202752
   },
   {
-    "id": "arcee-ai/trinity-large-thinking",
-    "name": "Arcee AI: Trinity Large Thinking",
-    "created": 1775058318,
-    "context": 262144
-  },
-  {
     "id": "x-ai/grok-4.20-multi-agent",
     "name": "SpaceXAI: Grok 4.20 Multi-Agent",
     "created": 1774979158,
@@ -1426,12 +1444,6 @@
     "name": "OpenAI: GPT-5.4 Mini",
     "created": 1773748178,
     "context": 400000
-  },
-  {
-    "id": "mistralai/mistral-small-2603:batch",
-    "name": "Mistral: Mistral Small 4 (batch)",
-    "created": 1773695685,
-    "context": 262144
   },
   {
     "id": "mistralai/mistral-small-2603",
@@ -1800,12 +1812,6 @@
     "context": 262144
   },
   {
-    "id": "mistralai/ministral-8b-2512:batch",
-    "name": "Mistral: Ministral 3 8B 2512 (batch)",
-    "created": 1764681654,
-    "context": 262144
-  },
-  {
     "id": "mistralai/ministral-8b-2512",
     "name": "Mistral: Ministral 3 8B 2512",
     "created": 1764681654,
@@ -1816,12 +1822,6 @@
     "name": "Mistral: Ministral 3 3B 2512",
     "created": 1764681560,
     "context": 131072
-  },
-  {
-    "id": "mistralai/mistral-large-2512:batch",
-    "name": "Mistral: Mistral Large 3 2512 (batch)",
-    "created": 1764624472,
-    "context": 262144
   },
   {
     "id": "mistralai/mistral-large-2512",
@@ -1912,12 +1912,6 @@
     "name": "MiniMax: MiniMax M2",
     "created": 1761252093,
     "context": 204800
-  },
-  {
-    "id": "ibm-granite/granite-4.0-h-micro",
-    "name": "IBM: Granite 4.0 Micro",
-    "created": 1760927695,
-    "context": 131000
   },
   {
     "id": "openai/gpt-5-image-mini",
@@ -2064,12 +2058,6 @@
     "context": 163840
   },
   {
-    "id": "mistralai/mistral-medium-3.1:batch",
-    "name": "Mistral: Mistral Medium 3.1 (batch)",
-    "created": 1755095639,
-    "context": 131072
-  },
-  {
     "id": "mistralai/mistral-medium-3.1",
     "name": "Mistral: Mistral Medium 3.1",
     "created": 1755095639,
@@ -2152,12 +2140,6 @@
     "name": "Anthropic: Claude Opus 4.1",
     "created": 1754411591,
     "context": 200000
-  },
-  {
-    "id": "mistralai/codestral-2508:batch",
-    "name": "Mistral: Codestral 2508 (batch)",
-    "created": 1754079630,
-    "context": 256000
   },
   {
     "id": "mistralai/codestral-2508",
