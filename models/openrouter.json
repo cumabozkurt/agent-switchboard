@@ -72,6 +72,12 @@
     "context": 1000000
   },
   {
+    "id": "prism-ml/ternary-bonsai-2-9b",
+    "name": "PrismML: Ternary Bonsai 2 9B",
+    "created": 1792130995,
+    "context": 262144
+  },
+  {
     "id": "moondream/moondream3-preview",
     "name": "Moondream: Moondream 3 Preview",
     "created": 1792102385,
@@ -189,7 +195,7 @@
     "id": "inclusionai/ling-3.1-flash",
     "name": "inclusionAI: Ling 3.1 Flash",
     "created": 1790950024,
-    "context": 262144
+    "context": 1000000
   },
   {
     "id": "openai/gpt-6.1-sol-pro:batch",
@@ -1456,12 +1462,6 @@
     "name": "Z.ai: GLM 5 Turbo",
     "created": 1773583573,
     "context": 202752
-  },
-  {
-    "id": "nvidia/nemotron-3-super-120b-a12b:free",
-    "name": "NVIDIA: Nemotron 3 Super (free)",
-    "created": 1773245239,
-    "context": 262144
   },
   {
     "id": "nvidia/nemotron-3-super-120b-a12b",
