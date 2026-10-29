@@ -1,11 +1,5 @@
 [
   {
-    "id": "test",
-    "name": "test",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "qwen3.8-max",
     "name": "qwen3.8-max",
     "created": 0,

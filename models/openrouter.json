@@ -1,5 +1,11 @@
 [
   {
+    "id": "particle-ai/particle-1",
+    "name": "Particle AI: Particle-1",
+    "created": 1793207893,
+    "context": 1048576
+  },
+  {
     "id": "openai/gpt-6.1-terra-pro:batch",
     "name": "OpenAI: GPT-6.1 Terra Pro (batch)",
     "created": 1793038556,
@@ -165,7 +171,7 @@
     "id": "stepfun/step-5-preview",
     "name": "StepFun: Step 5 Preview",
     "created": 1791462849,
-    "context": 1048576
+    "context": 1000000
   },
   {
     "id": "anthropic/claude-haiku-5.5:batch",
@@ -1467,7 +1473,7 @@
     "id": "nvidia/nemotron-3-super-120b-a12b",
     "name": "NVIDIA: Nemotron 3 Super",
     "created": 1773245239,
-    "context": 262144
+    "context": 1048576
   },
   {
     "id": "bytedance-seed/seed-2.0-lite",
@@ -2028,12 +2034,6 @@
     "context": 1000000
   },
   {
-    "id": "qwen/qwen3-next-80b-a3b-thinking",
-    "name": "Qwen: Qwen3 Next 80B A3B Thinking",
-    "created": 1757612284,
-    "context": 262144
-  },
-  {
     "id": "qwen/qwen3-next-80b-a3b-instruct",
     "name": "Qwen: Qwen3 Next 80B A3B Instruct",
     "created": 1757612213,
@@ -2304,12 +2304,6 @@
     "context": 131072
   },
   {
-    "id": "openai/o4-mini-high",
-    "name": "OpenAI: o4 Mini High",
-    "created": 1744824212,
-    "context": 200000
-  },
-  {
     "id": "openai/o3:batch",
     "name": "OpenAI: o3 (batch)",
     "created": 1744823457,
@@ -2324,12 +2318,6 @@
   {
     "id": "openai/o4-mini:batch",
     "name": "OpenAI: o4 Mini (batch)",
-    "created": 1744820942,
-    "context": 200000
-  },
-  {
-    "id": "openai/o4-mini",
-    "name": "OpenAI: o4 Mini",
     "created": 1744820942,
     "context": 200000
   },
@@ -2386,12 +2374,6 @@
     "name": "DeepSeek: DeepSeek V3 0324",
     "created": 1742824755,
     "context": 163840
-  },
-  {
-    "id": "openai/o1-pro",
-    "name": "OpenAI: o1-pro",
-    "created": 1742423211,
-    "context": 200000
   },
   {
     "id": "mistralai/mistral-small-3.1-24b-instruct",
@@ -2460,12 +2442,6 @@
     "context": 32768
   },
   {
-    "id": "openai/o3-mini-high",
-    "name": "OpenAI: o3 Mini High",
-    "created": 1739372611,
-    "context": 200000
-  },
-  {
     "id": "aion-labs/aion-rp-llama-3.1-8b",
     "name": "AionLabs: Aion-RP 1.0 (8B)",
     "created": 1738696718,
@@ -2486,12 +2462,6 @@
   {
     "id": "openai/o3-mini:batch",
     "name": "OpenAI: o3 Mini (batch)",
-    "created": 1738351721,
-    "context": 200000
-  },
-  {
-    "id": "openai/o3-mini",
-    "name": "OpenAI: o3 Mini",
     "created": 1738351721,
     "context": 200000
   },
@@ -2524,12 +2494,6 @@
     "name": "DeepSeek: DeepSeek V3",
     "created": 1735241320,
     "context": 163840
-  },
-  {
-    "id": "openai/o1",
-    "name": "OpenAI: o1",
-    "created": 1734459999,
-    "context": 200000
   },
   {
     "id": "cohere/command-r7b-12-2024",
@@ -2726,12 +2690,6 @@
   {
     "id": "openai/gpt-4-turbo:batch",
     "name": "OpenAI: GPT-4 Turbo (batch)",
-    "created": 1712620800,
-    "context": 128000
-  },
-  {
-    "id": "openai/gpt-4-turbo",
-    "name": "OpenAI: GPT-4 Turbo",
     "created": 1712620800,
     "context": 128000
   },
