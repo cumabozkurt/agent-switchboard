@@ -171,7 +171,7 @@
     "id": "stepfun/step-5-preview",
     "name": "StepFun: Step 5 Preview",
     "created": 1791462849,
-    "context": 1000000
+    "context": 1048576
   },
   {
     "id": "anthropic/claude-haiku-5.5:batch",
@@ -1660,12 +1660,6 @@
     "name": "MoonshotAI: Kimi K2.5",
     "created": 1769487076,
     "context": 262144
-  },
-  {
-    "id": "upstage/solar-pro-3",
-    "name": "Upstage: Solar Pro 3",
-    "created": 1769481200,
-    "context": 131072
   },
   {
     "id": "minimax/minimax-m2-her",
