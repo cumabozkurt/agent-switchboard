@@ -798,18 +798,6 @@
     "context": 262144
   },
   {
-    "id": "poolside/laguna-s-2.1:free",
-    "name": "Poolside: Laguna S 2.1 (free)",
-    "created": 1784652683,
-    "context": 262144
-  },
-  {
-    "id": "poolside/laguna-s-2.1",
-    "name": "Poolside: Laguna S 2.1",
-    "created": 1784652683,
-    "context": 1048576
-  },
-  {
     "id": "google/gemini-3.6-flash:batch",
     "name": "Google: Gemini 3.6 Flash (batch)",
     "created": 1784646733,
@@ -975,18 +963,6 @@
     "id": "tencent/hy3",
     "name": "Tencent: Hy3",
     "created": 1783344048,
-    "context": 262144
-  },
-  {
-    "id": "poolside/laguna-xs-2.1:free",
-    "name": "Poolside: Laguna XS 2.1 (free)",
-    "created": 1783002429,
-    "context": 262144
-  },
-  {
-    "id": "poolside/laguna-xs-2.1",
-    "name": "Poolside: Laguna XS 2.1",
-    "created": 1783002429,
     "context": 262144
   },
   {
