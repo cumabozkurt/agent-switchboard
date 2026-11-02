@@ -651,7 +651,7 @@
     "id": "qwen/qwen3.8-27b",
     "name": "Qwen: Qwen3.8 27B",
     "created": 1786722910,
-    "context": 1000000
+    "context": 1024000
   },
   {
     "id": "dots-studio/dots-3-note-preview:free",
