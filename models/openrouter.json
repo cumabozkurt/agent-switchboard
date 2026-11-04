@@ -1,5 +1,17 @@
 [
   {
+    "id": "tencent/hy4",
+    "name": "Tencent: Hy4",
+    "created": 1793766031,
+    "context": 1048576
+  },
+  {
+    "id": "stealth/crouton-alpha",
+    "name": "Crouton Alpha",
+    "created": 1793669930,
+    "context": 1048576
+  },
+  {
     "id": "z-ai/glm-5.3-flashx-legal",
     "name": "Z.ai: GLM 5.3 FlashX Legal",
     "created": 1793626154,
@@ -384,6 +396,12 @@
     "context": 1050000
   },
   {
+    "id": "x-ai/grok-4.7:batch",
+    "name": "SpaceXAI: Grok 4.7 (batch)",
+    "created": 1790007541,
+    "context": 500000
+  },
+  {
     "id": "x-ai/grok-4.7",
     "name": "SpaceXAI: Grok 4.7",
     "created": 1790007541,
@@ -700,6 +718,12 @@
     "name": "DeepSeek: DeepSeek V4 Pro 0813",
     "created": 1786549364,
     "context": 1048576
+  },
+  {
+    "id": "x-ai/grok-4.6:batch",
+    "name": "SpaceXAI: Grok 4.6 (batch)",
+    "created": 1786548957,
+    "context": 500000
   },
   {
     "id": "x-ai/grok-4.6",
@@ -1299,7 +1323,7 @@
     "id": "xiaomi/mimo-v2.5",
     "name": "Xiaomi: MiMo-V2.5",
     "created": 1776874269,
-    "context": 1050000
+    "context": 1000000
   },
   {
     "id": "openai/gpt-5.4-image-2",
