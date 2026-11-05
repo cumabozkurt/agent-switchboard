@@ -1,5 +1,11 @@
 [
   {
+    "id": "ricursiveai/ripple-65b-preview",
+    "name": "ricursiveAI/Ripple-65B-Preview",
+    "created": 1793818990,
+    "context": 1048576
+  },
+  {
     "id": "tencent/hy4",
     "name": "Tencent: Hy4",
     "created": 1793766031,
@@ -774,6 +780,12 @@
     "context": 131072
   },
   {
+    "id": "inclusionai/ling-3.0-tiny",
+    "name": "inclusionAI: Ling 3.0 Tiny",
+    "created": 1786034890,
+    "context": 262144
+  },
+  {
     "id": "meta/muse-spark-1.2",
     "name": "Meta: Muse Spark 1.2",
     "created": 1785959287,
@@ -789,12 +801,6 @@
     "id": "deepseek/deepseek-v4-flash-0731",
     "name": "DeepSeek: DeepSeek V4 Flash 0731",
     "created": 1785478908,
-    "context": 1048576
-  },
-  {
-    "id": "thinkingmachines/inkling-small:free",
-    "name": "Thinking Machines: Inkling Small (free)",
-    "created": 1785443117,
     "context": 1048576
   },
   {
@@ -856,12 +862,6 @@
     "name": "Meituan: LongCat 2.0",
     "created": 1784554658,
     "context": 1048756
-  },
-  {
-    "id": "thinkingmachines/inkling:free",
-    "name": "Thinking Machines: Inkling (free)",
-    "created": 1784325956,
-    "context": 1048576
   },
   {
     "id": "thinkingmachines/inkling",
