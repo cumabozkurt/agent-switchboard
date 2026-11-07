@@ -24,12 +24,6 @@
     "context": null
   },
   {
-    "id": "pulse-alpha-free",
-    "name": "Pulse Alpha Free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "nemotron-3.5-super-vl-free",
     "name": "Nemotron 3.5 Super VL Free",
     "created": 0,
@@ -110,6 +104,18 @@
   {
     "id": "kimi-k2.5",
     "name": "Kimi K2.5",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "inkling-2-small-free",
+    "name": "Inkling 2 Small Free",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "iceman-free",
+    "name": "Iceman Free",
     "created": 0,
     "context": null
   },
