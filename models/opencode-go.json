@@ -60,6 +60,12 @@
     "context": null
   },
   {
+    "id": "longcat-2.5-free",
+    "name": "LongCat 2.5 Free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "longcat-2.0",
     "name": "LongCat-2.0",
     "created": 0,
@@ -158,12 +164,6 @@
   {
     "id": "deepseek-v4-pro",
     "name": "DeepSeek V4 Pro",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "crouton-alpha-free",
-    "name": "Crouton Alpha Free",
     "created": 0,
     "context": null
   },
