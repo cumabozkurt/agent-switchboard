@@ -1,5 +1,29 @@
 [
   {
+    "id": "baidu/ernie-5.5-flash-preview:free",
+    "name": "Baidu: ERNIE-5.5-Flash-Preview (free)",
+    "created": 1794333533,
+    "context": 1024000
+  },
+  {
+    "id": "baidu/ernie-light-dt-1.0-intl",
+    "name": "Baidu: ERNIE-Light-DT-1.0",
+    "created": 1794331260,
+    "context": 1024000
+  },
+  {
+    "id": "google/gemini-4-carbon:batch",
+    "name": "Google: Gemini 4 Carbon (batch)",
+    "created": 1794326871,
+    "context": 1048576
+  },
+  {
+    "id": "google/gemini-4-carbon",
+    "name": "Google: Gemini 4 Carbon",
+    "created": 1794326871,
+    "context": 1048576
+  },
+  {
     "id": "nex-agi/nex-n2.6",
     "name": "Nex AGI: Nex-N2.6",
     "created": 1794282379,
@@ -48,6 +72,12 @@
     "context": 131072
   },
   {
+    "id": "kt/midm-k-3.0-pro",
+    "name": "KT: Mi:dm K 3.0 Pro",
+    "created": 1793897701,
+    "context": 261795
+  },
+  {
     "id": "openrouter/auto",
     "name": "Auto Router",
     "created": 1793885889,
@@ -76,6 +106,12 @@
     "name": "Tencent: Hy4",
     "created": 1793766031,
     "context": 1048576
+  },
+  {
+    "id": "motif-technologies/motif-3",
+    "name": "Motif Technologies: Motif 3",
+    "created": 1793655334,
+    "context": 262144
   },
   {
     "id": "z-ai/glm-5.3-flashx-legal",
@@ -147,12 +183,6 @@
     "id": "elorian/glimpse",
     "name": "Elorian: Glimpse",
     "created": 1792206629,
-    "context": 262144
-  },
-  {
-    "id": "xingchen-agi/xing4.0-29b-a4b:free",
-    "name": "XingChen: Xing4.0 29B A4B (free)",
-    "created": 1792177496,
     "context": 262144
   },
   {
@@ -1569,7 +1599,7 @@
     "id": "nvidia/nemotron-3-super-120b-a12b",
     "name": "NVIDIA: Nemotron 3 Super",
     "created": 1773245239,
-    "context": 1048576
+    "context": 262144
   },
   {
     "id": "bytedance-seed/seed-2.0-lite",
@@ -2619,12 +2649,6 @@
     "id": "anthracite-org/magnum-v4-72b",
     "name": "Magnum v4 72B",
     "created": 1729555200,
-    "context": 32768
-  },
-  {
-    "id": "qwen/qwen-2.5-7b-instruct",
-    "name": "Qwen: Qwen2.5 7B Instruct",
-    "created": 1729036800,
     "context": 32768
   },
   {

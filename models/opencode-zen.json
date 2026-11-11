@@ -342,6 +342,12 @@
     "context": null
   },
   {
+    "id": "gemini-4-carbon",
+    "name": "Gemini 4 Carbon",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gemini-4-argon",
     "name": "Gemini 4 Argon",
     "created": 0,
@@ -391,7 +397,7 @@
   },
   {
     "id": "deepseek-v4.1-flash",
-    "name": "DeepSeek V4.1 Flash",
+    "name": "DeepSeek V4.1 Flash 1017",
     "created": 0,
     "context": null
   },
