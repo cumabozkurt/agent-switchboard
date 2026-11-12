@@ -150,6 +150,12 @@
     "context": 1050000
   },
   {
+    "id": "moonshotai/kimi-k3.1-pro:batch",
+    "name": "MoonshotAI: Kimi K3.1 Pro (batch)",
+    "created": 1792778188,
+    "context": 1048576
+  },
+  {
     "id": "moonshotai/kimi-k3.1-pro",
     "name": "MoonshotAI: Kimi K3.1 Pro",
     "created": 1792778188,
@@ -316,6 +322,12 @@
     "name": "inclusionAI: Ling 3.1 Flash",
     "created": 1790950024,
     "context": 1000000
+  },
+  {
+    "id": "unbiased/pareto-26.10-preview",
+    "name": "Pareto 26.10 Preview",
+    "created": 1790863623,
+    "context": 1048576
   },
   {
     "id": "openai/gpt-6.1-sol-pro:batch",
@@ -808,12 +820,6 @@
     "name": "Qwen: Qwen3.8 2.4T A95B",
     "created": 1786551702,
     "context": 1048576
-  },
-  {
-    "id": "bytedance-seed/seed-2.0-code",
-    "name": "ByteDance Seed: Seed-2.0-Code",
-    "created": 1786550701,
-    "context": 262144
   },
   {
     "id": "deepseek/deepseek-v4-pro-0813",
@@ -1810,18 +1816,6 @@
     "name": "OpenAI: GPT-5.2-Codex",
     "created": 1768409315,
     "context": 400000
-  },
-  {
-    "id": "bytedance-seed/seed-1.6-flash",
-    "name": "ByteDance Seed: Seed 1.6 Flash",
-    "created": 1766505011,
-    "context": 262144
-  },
-  {
-    "id": "bytedance-seed/seed-1.6",
-    "name": "ByteDance Seed: Seed 1.6",
-    "created": 1766504997,
-    "context": 262144
   },
   {
     "id": "z-ai/glm-4.7",
