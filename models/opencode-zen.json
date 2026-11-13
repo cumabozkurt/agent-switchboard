@@ -342,6 +342,12 @@
     "context": null
   },
   {
+    "id": "gemini-4-hydrogen",
+    "name": "Gemini 4 Hydrogen",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gemini-4-carbon",
     "name": "Gemini 4 Carbon",
     "created": 0,

@@ -1,5 +1,17 @@
 [
   {
+    "id": "google/gemini-4-hydrogen:batch",
+    "name": "Google: Gemini 4 Hydrogen (batch)",
+    "created": 1794506460,
+    "context": 1048576
+  },
+  {
+    "id": "google/gemini-4-hydrogen",
+    "name": "Google: Gemini 4 Hydrogen",
+    "created": 1794506460,
+    "context": 1048576
+  },
+  {
     "id": "baidu/ernie-5.5-flash-preview:free",
     "name": "Baidu: ERNIE-5.5-Flash-Preview (free)",
     "created": 1794333533,
@@ -32,6 +44,12 @@
   {
     "id": "thinkingmachines/inkling-2-small:free",
     "name": "Thinking Machines: Inkling 2 Small (free)",
+    "created": 1794261847,
+    "context": 1048576
+  },
+  {
+    "id": "thinkingmachines/inkling-2-small",
+    "name": "Thinking Machines: Inkling 2 Small",
     "created": 1794261847,
     "context": 1048576
   },
@@ -117,6 +135,12 @@
     "id": "z-ai/glm-5.3-flashx-legal",
     "name": "Z.ai: GLM 5.3 FlashX Legal",
     "created": 1793626154,
+    "context": 1048576
+  },
+  {
+    "id": "particle-ai/particle-1:free",
+    "name": "Particle AI: Particle-1 (free)",
+    "created": 1793207893,
     "context": 1048576
   },
   {
@@ -1743,7 +1767,7 @@
     "id": "minimax/minimax-m2.5",
     "name": "MiniMax: MiniMax M2.5",
     "created": 1770908502,
-    "context": 200000
+    "context": 198000
   },
   {
     "id": "z-ai/glm-5",
