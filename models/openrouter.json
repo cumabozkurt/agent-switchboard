@@ -1,5 +1,11 @@
 [
   {
+    "id": "inclusionai/ling-3.2-flash:free",
+    "name": "inclusionAI: Ling 3.2 Flash (free)",
+    "created": 1794591958,
+    "context": 1048576
+  },
+  {
     "id": "google/gemini-4-hydrogen:batch",
     "name": "Google: Gemini 4 Hydrogen (batch)",
     "created": 1794506460,
@@ -813,7 +819,7 @@
     "id": "qwen/qwen3.8-27b",
     "name": "Qwen: Qwen3.8 27B",
     "created": 1786722910,
-    "context": 1048575
+    "context": 1024000
   },
   {
     "id": "dots-studio/dots-3-note-preview:free",
@@ -862,18 +868,6 @@
     "name": "SpaceXAI: Grok 4.6",
     "created": 1786548957,
     "context": 500000
-  },
-  {
-    "id": "liquid/lfm-2.5-2.6b:free",
-    "name": "LiquidAI: LFM2.5-2.6B (free)",
-    "created": 1786470519,
-    "context": 65536
-  },
-  {
-    "id": "liquid/lfm-2.5-2.6b",
-    "name": "LiquidAI: LFM2.5-2.6B",
-    "created": 1786470519,
-    "context": 128000
   },
   {
     "id": "nvidia/nemotron-3.5-lightning:free",
