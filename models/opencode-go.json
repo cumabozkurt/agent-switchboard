@@ -6,6 +6,12 @@
     "context": null
   },
   {
+    "id": "qwen4-max",
+    "name": "Qwen4 Max",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "qwen3.8-max",
     "name": "Qwen3.8 Max",
     "created": 0,
@@ -98,6 +104,12 @@
   {
     "id": "hy4-preview",
     "name": "Hy4 preview",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "hy4-flash-free",
+    "name": "Hy4 flash Free",
     "created": 0,
     "context": null
   },
