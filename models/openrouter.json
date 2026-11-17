@@ -1,5 +1,11 @@
 [
   {
+    "id": "tencent/hy4-flash",
+    "name": "Tencent: Hy4 flash",
+    "created": 1794838706,
+    "context": 1048576
+  },
+  {
     "id": "qwen/qwen4-max",
     "name": "Qwen: Qwen4 Max",
     "created": 1794795526,
@@ -885,7 +891,7 @@
     "id": "nvidia/nemotron-3.5-lightning",
     "name": "NVIDIA: Nemotron 3.5 Lightning",
     "created": 1786452751,
-    "context": 262144
+    "context": 1048576
   },
   {
     "id": "sakana/sakana-namazu",
@@ -1180,6 +1186,12 @@
     "name": "Cohere: North Mini Code (free)",
     "created": 1781723748,
     "context": 256000
+  },
+  {
+    "id": "z-ai/glm-5.2:batch",
+    "name": "Z.ai: GLM 5.2 (batch)",
+    "created": 1781631930,
+    "context": 1048576
   },
   {
     "id": "z-ai/glm-5.2",
