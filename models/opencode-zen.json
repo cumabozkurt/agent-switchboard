@@ -162,6 +162,18 @@
     "context": null
   },
   {
+    "id": "gpt-6.2-sol",
+    "name": "GPT-6.2 Sol",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "gpt-6.2-astra",
+    "name": "GPT-6.2 Astra",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gpt-6.1-sol",
     "name": "GPT-6.1 Sol",
     "created": 0,
@@ -302,12 +314,6 @@
   {
     "id": "gpt-5",
     "name": "GPT-5",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "glm-5.3-flash-free",
-    "name": "GLM-5.3-Flash Free",
     "created": 0,
     "context": null
   },
