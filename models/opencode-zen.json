@@ -1,5 +1,11 @@
 [
   {
+    "id": "tidepool-alpha-free",
+    "name": "Tidepool Alpha Free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "qwen3.8-max",
     "name": "Qwen3.8 Max",
     "created": 0,
@@ -108,14 +114,14 @@
     "context": null
   },
   {
-    "id": "kimi-k2.6",
-    "name": "Kimi K2.6",
+    "id": "jev-1.13-free",
+    "name": "Jev 1.13 Free",
     "created": 0,
     "context": null
   },
   {
-    "id": "kimi-k2.5",
-    "name": "Kimi K2.5",
+    "id": "jev-1.13",
+    "name": "Jev 1.13",
     "created": 0,
     "context": null
   },
@@ -134,6 +140,12 @@
   {
     "id": "hy4-flash-free",
     "name": "Hy4 flash Free",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "grok-imagine-image-2.0",
+    "name": "Grok Imagine Image 2.0",
     "created": 0,
     "context": null
   },
@@ -162,6 +174,18 @@
     "context": null
   },
   {
+    "id": "gpt-live-1",
+    "name": "GPT-Live 1",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "gpt-image-2.5-sunburst",
+    "name": "GPT Image 2.5 Sunburst",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gpt-6.2-sol",
     "name": "GPT-6.2 Sol",
     "created": 0,
@@ -182,6 +206,12 @@
   {
     "id": "gpt-6-sol",
     "name": "GPT-6 Sol",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "gpt-6-luna-decision",
+    "name": "GPT-6 Luna Decision",
     "created": 0,
     "context": null
   },
@@ -330,20 +360,20 @@
     "context": null
   },
   {
-    "id": "glm-5.2",
-    "name": "GLM-5.2",
+    "id": "gemini-nano-banana-2.1",
+    "name": "Nano Banana 2.1",
     "created": 0,
     "context": null
   },
   {
-    "id": "glm-5.1",
-    "name": "GLM-5.1",
+    "id": "gemini-decision-1",
+    "name": "Gemini Decision 1",
     "created": 0,
     "context": null
   },
   {
-    "id": "glm-5",
-    "name": "GLM-5",
+    "id": "gemini-4-neon",
+    "name": "Gemini 4 Neon",
     "created": 0,
     "context": null
   },

@@ -156,12 +156,6 @@
     "context": null
   },
   {
-    "id": "glm-5.2",
-    "name": "GLM-5.2",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "gemini-4-argon",
     "name": "Gemini 4 Argon",
     "created": 0,
