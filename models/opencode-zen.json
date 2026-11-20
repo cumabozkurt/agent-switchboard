@@ -1,7 +1,31 @@
 [
   {
+    "id": "voyage-code-4",
+    "name": "voyage-code-4",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "voyage-4",
+    "name": "voyage-4",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "tidepool-alpha-free",
     "name": "Tidepool Alpha Free",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "text-embedding-3-small",
+    "name": "text-embedding-3-small",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "text-embedding-3-large",
+    "name": "text-embedding-3-large",
     "created": 0,
     "context": null
   },
@@ -26,6 +50,12 @@
   {
     "id": "qwen3.5-plus",
     "name": "Qwen3.5 Plus",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "qwen3-embedding-8b",
+    "name": "Qwen3 Embedding 8B",
     "created": 0,
     "context": null
   },
@@ -68,6 +98,12 @@
   {
     "id": "mistral-large-4",
     "name": "Mistral Large 4",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "mistral-embed",
+    "name": "Mistral Embed",
     "created": 0,
     "context": null
   },
@@ -122,12 +158,6 @@
   {
     "id": "jev-1.13",
     "name": "Jev 1.13",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "inkling-2-small-free",
-    "name": "Inkling 2 Small Free",
     "created": 0,
     "context": null
   },
@@ -366,6 +396,18 @@
     "context": null
   },
   {
+    "id": "gemini-embedding-2",
+    "name": "Gemini Embedding 2",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "gemini-embedding-001",
+    "name": "Gemini Embedding 001",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gemini-decision-1",
     "name": "Gemini Decision 1",
     "created": 0,
@@ -446,6 +488,24 @@
   {
     "id": "deepseek-v4-pro",
     "name": "DeepSeek V4 Pro",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "cohere-embed-v5-pro",
+    "name": "Embed 5 Pro",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "cohere-embed-v5-fast",
+    "name": "Embed 5 Fast",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "codestral-embed",
+    "name": "Codestral Embed",
     "created": 0,
     "context": null
   },
@@ -542,6 +602,12 @@
   {
     "id": "big-pickle",
     "name": "Big Pickle",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "bge-m3",
+    "name": "BGE M3",
     "created": 0,
     "context": null
   },

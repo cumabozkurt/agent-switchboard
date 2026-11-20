@@ -1,5 +1,11 @@
 [
   {
+    "id": "mistralai/pixtral-large-2502",
+    "name": "Mistral: Pixtral Large 2502",
+    "created": 1795135865,
+    "context": 128000
+  },
+  {
     "id": "google/gemini-4-neon:batch",
     "name": "Google: Gemini 4 Neon (batch)",
     "created": 1795006977,
@@ -118,12 +124,6 @@
     "name": "Nex AGI: Nex-N2.6",
     "created": 1794282379,
     "context": 262144
-  },
-  {
-    "id": "thinkingmachines/inkling-2-small:free",
-    "name": "Thinking Machines: Inkling 2 Small (free)",
-    "created": 1794261847,
-    "context": 1048576
   },
   {
     "id": "thinkingmachines/inkling-2-small",
@@ -607,13 +607,13 @@
   },
   {
     "id": "x-ai/grok-4.7:batch",
-    "name": "SpaceXAI: Grok 4.7 (batch)",
+    "name": "SpaceXSI: Grok 4.7 (batch)",
     "created": 1790007541,
     "context": 500000
   },
   {
     "id": "x-ai/grok-4.7",
-    "name": "SpaceXAI: Grok 4.7",
+    "name": "SpaceXSI: Grok 4.7",
     "created": 1790007541,
     "context": 500000
   },
@@ -861,7 +861,7 @@
     "id": "~z-ai/glm-latest",
     "name": "Z.ai: GLM Latest",
     "created": 1787151053,
-    "context": 1050000
+    "context": 1048576
   },
   {
     "id": "tencent/hy-mt2-7b",
@@ -879,7 +879,7 @@
     "id": "z-ai/glm-5.3",
     "name": "Z.ai: GLM 5.3",
     "created": 1787086655,
-    "context": 1050000
+    "context": 1048576
   },
   {
     "id": "qwen/qwen3.8-27b:batch",
@@ -931,13 +931,13 @@
   },
   {
     "id": "x-ai/grok-4.6:batch",
-    "name": "SpaceXAI: Grok 4.6 (batch)",
+    "name": "SpaceXSI: Grok 4.6 (batch)",
     "created": 1786548957,
     "context": 500000
   },
   {
     "id": "x-ai/grok-4.6",
-    "name": "SpaceXAI: Grok 4.6",
+    "name": "SpaceXSI: Grok 4.6",
     "created": 1786548957,
     "context": 500000
   },
@@ -1177,7 +1177,7 @@
   },
   {
     "id": "x-ai/grok-4.5",
-    "name": "SpaceXAI: Grok 4.5",
+    "name": "SpaceXSI: Grok 4.5",
     "created": 1783523154,
     "context": 500000
   },
@@ -1240,12 +1240,6 @@
     "name": "Google: Nano Banana Pro (Gemini 3 Pro Image)",
     "created": 1781754054,
     "context": 131072
-  },
-  {
-    "id": "cohere/north-mini-code:free",
-    "name": "Cohere: North Mini Code (free)",
-    "created": 1781723748,
-    "context": 256000
   },
   {
     "id": "z-ai/glm-5.2:batch",
@@ -1356,12 +1350,6 @@
     "context": 1000000
   },
   {
-    "id": "x-ai/grok-build-0.1",
-    "name": "SpaceXAI: Grok Build 0.1",
-    "created": 1779298123,
-    "context": 256000
-  },
-  {
     "id": "google/gemini-3.5-flash:batch",
     "name": "Google: Gemini 3.5 Flash (batch)",
     "created": 1779193800,
@@ -1399,13 +1387,13 @@
   },
   {
     "id": "x-ai/grok-4.3:batch",
-    "name": "SpaceXAI: Grok 4.3 (batch)",
+    "name": "SpaceXSI: Grok 4.3 (batch)",
     "created": 1777591821,
     "context": 1000000
   },
   {
     "id": "x-ai/grok-4.3",
-    "name": "SpaceXAI: Grok 4.3",
+    "name": "SpaceXSI: Grok 4.3",
     "created": 1777591821,
     "context": 1000000
   },
@@ -1621,13 +1609,13 @@
   },
   {
     "id": "x-ai/grok-4.20-multi-agent",
-    "name": "SpaceXAI: Grok 4.20 Multi-Agent",
+    "name": "SpaceXSI: Grok 4.20 Multi-Agent",
     "created": 1774979158,
     "context": 2000000
   },
   {
     "id": "x-ai/grok-4.20",
-    "name": "SpaceXAI: Grok 4.20",
+    "name": "SpaceXSI: Grok 4.20",
     "created": 1774979019,
     "context": 2000000
   },
@@ -2722,12 +2710,6 @@
     "name": "Meta: Llama 3.2 3B Instruct",
     "created": 1727222400,
     "context": 131072
-  },
-  {
-    "id": "meta-llama/llama-3.2-1b-instruct",
-    "name": "Meta: Llama 3.2 1B Instruct",
-    "created": 1727222400,
-    "context": 60000
   },
   {
     "id": "qwen/qwen-2.5-72b-instruct",
