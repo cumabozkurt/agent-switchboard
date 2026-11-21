@@ -390,6 +390,12 @@
     "context": null
   },
   {
+    "id": "gemini-omni-1.2-flash",
+    "name": "Gemini Omni 1.2 Flash",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gemini-nano-banana-2.1",
     "name": "Nano Banana 2.1",
     "created": 0,

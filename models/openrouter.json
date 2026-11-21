@@ -1,5 +1,17 @@
 [
   {
+    "id": "thinkingmachines/inkling-2-mini",
+    "name": "Thinking Machines: Inkling 2 Mini",
+    "created": 1795227585,
+    "context": 1048576
+  },
+  {
+    "id": "radixark/daisyrose-27b",
+    "name": "RadixArk: DaisyRose 27B",
+    "created": 1795222188,
+    "context": 262144
+  },
+  {
     "id": "mistralai/pixtral-large-2502",
     "name": "Mistral: Pixtral Large 2502",
     "created": 1795135865,
@@ -597,13 +609,13 @@
     "id": "xiaomi/mimo-v2.6-flash",
     "name": "Xiaomi: MiMo-V2.6-Flash",
     "created": 1790021264,
-    "context": 1050000
+    "context": 1048576
   },
   {
     "id": "xiaomi/mimo-v2.6-pro",
     "name": "Xiaomi: MiMo-V2.6-Pro",
     "created": 1790021259,
-    "context": 1050000
+    "context": 1048576
   },
   {
     "id": "x-ai/grok-4.7:batch",
@@ -894,12 +906,6 @@
     "context": 1024000
   },
   {
-    "id": "dots-studio/dots-3-note-preview:free",
-    "name": "Dots Studio: Dots3-Note Preview (free)",
-    "created": 1786680361,
-    "context": 512000
-  },
-  {
     "id": "google/gemini-3.7-flash:batch",
     "name": "Google: Gemini 3.7 Flash (batch)",
     "created": 1786640581,
@@ -1066,12 +1072,6 @@
     "name": "Google: Gemini 3.5 Flash Lite",
     "created": 1784646726,
     "context": 1048576
-  },
-  {
-    "id": "meituan/longcat-2.0",
-    "name": "Meituan: LongCat 2.0",
-    "created": 1784554658,
-    "context": 1048756
   },
   {
     "id": "thinkingmachines/inkling",
@@ -1510,12 +1510,6 @@
     "name": "DeepSeek: DeepSeek V4 Flash 0423",
     "created": 1777000666,
     "context": 1048576
-  },
-  {
-    "id": "tencent/hy3-preview",
-    "name": "Tencent: Hy3 preview",
-    "created": 1776878150,
-    "context": 262144
   },
   {
     "id": "xiaomi/mimo-v2.5-pro",
