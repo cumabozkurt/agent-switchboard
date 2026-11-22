@@ -204,6 +204,12 @@
     "context": null
   },
   {
+    "id": "gpt-live-1.1",
+    "name": "GPT-Live 1.1",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "gpt-live-1",
     "name": "GPT-Live 1",
     "created": 0,
