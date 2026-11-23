@@ -66,14 +66,8 @@
     "context": null
   },
   {
-    "id": "longcat-2.5-free",
-    "name": "LongCat 2.5 Free",
-    "created": 0,
-    "context": null
-  },
-  {
-    "id": "longcat-2.0",
-    "name": "LongCat-2.0",
+    "id": "longcat-2.5",
+    "name": "LongCat-2.5",
     "created": 0,
     "context": null
   },

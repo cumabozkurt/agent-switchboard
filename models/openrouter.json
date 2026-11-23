@@ -435,7 +435,7 @@
     "id": "inclusionai/ling-3.1-flash",
     "name": "inclusionAI: Ling 3.1 Flash",
     "created": 1790950024,
-    "context": 1000000
+    "context": 1048576
   },
   {
     "id": "unbiased/pareto-26.10-preview",
@@ -904,6 +904,12 @@
     "name": "Qwen: Qwen3.8 27B",
     "created": 1786722910,
     "context": 1024000
+  },
+  {
+    "id": "dots-studio/dots-3-note-preview:free",
+    "name": "Dots Studio: Dots3-Note Preview (free)",
+    "created": 1786680361,
+    "context": 512000
   },
   {
     "id": "google/gemini-3.7-flash:batch",

@@ -30,6 +30,12 @@
     "context": null
   },
   {
+    "id": "qwen4-max-free",
+    "name": "Qwen4 Max Free",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "qwen3.8-max",
     "name": "Qwen3.8 Max",
     "created": 0,
@@ -132,12 +138,6 @@
     "context": null
   },
   {
-    "id": "longcat-2.5-free",
-    "name": "LongCat 2.5 Free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "kimi-k3",
     "name": "Kimi K3",
     "created": 0,
@@ -146,6 +146,12 @@
   {
     "id": "kimi-k2.7-code",
     "name": "Kimi K2.7 Code",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "jev-1.14",
+    "name": "Jev 1.14",
     "created": 0,
     "context": null
   },
