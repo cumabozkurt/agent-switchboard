@@ -1083,7 +1083,7 @@
     "id": "thinkingmachines/inkling",
     "name": "Thinking Machines: Inkling",
     "created": 1784325956,
-    "context": 524288
+    "context": 1048576
   },
   {
     "id": "openrouter/auto-beta",
@@ -1335,7 +1335,7 @@
     "id": "stepfun/step-3.7-flash",
     "name": "StepFun: Step 3.7 Flash",
     "created": 1779985069,
-    "context": 262144
+    "context": 256000
   },
   {
     "id": "anthropic/claude-opus-4.8:batch",
@@ -1516,12 +1516,6 @@
     "name": "DeepSeek: DeepSeek V4 Flash 0423",
     "created": 1777000666,
     "context": 1048576
-  },
-  {
-    "id": "xiaomi/mimo-v2.5-pro",
-    "name": "Xiaomi: MiMo-V2.5-Pro",
-    "created": 1776874273,
-    "context": 262144
   },
   {
     "id": "xiaomi/mimo-v2.5",
@@ -2052,12 +2046,6 @@
     "context": 400000
   },
   {
-    "id": "moonshotai/kimi-k2-thinking",
-    "name": "MoonshotAI: Kimi K2 Thinking",
-    "created": 1762440622,
-    "context": 262144
-  },
-  {
     "id": "amazon/nova-premier-v1",
     "name": "Amazon: Nova Premier 1.0",
     "created": 1761950332,
@@ -2193,12 +2181,6 @@
     "id": "qwen/qwen3-next-80b-a3b-instruct",
     "name": "Qwen: Qwen3 Next 80B A3B Instruct",
     "created": 1757612213,
-    "context": 262144
-  },
-  {
-    "id": "moonshotai/kimi-k2-0905",
-    "name": "MoonshotAI: Kimi K2 0905",
-    "created": 1757021147,
     "context": 262144
   },
   {
@@ -2356,12 +2338,6 @@
     "name": "Qwen: Qwen3 235B A22B Instruct 2507",
     "created": 1753119555,
     "context": 262144
-  },
-  {
-    "id": "moonshotai/kimi-k2",
-    "name": "MoonshotAI: Kimi K2 0711",
-    "created": 1752263252,
-    "context": 131072
   },
   {
     "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition",

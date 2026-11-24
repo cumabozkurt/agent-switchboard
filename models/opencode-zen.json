@@ -30,12 +30,6 @@
     "context": null
   },
   {
-    "id": "qwen4-max-free",
-    "name": "Qwen4 Max Free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "qwen3.8-max",
     "name": "Qwen3.8 Max",
     "created": 0,
@@ -138,6 +132,12 @@
     "context": null
   },
   {
+    "id": "kimi-k3.1-pro",
+    "name": "Kimi K3.1 Pro",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "kimi-k3",
     "name": "Kimi K3",
     "created": 0,
@@ -176,6 +176,18 @@
   {
     "id": "hy4-flash-free",
     "name": "Hy4 flash Free",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "grok-imagine-video-1.5-lite",
+    "name": "Grok Imagine Video 1.5 Lite",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "grok-imagine-video-1.5",
+    "name": "Grok Imagine Video 1.5",
     "created": 0,
     "context": null
   },
