@@ -1,5 +1,23 @@
 [
   {
+    "id": "upstage/solar-pro-4-contributor",
+    "name": "Upstage: Solar Pro 4 Contributor",
+    "created": 1795562304,
+    "context": 524288
+  },
+  {
+    "id": "upstage/solar-mini-4-5",
+    "name": "Upstage: Solar Mini 4.5 (Preview)",
+    "created": 1795562304,
+    "context": 524288
+  },
+  {
+    "id": "xiaomi/mimo-v2.6-flash-mopd",
+    "name": "Xiaomi: MiMo-V2.6-Flash-MOPD",
+    "created": 1795456634,
+    "context": 1048576
+  },
+  {
     "id": "thinkingmachines/inkling-2-mini",
     "name": "Thinking Machines: Inkling 2 Mini",
     "created": 1795227585,
@@ -906,12 +924,6 @@
     "context": 1024000
   },
   {
-    "id": "dots-studio/dots-3-note-preview:free",
-    "name": "Dots Studio: Dots3-Note Preview (free)",
-    "created": 1786680361,
-    "context": 512000
-  },
-  {
     "id": "google/gemini-3.7-flash:batch",
     "name": "Google: Gemini 3.7 Flash (batch)",
     "created": 1786640581,
@@ -1518,12 +1530,6 @@
     "context": 1048576
   },
   {
-    "id": "xiaomi/mimo-v2.5",
-    "name": "Xiaomi: MiMo-V2.5",
-    "created": 1776874269,
-    "context": 1000000
-  },
-  {
     "id": "openai/gpt-5.4-image-2",
     "name": "OpenAI: GPT-5.4 Image 2",
     "created": 1776797528,
@@ -1815,7 +1821,7 @@
     "id": "minimax/minimax-m2.5",
     "name": "MiniMax: MiniMax M2.5",
     "created": 1770908502,
-    "context": 198000
+    "context": 65536
   },
   {
     "id": "z-ai/glm-5",
@@ -1875,7 +1881,7 @@
     "id": "z-ai/glm-4.7-flash",
     "name": "Z.ai: GLM 4.7 Flash",
     "created": 1768833913,
-    "context": 200000
+    "context": 131072
   },
   {
     "id": "openai/gpt-5.2-codex",
@@ -2196,12 +2202,6 @@
     "context": 163840
   },
   {
-    "id": "mistralai/mistral-medium-3.1",
-    "name": "Mistral: Mistral Medium 3.1",
-    "created": 1755095639,
-    "context": 131072
-  },
-  {
     "id": "z-ai/glm-4.5v",
     "name": "Z.ai: GLM 4.5V",
     "created": 1754922288,
@@ -2404,12 +2404,6 @@
     "name": "DeepSeek: R1 0528",
     "created": 1748455170,
     "context": 163840
-  },
-  {
-    "id": "mistralai/mistral-medium-3",
-    "name": "Mistral: Mistral Medium 3",
-    "created": 1746627341,
-    "context": 131072
   },
   {
     "id": "meta-llama/llama-guard-4-12b",
