@@ -12,12 +12,6 @@
     "context": null
   },
   {
-    "id": "tidepool-alpha-free",
-    "name": "Tidepool Alpha Free",
-    "created": 0,
-    "context": null
-  },
-  {
     "id": "text-embedding-3-small",
     "name": "text-embedding-3-small",
     "created": 0,
@@ -26,6 +20,12 @@
   {
     "id": "text-embedding-3-large",
     "name": "text-embedding-3-large",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "seaglass-alpha-free",
+    "name": "Seaglass Alpha Free",
     "created": 0,
     "context": null
   },
