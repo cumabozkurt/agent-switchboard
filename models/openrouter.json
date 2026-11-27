@@ -1,5 +1,11 @@
 [
   {
+    "id": "inclusionai/lingsante-3.1-air-vl",
+    "name": "inclusionAI: LingSante 3.1 Air VL",
+    "created": 1795705284,
+    "context": 131072
+  },
+  {
     "id": "upstage/solar-pro-4-contributor",
     "name": "Upstage: Solar Pro 4 Contributor",
     "created": 1795562304,
@@ -108,8 +114,8 @@
     "context": 1000000
   },
   {
-    "id": "inclusionai/ling-3.2-flash:free",
-    "name": "inclusionAI: Ling 3.2 Flash (free)",
+    "id": "inclusionai/ling-3.2-flash",
+    "name": "inclusionAI: Ling 3.2 Flash",
     "created": 1794591958,
     "context": 1048576
   },
@@ -927,7 +933,7 @@
     "id": "qwen/qwen3.8-2.4t-a95b",
     "name": "Qwen: Qwen3.8 2.4T A95B",
     "created": 1786551702,
-    "context": 1048576
+    "context": 1000000
   },
   {
     "id": "deepseek/deepseek-v4-pro-0813",
@@ -2133,7 +2139,7 @@
     "id": "z-ai/glm-4.6",
     "name": "Z.ai: GLM 4.6",
     "created": 1759235576,
-    "context": 204800
+    "context": 202752
   },
   {
     "id": "anthropic/claude-sonnet-4.5:batch",
@@ -2187,6 +2193,12 @@
     "id": "qwen/qwen3-next-80b-a3b-instruct",
     "name": "Qwen: Qwen3 Next 80B A3B Instruct",
     "created": 1757612213,
+    "context": 262144
+  },
+  {
+    "id": "moonshotai/kimi-k2-0905",
+    "name": "MoonshotAI: Kimi K2 0905",
+    "created": 1757021147,
     "context": 262144
   },
   {
@@ -2344,6 +2356,12 @@
     "name": "Qwen: Qwen3 235B A22B Instruct 2507",
     "created": 1753119555,
     "context": 262144
+  },
+  {
+    "id": "moonshotai/kimi-k2",
+    "name": "MoonshotAI: Kimi K2 0711",
+    "created": 1752263252,
+    "context": 131072
   },
   {
     "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition",

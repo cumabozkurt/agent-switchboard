@@ -180,6 +180,12 @@
     "context": null
   },
   {
+    "id": "grok-voice-transcribe-2.0",
+    "name": "Grok Voice Transcribe 2.0",
+    "created": 0,
+    "context": null
+  },
+  {
     "id": "grok-imagine-video-1.5-lite",
     "name": "Grok Imagine Video 1.5 Lite",
     "created": 0,
@@ -218,6 +224,12 @@
   {
     "id": "grok-4.5",
     "name": "Grok 4.5",
+    "created": 0,
+    "context": null
+  },
+  {
+    "id": "gpt-transcribe",
+    "name": "GPT-Transcribe",
     "created": 0,
     "context": null
   },
