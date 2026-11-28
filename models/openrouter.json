@@ -2328,12 +2328,6 @@
     "context": 131072
   },
   {
-    "id": "qwen/qwen3-235b-a22b-thinking-2507",
-    "name": "Qwen: Qwen3 235B A22B Thinking 2507",
-    "created": 1753449557,
-    "context": 128000
-  },
-  {
     "id": "qwen/qwen3-coder",
     "name": "Qwen: Qwen3 Coder 480B A35B",
     "created": 1753230546,
